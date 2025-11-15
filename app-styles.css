@@ -1,0 +1,295 @@
+/* 基础样式重置和设置 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f5f5f5;
+}
+
+/* Ant Design 组件自定义样式 */
+.ant-layout {
+  background: #f5f5f5 !important;
+}
+
+.ant-layout-header {
+  background: #fff !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+  z-index: 10;
+}
+
+.ant-layout-sider {
+  background: #fff !important;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.06) !important;
+}
+
+.ant-layout-content {
+  background: #fff !important;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* 自定义组件样式 */
+.device-card {
+  transition: all 0.3s ease;
+}
+
+.device-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* 屏幕投屏区域样式 */
+.screen-share-container {
+  background: #000;
+  border-radius: 6px;
+  padding: 20px;
+  text-align: center;
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  color: #fff;
+}
+
+.screen-share-placeholder {
+  font-size: 24px;
+  opacity: 0.5;
+  margin-bottom: 10px;
+}
+
+.screen-share-controls {
+  margin-top: 20px;
+}
+
+/* 按钮组样式 */
+.action-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+/* 状态指示器样式 */
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.status-indicator.online {
+  background: rgba(82, 196, 26, 0.1);
+  color: #52c41a;
+}
+
+.status-indicator.offline {
+  background: rgba(255, 77, 79, 0.1);
+  color: #ff4d4f;
+}
+
+.status-indicator.discovering {
+  background: rgba(24, 144, 255, 0.1);
+  color: #1890ff;
+}
+
+/* 文件传输区域样式 */
+.file-transfer-area {
+  border: 2px dashed #d9d9d9;
+  border-radius: 6px;
+  padding: 40px 20px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.file-transfer-area:hover,
+.file-transfer-area.dragover {
+  border-color: #1890ff;
+  background: rgba(24, 144, 255, 0.02);
+}
+
+.file-transfer-area .ant-upload-text {
+  font-size: 16px;
+  color: #666;
+  margin-top: 16px;
+}
+
+/* 通知列表样式 */
+.notification-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.3s ease;
+}
+
+.notification-item:hover {
+  background: #fafafa;
+}
+
+.notification-item:last-child {
+  border-bottom: none;
+}
+
+.notification-title {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.notification-content {
+  color: #666;
+  font-size: 14px;
+}
+
+.notification-time {
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+}
+
+/* 剪贴板区域样式 */
+.clipboard-area {
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  padding: 16px;
+  min-height: 200px;
+  background: #fafafa;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.clipboard-area:focus-within {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+/* 设置面板样式 */
+.settings-section {
+  margin-bottom: 24px;
+}
+
+.settings-section:last-child {
+  margin-bottom: 0;
+}
+
+.settings-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #262626;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .ant-layout-sider {
+    position: fixed;
+    left: -250px;
+    height: 100vh;
+    z-index: 100;
+    transition: left 0.3s ease;
+  }
+  
+  .ant-layout-sider.ant-layout-sider-collapsed {
+    left: 0;
+  }
+  
+  .ant-layout-content {
+    margin: 0;
+    border-radius: 0;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .device-card .ant-card-actions {
+    flex-direction: column;
+  }
+}
+
+/* 加载动画样式 */
+.loading-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #1890ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 脉冲动画 */
+.pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* 工具提示样式 */
+.ant-tooltip-inner {
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* 打印样式 */
+@media print {
+  .ant-layout-header,
+  .ant-layout-sider,
+  .ant-layout-footer {
+    display: none !important;
+  }
+  
+  .ant-layout-content {
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    background: #fff;
+  }
+}

@@ -1,0 +1,74 @@
+# 项目特定的忽略文件
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Node.js相关
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 构建输出
+dist/
+out/
+build/
+target/
+*.log
+electron-start.log
+
+# 临时文件
+*.tmp
+*.temp
+tmp/
+temp/
+
+# OS生成的文件
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Icon?
+.directory
+.Trashes
+
+# IDE
+.vscode/
+.idea/
+
+# Android构建相关
+*.apk
+*.aar
+*.ap_
+app/build/
+.gradle/
+local.properties
+
+# Electron应用的临时文件
+electron/dist/
+electron/app/node_modules/
+
+# 依赖管理
+package-lock.json
+yarn.lock
+
+# 个人配置文件
+config/
+settings.json
+*.config
