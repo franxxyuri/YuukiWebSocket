@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal">
+
+        <!-- 设备信息显示 -->
+        <TextView
+            android:id="@+id/device_info_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="设备信息加载中..."
+            android:textSize="16sp"
+            android:layout_marginBottom="16dp"
+            android:background="#f0f0f0"
+            android:padding="12dp" />
+
+        <!-- 连接状态 -->
+        <TextView
+            android:id="@+id/status_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="准备就绪"
+            android:textSize="14sp"
+            android:textColor="#666666"
+            android:layout_marginBottom="24dp"
+            android:gravity="center" />
+
+        <!-- 连接按钮 -->
+        <Button
+            android:id="@+id/connect_button"
+            android:layout_width="200dp"
+            android:layout_height="wrap_content"
+            android:text="连接"
+            android:textColor="#ffffff"
+            android:background="#2196F3"
+            android:layout_marginBottom="16dp" />
+
+        <!-- 功能按钮组 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginTop="16dp">
+
+            <Button
+                android:id="@+id/file_transfer_button"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="文件传输"
+                android:layout_marginEnd="8dp"
+                android:visibility="gone"
+                android:background="#FF9800"
+                android:textColor="#ffffff" />
+
+            <Button
+                android:id="@+id/screen_share_button"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="屏幕共享"
+                android:layout_marginStart="8dp"
+                android:visibility="gone"
+                android:background="#4CAF50"
+                android:textColor="#ffffff" />
+        </LinearLayout>
+
+        <!-- 设备列表 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="发现的设备:"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="8dp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/device_list_recycler"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:background="#f9f9f9" />
+
+    </LinearLayout>
+</ScrollView>

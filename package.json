@@ -1,0 +1,45 @@
+{
+  "name": "windows-android-connect",
+  "version": "1.0.0",
+  "description": "一个功能完整的Windows-Android局域网互联软件",
+  "main": "electron-main.js",
+  "author": "Developer",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "build": "echo 'Building...' && npm run lint",
+    "install:android": "cd app && ./gradlew build",
+    "test": "node test-runner.js",
+    "lint": "eslint *.js *.jsx",
+    "clean": "del /s /q node_modules",
+    "android-build": "cd app && ./gradlew build",
+    "check-deps": "npm list --depth=0"
+  },
+  "keywords": [
+    "electron",
+    "react",
+    "android",
+    "remote-control",
+    "file-transfer",
+    "screen-mirror",
+    "cross-platform"
+  ],
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "electron": "^39.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-username/windows-android-connect.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/windows-android-connect/issues"
+  },
+  "homepage": "https://github.com/your-username/windows-android-connect#readme",
+  "dependencies": {
+    "multicast-dns": "^7.2.5",
+    "net": "^1.0.2",
+    "socket.io-client": "^4.8.1"
+  }
+}
