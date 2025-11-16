@@ -1,29 +1,29 @@
-const express = require('express');
-const http = require('http');
-const socketIo = require('socket.io');
-const cors = require('cors');
-
-// 创建Express应用
-const app = express();
-const server = http.createServer(app);
-
-// 配置CORS以支持Vite开发服务器
-app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:8826", "http://127.0.0.1:5173", "http://127.0.0.1:8826"],
-  methods: ["GET", "POST"],
-  credentials: true
-}));
-
-// 配置静态文件服务
-app.use(express.static('dist'));
-
-// 创建Socket.IO服务器
-const io = socketIo(server, {
-  cors: {
-    origin: ["http://localhost:5173", "http://localhost:8826", "http://127.0.0.1:5173", "http://127.0.0.1:8826"],
-    methods: ["GET", "POST"],
-    credentials: true
-  }
+import express from 'express';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import cors from 'cors';
+
+// 创建Express应用
+const app = express();
+const server = createServer(app);
+
+// 配置CORS以支持Vite开发服务器
+app.use(cors({
+  origin: ["http://localhost:5173", "http://localhost:8826", "http://127.0.0.1:5173", "http://127.0.0.1:8826"],
+  methods: ["GET", "POST"],
+  credentials: true
+}));
+
+// 配置静态文件服务
+app.use(express.static('dist'));
+
+// 创建Socket.IO服务器
+const io = new Server(server, {
+  cors: {
+    origin: ["http://localhost:5173", "http://localhost:8826", "http://127.0.0.1:5173", "http://127.0.0.1:8826"],
+    methods: ["GET", "POST"],
+    credentials: true
+  }
 });
 
 // 模拟设备列表

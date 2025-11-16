@@ -11,7 +11,7 @@ function App() {
   const connectToServer = async () => {
     try {
       setConnectionStatus('正在连接...')
-      await websocketService.connect('http://localhost:8826')
+      await websocketService.connect('ws://localhost:8828')
       setIsConnected(true)
       setConnectionStatus('已连接到服务器')
       
@@ -201,10 +201,10 @@ function App() {
         <section className="info-section">
           <h2>应用信息</h2>
           <div className="info-grid">
-            <div className="info-card">
-              <h3>服务端状态</h3>
-              <p>端口: 8826</p>
-              <p>状态: {connectionStatus}</p>
+            <div className="info-card">
+              <h3>服务端状态</h3>
+              <p>端口: 8828</p>
+              <p>状态: {connectionStatus}</p>
             </div>
             <div className="info-card">
               <h3>应用版本</h3>

@@ -1,44 +1,55 @@
-const io = require('socket.io-client');
+const WebSocket = require('ws');
 
 console.log('尝试连接到WebSocket服务器...');
 
-// 连接到WebSocket服务器
-const socket = io('http://localhost:8828', {
-  transports: ['websocket', 'polling'], // 尝试多种传输方式
-  timeout: 10000, // 10秒超时
-  withCredentials: true,
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
-});
+// 连接到原生WebSocket服务器
+const socket = new WebSocket('ws://localhost:8828');
 
-socket.on('connect', () => {
+socket.on('open', () => {
   console.log('✅ 成功连接到服务器！');
-  console.log('Socket ID:', socket.id);
+  
+  // 发送设备信息
+  socket.send(JSON.stringify({
+    type: 'device_info',
+    deviceInfo: {
+      platform: 'nodejs',
+      deviceName: 'Node.js Test Client',
+      deviceId: 'nodejs-' + Date.now()
+    }
+  }));
   
   // 发送一个测试消息
-  socket.emit('get_discovered_devices', (response) => {
-    console.log('设备列表响应:', response);
-  });
+  socket.send(JSON.stringify({
+    type: 'get_discovered_devices'
+  }));
 });
 
-socket.on('connect_error', (error) => {
+socket.on('error', (error) => {
   console.log('❌ 连接错误:', error.message);
   console.log('错误详情:', error);
 });
 
-socket.on('disconnect', (reason) => {
-  console.log('❌ 连接断开:', reason);
+socket.on('close', (code, reason) => {
+  console.log('❌ 连接断开:', code, reason ? reason.toString() : '未知原因');
 });
 
-socket.on('error', (error) => {
-  console.log('❌ Socket错误:', error);
+socket.on('message', (data) => {
+  try {
+    const message = JSON.parse(data);
+    console.log('收到消息:', message.type);
+    
+    if (message.type === 'get_discovered_devices_response') {
+      console.log('设备列表响应:', message);
+    }
+  } catch (error) {
+    console.log('消息解析错误:', error.message);
+    console.log('原始消息:', data.toString());
+  }
 });
 
 // 20秒后断开连接
 setTimeout(() => {
   console.log('测试完成，断开连接');
-  socket.disconnect();
+  socket.close();
   process.exit(0);
 }, 20000);
