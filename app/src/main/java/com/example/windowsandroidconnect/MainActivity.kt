@@ -1,22 +1,30 @@
 package com.example.windowsandroidconnect
 
 import android.app.Activity
+import android.content.Intent
+import android.content.Context
+import android.net.wifi.WifiManager
 import android.os.Bundle
+import android.provider.Settings
+import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
-import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.LinearLayoutManager
-import android.content.Intent
-import android.net.wifi.WifiManager
-import android.content.Context
-import android.provider.Settings
-import java.net.InetAddress
-import kotlinx.coroutines.*
-import android.util.Log
-import com.example.windowsandroidconnect.service.ScreenCaptureService
+import androidx.recyclerview.widget.RecyclerView
+import com.example.windowsandroidconnect.network.NetworkCommunication
+import com.example.windowsandroidconnect.service.ClipboardService
+import com.example.windowsandroidconnect.service.DeviceDiscoveryService
+import com.example.windowsandroidconnect.service.NotificationService
 import com.example.windowsandroidconnect.service.RemoteControlService
+import com.example.windowsandroidconnect.service.ScreenCaptureService
+import kotlinx.coroutines.*
+import org.json.JSONObject
+import java.util.*
+
+// 导入R类以访问资源
+import com.example.windowsandroidconnect.R
 
 /**
  * Windows-Android Connect Android客户端
@@ -41,14 +49,19 @@ class MainActivity : Activity() {
     private val discoveredDevices = mutableListOf<DeviceInfo>()
     private var isConnected = false
     private var currentDevice: DeviceInfo? = null
+    private lateinit var networkCommunication: NetworkCommunication
+    private lateinit var deviceAdapter: DeviceAdapter
+    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         
+        initNetworkCommunication()
         initViews()
         setupClickListeners()
         initializeDeviceDiscovery()
+        startBackgroundServices()
     }
     
     private fun initViews() {
@@ -59,8 +72,16 @@ class MainActivity : Activity() {
         deviceListRecycler = findViewById(R.id.device_list_recycler)
         statusText = findViewById(R.id.status_text)
         
+        // 初始化设备适配器
+        deviceAdapter = DeviceAdapter(discoveredDevices) { device ->
+            // 点击设备项时的处理
+            showToast("选择设备: ${device.deviceName}")
+            // 可以在这里实现连接逻辑
+        }
+        
         // 设置RecyclerView
         deviceListRecycler.layoutManager = LinearLayoutManager(this)
+        deviceListRecycler.adapter = deviceAdapter
         
         updateUI()
     }
@@ -89,6 +110,87 @@ class MainActivity : Activity() {
                 showToast("请先连接到Windows设备")
             }
         }
+    }
+
+    /**
+     * 初始化网络通信模块
+     */
+    private fun initNetworkCommunication() {
+        networkCommunication = NetworkCommunication()
+        networkCommunication.registerMessageHandler("control_command") { message ->
+            handleControlCommand(message)
+        }
+        networkCommunication.registerMessageHandler("file_transfer") { message ->
+            handleFileTransferRequest(message)
+        }
+        networkCommunication.registerMessageHandler("screen_stream_request") { message ->
+            handleScreenStreamRequest(message)
+        }
+    }
+
+    /**
+     * 启动后台服务
+     */
+    private fun startBackgroundServices() {
+        // 启动剪贴板同步服务
+        val clipboardIntent = Intent(this, ClipboardService::class.java)
+        startService(clipboardIntent)
+
+        // 启动通知同步服务
+        val notificationIntent = Intent(this, NotificationService::class.java)
+        startService(notificationIntent)
+    }
+
+    /**
+     * 处理控制命令
+     */
+    private fun handleControlCommand(message: JSONObject) {
+        try {
+            val command = message.getString("command")
+            Log.d(TAG, "收到控制命令: $command")
+            // 这里会转发给RemoteControlService处理
+        } catch (e: Exception) {
+            Log.e(TAG, "处理控制命令失败", e)
+        }
+    }
+
+    /**
+     * 处理文件传输请求
+     */
+    private fun handleFileTransferRequest(message: JSONObject) {
+        try {
+            val action = message.getString("action")
+            Log.d(TAG, "收到文件传输请求: $action")
+            // 这里会转发给FileTransferService处理
+        } catch (e: Exception) {
+            Log.e(TAG, "处理文件传输请求失败", e)
+        }
+    }
+
+    /**
+     * 处理屏幕流请求
+     */
+    private fun handleScreenStreamRequest(message: JSONObject) {
+        try {
+            val action = message.getString("action")
+            Log.d(TAG, "收到屏幕流请求: $action")
+            if (action == "start") {
+                startScreenSharing()
+            } else if (action == "stop") {
+                stopScreenSharing()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "处理屏幕流请求失败", e)
+        }
+    }
+
+    /**
+     * 停止屏幕共享
+     */
+    private fun stopScreenSharing() {
+        val intent = Intent(this, ScreenCaptureService::class.java)
+        stopService(intent)
+        showToast("屏幕共享已停止")
     }
     
     /**
@@ -140,6 +242,8 @@ class MainActivity : Activity() {
                 
                 withContext(Dispatchers.Main) {
                     statusText.text = "设备发现完成"
+                    // 更新设备列表UI
+                    deviceAdapter.updateDevices(discoveredDevices)
                     updateUI()
                 }
                 
@@ -165,31 +269,23 @@ class MainActivity : Activity() {
      * 连接到Windows设备
      */
     private fun connectToWindowsDevice() {
-        if (discoveredDevices.isEmpty()) {
-            showToast("未发现Windows设备")
-            return
-        }
+        // 这里需要用户输入Windows设备的IP地址，或者从发现的设备列表中选择
+        // 简化处理，使用固定IP进行演示
+        val windowsDeviceIp = "192.168.1.100" // 需要替换为实际的Windows设备IP
         
-        val windowsDevice = discoveredDevices.firstOrNull { it.platform == "windows" }
-        if (windowsDevice == null) {
-            showToast("未发现Windows设备")
-            return
-        }
-        
-        CoroutineScope(Dispatchers.IO).launch {
+        serviceScope.launch {
             try {
                 withContext(Dispatchers.Main) {
                     statusText.text = "正在连接..."
                 }
                 
-                // 连接到Windows设备
-                val success = connectToDevice(windowsDevice)
+                // 连接到Windows设备 (端口8827是网络通信端口)
+                val success = networkCommunication.connect(windowsDeviceIp, 8827)
                 
                 withContext(Dispatchers.Main) {
                     if (success) {
                         isConnected = true
-                        currentDevice = windowsDevice
-                        statusText.text = "已连接到 ${windowsDevice.deviceName}"
+                        statusText.text = "已连接到Windows设备: $windowsDeviceIp"
                         showToast("连接成功")
                         updateUI()
                     } else {
@@ -201,7 +297,7 @@ class MainActivity : Activity() {
             } catch (e: Exception) {
                 Log.e(TAG, "连接设备失败", e)
                 withContext(Dispatchers.Main) {
-                    statusText.text = "连接失败"
+                    statusText.text = "连接失败: ${e.message}"
                     showToast("连接失败: ${e.message}")
                 }
             }
@@ -212,7 +308,7 @@ class MainActivity : Activity() {
      * 断开与设备的连接
      */
     private fun disconnectFromDevice() {
-        // TODO: 实现断开连接逻辑
+        networkCommunication.disconnect()
         isConnected = false
         currentDevice = null
         statusText.text = "已断开连接"

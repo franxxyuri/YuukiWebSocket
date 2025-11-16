@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "com.example.windowsandroidconnect"
-    compileSdk = 36
+    compileSdk = 33
 
     defaultConfig {
         applicationId = "com.example.windowsandroidconnect"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 33
         versionCode = 1
         versionName = "1.0"
 
@@ -36,10 +36,19 @@ android {
     buildFeatures {
         viewBinding = true
     }
+    
+    // 禁用有问题的 JDK 模块功能
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
 }
 
 dependencies {
-
+    // 显式声明kotlin-stdlib依赖
+    implementation(libs.kotlin.stdlib)
+    
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
@@ -48,6 +57,12 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.navigation.fragment.ktx)
     implementation(libs.androidx.navigation.ui.ktx)
+    
+    // 添加JSON支持
+    implementation("org.json:json:20231013")
+    // 添加协程支持
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
