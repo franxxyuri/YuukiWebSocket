@@ -1,28 +1,21 @@
-const NetworkCommunication = require('./network-communication.js');
+const WebSocketServer = require('./websocket-server.js');
 
-console.log('Testing NetworkCommunication module...');
+console.log('测试NetworkCommunication服务器状态...');
 
-try {
-  const nc = new NetworkCommunication();
-  console.log('NetworkCommunication instance created successfully');
-  
-  // 尝试启动服务器
-  nc.startServer(8826)
-    .then(() => {
-      console.log('Server started on port 8826');
-      
-      // 5秒后关闭服务器
-      setTimeout(() => {
-        nc.destroy();
-        console.log('Server stopped');
-        process.exit(0);
-      }, 5000);
-    })
-    .catch(err => {
-      console.error('Failed to start server:', err);
-      process.exit(1);
-    });
-} catch (error) {
-  console.error('Error creating NetworkCommunication instance:', error);
-  process.exit(1);
-}
+// 创建WebSocket服务器实例
+const server = new WebSocketServer(8828);
+
+console.log('NetworkCommunication服务器状态:');
+console.log('- isServerRunning:', server.networkCommunication.isServerRunning);
+console.log('- port:', server.networkCommunication.port);
+console.log('- server:', server.networkCommunication.server ? '已创建' : '未创建');
+
+// 尝试启动设备发现
+console.log('\n尝试启动设备发现...');
+server.startDeviceDiscovery()
+  .then(result => {
+    console.log('设备发现启动成功:', result);
+  })
+  .catch(error => {
+    console.log('设备发现启动失败:', error.message);
+  });

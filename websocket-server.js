@@ -235,13 +235,17 @@ class WebSocketServer {
   }
 
   async startDeviceDiscovery() {
-    // 启动服务器
-    await this.networkCommunication.startServer(this.port);
+    // 检查网络通信服务器是否已经在运行
+    if (!this.networkCommunication.isServerRunning) {
+      // 使用一个未被占用的端口，而不是WebSocket服务器的端口
+      // WebSocket服务器运行在this.port，我们使用this.port+1作为NetworkCommunication服务器端口
+      await this.networkCommunication.startServer(this.port + 1);
+    }
     this.networkCommunication.startHeartbeatCheck();
     
     // 模拟设备发现过程
     // 在实际应用中，这里会通过网络协议发现设备
-    console.log('Network communication server started on port:', this.port);
+    console.log('Network communication server started on port:', this.networkCommunication.port);
     
     return Array.from(this.discoveredDevices.values());
   }
