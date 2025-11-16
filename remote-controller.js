@@ -438,10 +438,9 @@ class RemoteController {
       }));
     }
     
-    // 同时通过IPC发送到主进程
-    if (window.electronAPI) {
-      window.electronAPI.sendControlEvent(eventData);
-    }
+    // 通过WebSocket发送控制事件
+    // 这里应该实现实际的网络发送逻辑
+    console.log('发送控制事件:', eventData);
   }
   
   /**

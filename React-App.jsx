@@ -1,180 +1,81 @@
-import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Button, Card, List, Space, Tag, Typography, Statistic, message } from 'antd';
-import { 
-  WifiOutlined, 
-  PhoneOutlined, 
-  DesktopOutlined, 
-  UploadOutlined, 
-  DownloadOutlined,
-  EyeOutlined,
-  ControlOutlined,
-  NotificationOutlined,
-  CopyOutlined,
-  SettingOutlined,
-  PlayCircleOutlined,
-  StopOutlined
-} from '@ant-design/icons';
-
-const { Header, Content, Sider } = Layout;
-const { Title, Text } = Typography;
-
-const App = () => {
-  const [selectedMenu, setSelectedMenu] = useState('devices');
-  const [isDiscovering, setIsDiscovering] = useState(false);
-  const [devices, setDevices] = useState([]);
-  const [connectedDevice, setConnectedDevice] = useState(null);
-  const [screenSharing, setScreenSharing] = useState(false);
-
-  // 模拟设备数据
-  const mockDevices = [
-    {
-      id: 'device_1',
-      name: '我的Android手机',
-      type: 'android',
-      ip: '192.168.1.100',
-      status: 'online',
-      capabilities: ['file_transfer', 'screen_mirror', 'remote_control', 'notification']
-    },
-    {
-      id: 'device_2',
-      name: '测试平板',
-      type: 'android',
-      ip: '192.168.1.101',
-      status: 'online',
-      capabilities: ['file_transfer', 'screen_mirror']
-    }
-  ];
-
-  useEffect(() => {
-    if (isDiscovering) {
-      // 开始设备发现
-      handleStartDiscovery();
-    } else {
-      setDevices([]);
-    }
-  }, [isDiscovering]);
-
-  // 监听设备发现事件
-  useEffect(() => {
-    if (window.electronAPI) {
-      const handleDeviceFound = (event, device) => {
-        setDevices(prev => {
-          const existing = prev.find(d => d.deviceId === device.deviceId);
-          if (existing) {
-            return prev.map(d => d.deviceId === device.deviceId ? { ...d, ...device } : d);
-          } else {
-            message.success(`发现设备: ${device.name}`);
-            return [...prev, device];
-          }
-        });
-      };
-
-      const handleDeviceLost = (event, data) => {
-        setDevices(prev => prev.filter(d => d.deviceId !== data.deviceId));
-        message.warning(`设备失去连接`);
-      };
-
-      window.electronAPI.onDeviceFound(handleDeviceFound);
-      window.electronAPI.onDeviceLost(handleDeviceLost);
-
-      return () => {
-        window.electronAPI.removeAllListeners('device-found');
-        window.electronAPI.removeAllListeners('device-lost');
-      };
-    }
-  }, []);
-
-  const handleStartDiscovery = async () => {
-    if (window.electronAPI) {
-      try {
-        const result = await window.electronAPI.startDeviceDiscovery();
-        if (result) {
-          setIsDiscovering(true);
-          message.info('开始搜索设备...');
-        }
-      } catch (error) {
-        console.error('启动设备发现失败:', error);
-        message.error(`启动设备发现失败: ${error.message}`);
-      }
-    } else {
-      // 开发模式模拟
-      setIsDiscovering(true);
-      setTimeout(() => {
-        setDevices(mockDevices);
-        message.success(`发现 ${mockDevices.length} 台设备（模拟）`);
-      }, 2000);
-    }
-  };
-
-  const handleStopDiscovery = async () => {
-    if (window.electronAPI) {
-      try {
-        const result = await window.electronAPI.stopDeviceDiscovery();
-        if (result) {
-          setIsDiscovering(false);
-          setDevices([]);
-          message.info('已停止设备搜索');
-        }
-      } catch (error) {
-        console.error('停止设备发现失败:', error);
-        message.error(`停止设备发现失败: ${error.message}`);
-      }
-    } else {
-      setIsDiscovering(false);
-    }
-  };
-
-  const handleConnectDevice = async (device) => {
-    if (window.electronAPI) {
-      try {
-        const result = await window.electronAPI.connectToDevice(device);
-        if (result.success) {
-          setConnectedDevice(device);
-          message.success(`已连接到 ${device.name}`);
-        } else {
-          message.error(`连接失败: ${result.error}`);
-        }
-      } catch (error) {
-        console.error('连接设备失败:', error);
-        message.error(`连接设备失败: ${error.message}`);
-      }
-    } else {
-      // 开发模式模拟
-      setConnectedDevice(device);
-      message.success(`已连接到 ${device.name}（模拟）`);
-    }
-  };
-
-  const handleScreenShare = async () => {
-    if (!screenSharing) {
-      if (window.electronAPI) {
-        try {
-          await window.electronAPI.captureScreen();
-          setScreenSharing(true);
-          message.success('开始屏幕投屏');
-        } catch (error) {
-          console.error('启动屏幕投屏失败:', error);
-          message.error('启动屏幕投屏失败');
-        }
-      } else {
-        setScreenSharing(true);
-        message.success('开始屏幕投屏');
-      }
-    } else {
-      if (window.electronAPI) {
-        try {
-          await window.electronAPI.stopScreenCapture();
-          setScreenSharing(false);
-          message.success('停止屏幕投屏');
-        } catch (error) {
-          console.error('停止屏幕投屏失败:', error);
-          message.error('停止屏幕投屏失败');
-        }
-      } else {
-        setScreenSharing(false);
-        message.success('停止屏幕投屏');
-      }
-    }
+import React, { useState, useEffect } from 'react';
+import { Layout, Menu, Button, Card, List, Space, Tag, Typography, Statistic, message } from 'antd';
+import { 
+  WifiOutlined, 
+  PhoneOutlined, 
+  DesktopOutlined, 
+  UploadOutlined, 
+  DownloadOutlined,
+  EyeOutlined,
+  ControlOutlined,
+  NotificationOutlined,
+  CopyOutlined,
+  SettingOutlined,
+  PlayCircleOutlined,
+  StopOutlined
+} from '@ant-design/icons';
+
+const { Header, Content, Sider } = Layout;
+const { Title, Text } = Typography;
+
+const App = () => {
+  const [selectedMenu, setSelectedMenu] = useState('devices');
+  const [isDiscovering, setIsDiscovering] = useState(false);
+  const [devices, setDevices] = useState([]);
+  const [connectedDevice, setConnectedDevice] = useState(null);
+  const [screenSharing, setScreenSharing] = useState(false);
+
+  // 模拟设备数据
+  const mockDevices = [
+    {
+      id: 'device_1',
+      name: '我的Android手机',
+      type: 'android',
+      ip: '192.168.1.100',
+      status: 'online',
+      capabilities: ['file_transfer', 'screen_mirror', 'remote_control', 'notification']
+    },
+    {
+      id: 'device_2',
+      name: '测试平板',
+      type: 'android',
+      ip: '192.168.1.101',
+      status: 'online',
+      capabilities: ['file_transfer', 'screen_mirror']
+    }
+  ];
+
+  useEffect(() => {
+    if (isDiscovering) {
+      // 开始设备发现
+      handleStartDiscovery();
+    } else {
+      setDevices([]);
+    }
+  }, [isDiscovering]);
+
+  const handleStartDiscovery = async () => {
+    // 开发模式模拟
+    setIsDiscovering(true);
+    setTimeout(() => {
+      setDevices(mockDevices);
+      message.success(`发现 ${mockDevices.length} 台设备（模拟）`);
+    }, 2000);
+  };
+
+  const handleStopDiscovery = async () => {
+    setIsDiscovering(false);
+  };
+
+  const handleConnectDevice = async (device) => {
+    // 开发模式模拟
+    setConnectedDevice(device);
+    message.success(`已连接到 ${device.name}（模拟）`);
+  };
+
+  const handleScreenShare = async () => {
+    setScreenSharing(!screenSharing);
+    message.success(screenSharing ? '停止屏幕投屏' : '开始屏幕投屏');
   };
 
   const menuItems = [

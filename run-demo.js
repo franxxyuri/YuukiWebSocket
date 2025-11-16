@@ -8,9 +8,8 @@ console.log('=' .repeat(50));
 async function demoApp() {
   console.log('');
   console.log('🎯 项目特点:');
-  console.log('   • Electron桌面应用框架');
-  console.log('   • React + Ant Design UI');
-  console.log('   • 设备发现系统 (UDP广播)');
+  console.log('   • React 18 UI组件库');
+  console.log('   • Socket.io实时通信');
   console.log('   • 文件传输系统 (分块传输)');
   console.log('   • 网络通信模块 (WebSocket)');
   console.log('');
@@ -44,9 +43,8 @@ async function demoApp() {
   console.log('🎉 演示完成!');
   console.log('');
   console.log('💡 要运行完整版本:');
-  console.log('   1. 安装Electron: npm install electron');
-  console.log('   2. 启动应用: npm run start');
-  console.log('');
+  console.log('   1. 启动应用: npm start');
+  console.log('   2. 开发模式: npm run dev');
   
   console.log('按 Ctrl+C 退出演示...');
   

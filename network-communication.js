@@ -8,12 +8,12 @@ class NetworkCommunication extends EventEmitter {
     this.connections = new Map();
     this.server = null;
     this.isServerRunning = false;
-    this.port = 8080;
+    this.port = 8826;
     
-    // 安全密钥（实际应用应该从配置文件读取）
+    // Security key (in actual application should read from config file)
     this.secretKey = crypto.randomBytes(32);
     
-    // 支持的消息类型
+    // Supported message types
     this.messageTypes = {
       DEVICE_INFO: 'device_info',
       FILE_TRANSFER: 'file_transfer',
@@ -27,10 +27,10 @@ class NetworkCommunication extends EventEmitter {
     };
   }
 
-  // 启动服务器
+  // Start server
   async startServer(port = this.port) {
     if (this.isServerRunning) {
-      console.log('服务器已在运行');
+      console.log('Server already running');
       return;
     }
 
@@ -40,31 +40,31 @@ class NetworkCommunication extends EventEmitter {
       });
 
       this.server.on('error', (err) => {
-        console.error('服务器启动失败:', err);
+        console.error('Server startup failed:', err);
         reject(err);
       });
 
       this.server.listen(port, () => {
         this.isServerRunning = true;
         this.port = port;
-        console.log(`🌐 服务器已启动，监听端口 ${port}`);
+        console.log(`Server started, listening on port ${port}`);
         resolve();
       });
     });
   }
 
-  // 停止服务器
+  // Stop server
   stopServer() {
     if (this.server && this.isServerRunning) {
       this.server.close(() => {
         this.isServerRunning = false;
-        console.log('🛑 服务器已停止');
+        console.log('Server stopped');
         this.emit('server-stopped');
       });
     }
   }
 
-  // 处理新的连接
+  // Handle new connection
   handleNewConnection(socket) {
     const connectionId = this.generateConnectionId();
     const connectionInfo = {
@@ -80,26 +80,26 @@ class NetworkCommunication extends EventEmitter {
 
     this.connections.set(connectionId, connectionInfo);
 
-    console.log(`📱 新连接建立: ${connectionId}`);
+    console.log(`New connection established: ${connectionId}`);
 
-    // 处理数据接收
+    // Handle data reception
     socket.on('data', (data) => {
       this.handleDataReceived(connectionId, data);
     });
 
-    // 处理连接关闭
+    // Handle connection close
     socket.on('close', () => {
-      console.log(`❌ 连接关闭: ${connectionId}`);
+      console.log(`Connection closed: ${connectionId}`);
       this.handleConnectionClose(connectionId);
     });
 
-    // 处理错误
+    // Handle errors
     socket.on('error', (err) => {
-      console.error(`连接错误 ${connectionId}:`, err);
+      console.error(`Connection error ${connectionId}:`, err);
       this.handleConnectionError(connectionId, err);
     });
 
-    // 发送连接确认
+    // Send connection confirmation
     this.sendMessage(connectionId, {
       type: 'connection_established',
       connectionId: connectionId,
@@ -109,7 +109,7 @@ class NetworkCommunication extends EventEmitter {
     this.emit('connection-established', connectionInfo);
   }
 
-  // 处理接收到的数据
+  // Handle received data
   handleDataReceived(connectionId, data) {
     const connection = this.connections.get(connectionId);
     if (!connection) return;
@@ -117,7 +117,7 @@ class NetworkCommunication extends EventEmitter {
     try {
       connection.bytesReceived += data.length;
 
-      // 解析JSON消息
+      // Parse JSON message
       const messageStr = data.toString();
       const messages = messageStr.split('\n').filter(msg => msg.trim());
 
@@ -126,23 +126,23 @@ class NetworkCommunication extends EventEmitter {
           const message = JSON.parse(messageStr);
           this.processMessage(connectionId, message);
         } catch (parseError) {
-          console.error(`解析消息失败 ${connectionId}:`, parseError);
-          this.sendError(connectionId, 'invalid_message', '消息格式错误');
+          console.error(`Failed to parse message ${connectionId}:`, parseError);
+          this.sendError(connectionId, 'invalid_message', 'Invalid message format');
         }
       }
     } catch (error) {
-      console.error(`处理数据失败 ${connectionId}:`, error);
+      console.error(`Failed to process data ${connectionId}:`, error);
     }
   }
 
-  // 处理消息
+  // Process message
   processMessage(connectionId, message) {
     const connection = this.connections.get(connectionId);
     if (!connection) return;
 
     connection.messageCount++;
 
-    console.log(`📨 收到消息 ${connectionId}:`, message.type);
+    console.log(`Received message ${connectionId}:`, message.type);
 
     switch (message.type) {
       case this.messageTypes.DEVICE_INFO:
@@ -182,12 +182,12 @@ class NetworkCommunication extends EventEmitter {
         break;
 
       default:
-        console.warn(`未知消息类型: ${message.type}`);
-        this.sendError(connectionId, 'unknown_message_type', '未知消息类型');
+        console.warn(`Unknown message type: ${message.type}`);
+        this.sendError(connectionId, 'unknown_message_type', 'Unknown message type');
     }
   }
 
-  // 处理设备信息
+  // Handle device info
   handleDeviceInfo(connectionId, message) {
     const connection = this.connections.get(connectionId);
     if (!connection) return;
@@ -195,9 +195,9 @@ class NetworkCommunication extends EventEmitter {
     connection.deviceInfo = message.deviceInfo;
     connection.isAuthenticated = true;
 
-    console.log(`✅ 设备认证成功: ${message.deviceInfo.name} (${message.deviceInfo.platform})`);
+    console.log(`Device authentication successful: ${message.deviceInfo.name} (${message.deviceInfo.platform})`);
 
-    // 发送认证成功确认
+    // Send authentication success confirmation
     this.sendMessage(connectionId, {
       type: 'authentication_success',
       serverDeviceInfo: this.getServerDeviceInfo()
@@ -206,34 +206,34 @@ class NetworkCommunication extends EventEmitter {
     this.emit('device-authenticated', connection);
   }
 
-  // 处理心跳
+  // Handle heartbeat
   handleHeartbeat(connectionId, message) {
     const connection = this.connections.get(connectionId);
     if (!connection) return;
 
     connection.lastHeartbeat = Date.now();
 
-    // 回应心跳
+    // Respond to heartbeat
     this.sendMessage(connectionId, {
       type: this.messageTypes.HEARTBEAT,
       timestamp: Date.now()
     });
   }
 
-  // 处理文件传输
+  // Handle file transfer
   handleFileTransfer(connectionId, message) {
-    console.log(`📁 文件传输请求: ${message.fileName}`);
+    console.log(`File transfer request: ${message.fileName}`);
     
-    // 转发给UI层处理
+    // Forward to UI layer for processing
     this.emit('file-transfer-request', {
       connectionId,
       ...message
     });
   }
 
-  // 处理屏幕帧
+  // Handle screen frame
   handleScreenFrame(connectionId, message) {
-    // 转发屏幕帧数据给UI层
+    // Forward screen frame data to UI layer
     this.emit('screen-frame-received', {
       connectionId,
       frameData: message.frameData,
@@ -241,11 +241,11 @@ class NetworkCommunication extends EventEmitter {
     });
   }
 
-  // 处理控制命令
+  // Handle control command
   handleControlCommand(connectionId, message) {
-    console.log(`🎮 控制命令: ${message.command}`);
+    console.log(`Control command: ${message.command}`);
     
-    // 转发控制命令给UI层
+    // Forward control command to UI layer
     this.emit('control-command-received', {
       connectionId,
       command: message.command,
@@ -253,40 +253,40 @@ class NetworkCommunication extends EventEmitter {
     });
   }
 
-  // 处理控制事件
+  // Handle control event
   handleControlEvent(connectionId, message) {
-    console.log(`🎮 控制事件: ${message.type}`);
+    console.log(`Control event: ${message.type}`);
     
-    // 转发控制事件给UI层
+    // Forward control event to UI layer
     this.emit('control-event-received', {
       connectionId,
       eventData: message.data
     });
   }
 
-  // 处理通知
+  // Handle notification
   handleNotification(connectionId, message) {
-    console.log(`🔔 通知: ${message.title}`);
+    console.log(`Notification: ${message.title}`);
     
-    // 转发通知给UI层
+    // Forward notification to UI layer
     this.emit('notification-received', {
       connectionId,
       notification: message.notification
     });
   }
 
-  // 处理剪贴板消息
+  // Handle clipboard message
   handleClipboardMessage(connectionId, message) {
-    console.log(`📋 剪贴板同步`);
+    console.log(`Clipboard sync`);
     
-    // 转发剪贴板数据给UI层
+    // Forward clipboard data to UI layer
     this.emit('clipboard-synced', {
       connectionId,
       clipboardData: message.data
     });
   }
 
-  // 处理确认
+  // Handle acknowledgment
   handleAck(connectionId, message) {
     this.emit('message-acknowledged', {
       connectionId,
@@ -294,45 +294,45 @@ class NetworkCommunication extends EventEmitter {
     });
   }
 
-  // 发送消息给特定设备
+  // Send message to specific device
   async sendMessageToDevice(deviceId, message) {
     const connection = this.getConnection(deviceId);
     if (!connection || !connection.socket) {
-      throw new Error(`设备连接不存在: ${deviceId}`);
+      throw new Error(`Device connection does not exist: ${deviceId}`);
     }
     
     return this.sendMessage(deviceId, message);
   }
 
-  // 发送消息
+  // Send message
   sendMessage(connectionId, message) {
     const connection = this.connections.get(connectionId);
     if (!connection || !connection.socket) {
-      console.warn(`连接不存在: ${connectionId}`);
+      console.warn(`Connection does not exist: ${connectionId}`);
       return false;
     }
 
     try {
-      // 添加消息ID和时间戳
+      // Add message ID and timestamp
       message.messageId = this.generateMessageId();
       message.timestamp = Date.now();
 
-      // 序列化消息
+      // Serialize message
       const messageStr = JSON.stringify(message) + '\n';
       const data = Buffer.from(messageStr);
 
-      // 发送数据
+      // Send data
       connection.socket.write(data);
       connection.bytesSent += data.length;
 
       return true;
     } catch (error) {
-      console.error(`发送消息失败 ${connectionId}:`, error);
+      console.error(`Failed to send message ${connectionId}:`, error);
       return false;
     }
   }
 
-  // 发送确认
+  // Send acknowledgment
   sendAck(connectionId, messageId) {
     return this.sendMessage(connectionId, {
       type: this.messageTypes.ACK,
@@ -340,7 +340,7 @@ class NetworkCommunication extends EventEmitter {
     });
   }
 
-  // 发送错误
+  // Send error
   sendError(connectionId, errorCode, errorMessage) {
     return this.sendMessage(connectionId, {
       type: this.messageTypes.ERROR,
@@ -349,7 +349,7 @@ class NetworkCommunication extends EventEmitter {
     });
   }
 
-  // 处理连接关闭
+  // Handle connection close
   handleConnectionClose(connectionId) {
     const connection = this.connections.get(connectionId);
     if (connection) {
@@ -358,7 +358,7 @@ class NetworkCommunication extends EventEmitter {
     }
   }
 
-  // 处理连接错误
+  // Handle connection error
   handleConnectionError(connectionId, error) {
     const connection = this.connections.get(connectionId);
     if (connection) {
@@ -367,16 +367,16 @@ class NetworkCommunication extends EventEmitter {
     }
   }
 
-  // 连接到设备
+  // Connect to device
   connectToDevice(deviceInfo) {
     return new Promise((resolve, reject) => {
       const socket = new net.Socket();
       const connectionId = this.generateConnectionId();
 
-      console.log(`🔗 连接到设备: ${deviceInfo.name} (${deviceInfo.ip}:${deviceInfo.port})`);
+      console.log(`Connecting to device: ${deviceInfo.name} (${deviceInfo.ip}:${deviceInfo.port})`);
 
       socket.on('connect', () => {
-        console.log(`✅ 连接成功: ${connectionId}`);
+        console.log(`Connection successful: ${connectionId}`);
         
         const connection = {
           id: connectionId,
@@ -392,7 +392,7 @@ class NetworkCommunication extends EventEmitter {
 
         this.connections.set(connectionId, connection);
 
-        // 发送设备信息
+        // Send device info
         this.sendMessage(connectionId, {
           type: this.messageTypes.DEVICE_INFO,
           deviceInfo: this.getServerDeviceInfo()
@@ -407,22 +407,22 @@ class NetworkCommunication extends EventEmitter {
       });
 
       socket.on('close', () => {
-        console.log(`❌ 连接关闭: ${connectionId}`);
+        console.log(`Connection closed: ${connectionId}`);
         this.handleConnectionClose(connectionId);
       });
 
       socket.on('error', (err) => {
-        console.error(`连接错误 ${connectionId}:`, err);
+        console.error(`Connection error ${connectionId}:`, err);
         this.handleConnectionError(connectionId, err);
         reject(err);
       });
 
-      // 建立连接
+      // Establish connection
       socket.connect(deviceInfo.port, deviceInfo.ip);
     });
   }
 
-  // 断开连接
+  // Disconnect from device
   disconnectFromDevice(connectionId) {
     const connection = this.connections.get(connectionId);
     if (connection && connection.socket) {
@@ -432,7 +432,7 @@ class NetworkCommunication extends EventEmitter {
     return false;
   }
 
-  // 获取服务器设备信息
+  // Get server device info
   getServerDeviceInfo() {
     const os = require('os');
     return {
@@ -460,7 +460,7 @@ class NetworkCommunication extends EventEmitter {
     };
   }
 
-  // 获取本地IP地址
+  // Get local IP address
   getLocalIP() {
     const networkInterfaces = require('os').networkInterfaces();
     
@@ -474,60 +474,60 @@ class NetworkCommunication extends EventEmitter {
     return '127.0.0.1';
   }
 
-  // 生成连接ID
+  // Generate connection ID
   generateConnectionId() {
     return `conn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  // 生成消息ID
+  // Generate message ID
   generateMessageId() {
     return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  // 生成设备ID
+  // Generate device ID
   generateDeviceId() {
     return crypto.randomBytes(16).toString('hex');
   }
 
-  // 获取连接状态
+  // Get connection status
   getConnection(connectionId) {
     return this.connections.get(connectionId);
   }
 
-  // 获取所有连接
+  // Get all connections
   getAllConnections() {
     return Array.from(this.connections.values());
   }
 
-  // 获取活跃连接
+  // Get active connections
   getActiveConnections() {
     return Array.from(this.connections.values()).filter(conn => 
       conn.isAuthenticated && (Date.now() - conn.lastHeartbeat < 60000)
     );
   }
 
-  // 心跳检查
+  // Heartbeat check
   startHeartbeatCheck() {
     this.heartbeatInterval = setInterval(() => {
       const now = Date.now();
-      const timeout = 120000; // 2分钟超时
+      const timeout = 120000; // 2 minute timeout
 
       for (const [connectionId, connection] of this.connections.entries()) {
         if (now - connection.lastHeartbeat > timeout) {
-          console.log(`心跳超时，断开连接: ${connectionId}`);
+          console.log(`Heartbeat timeout, disconnecting: ${connectionId}`);
           this.disconnectFromDevice(connectionId);
         } else {
-          // 发送心跳
+          // Send heartbeat
           this.sendMessage(connectionId, {
             type: this.messageTypes.HEARTBEAT,
             timestamp: now
           });
         }
       }
-    }, 30000); // 每30秒检查一次
+    }, 30000); // Check every 30 seconds
   }
 
-  // 停止心跳检查
+  // Stop heartbeat check
   stopHeartbeatCheck() {
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
@@ -535,7 +535,7 @@ class NetworkCommunication extends EventEmitter {
     }
   }
 
-  // 获取网络统计信息
+  // Get network stats
   getNetworkStats() {
     const connections = this.getAllConnections();
     const activeConnections = this.getActiveConnections();
@@ -556,7 +556,7 @@ class NetworkCommunication extends EventEmitter {
     };
   }
 
-  // 计算平均连接时间
+  // Calculate average connection time
   calculateAverageConnectionTime() {
     const completedConnections = this.completedConnections || [];
     if (completedConnections.length === 0) return 0;
@@ -567,20 +567,20 @@ class NetworkCommunication extends EventEmitter {
     return totalTime / completedConnections.length;
   }
 
-  // 销毁实例
+  // Destroy instance
   destroy() {
-    // 停止所有连接
+    // Stop all connections
     for (const connectionId of this.connections.keys()) {
       this.disconnectFromDevice(connectionId);
     }
 
-    // 停止服务器
+    // Stop server
     this.stopServer();
 
-    // 停止心跳检查
+    // Stop heartbeat check
     this.stopHeartbeatCheck();
 
-    console.log('🌐 网络通信模块已销毁');
+    console.log('Network communication module destroyed');
   }
 }
 
