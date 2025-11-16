@@ -12,7 +12,8 @@ export default defineConfig({
     outDir: 'dist',
     rollupOptions: {
       input: {
-        main: path.resolve(__dirname, 'index.html')
+        main: path.resolve(__dirname, 'index.html'),
+        test: path.resolve(__dirname, 'test-ui.html')
       }
     }
   },
@@ -34,7 +35,6 @@ export default defineConfig({
     }
   },
   define: {
-    // Electron环境变量定义
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
   },
   optimizeDeps: {

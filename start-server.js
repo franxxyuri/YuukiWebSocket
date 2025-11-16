@@ -1,56 +1,53 @@
-#!/usr/bin/env node
+const WebSocketServer = require('./websocket-server.js');
 
-// Windows-Android Connect 服务端启动器
-const NetworkCommunication = require('./network-communication.js');
+console.log('Starting Windows-Android Connect WebSocket Server...');
+console.log('==================================================');
 
-console.log('🚀 启动 Windows-Android Connect 服务端...');
-console.log('='.repeat(50));
-
-// 创建网络通信实例
-const networkCommunication = new NetworkCommunication();
-
-// 启动服务器
+// Start server function
 async function startServer() {
   try {
-    // 启动网络通信服务器
-    await networkCommunication.startServer(8080);
-    networkCommunication.startHeartbeatCheck();
+    console.log('Starting WebSocket server on port 8826...');
     
-    console.log('✅ 服务端启动成功!');
-    console.log(`🌐 服务器监听端口: 8080`);
-    console.log(`📅 启动时间: ${new Date().toLocaleString()}`);
-    console.log('');
-    console.log('💡 服务端功能:');
-    console.log('   • 设备发现服务');
-    console.log('   • 文件传输服务');
-    console.log('   • 屏幕投屏服务');
-    console.log('   • 远程控制服务');
-    console.log('   • 通知同步服务');
-    console.log('   • 剪贴板同步服务');
-    console.log('');
-    console.log('⏳ 等待客户端连接...');
-    console.log('按 Ctrl+C 停止服务端...');
+    // Create and start WebSocket server
+    const server = new WebSocketServer(8826);
+    await server.start();
     
-    // 处理退出信号
+    console.log('Server started successfully!');
+    console.log('Server listening on port: 8826');
+    console.log('Start time: ' + new Date().toLocaleString());
+    console.log('');
+    console.log('Server features:');
+    console.log('   - Device discovery service');
+    console.log('   - File transfer service');
+    console.log('   - Screen mirroring service');
+    console.log('   - Remote control service');
+    console.log('   - Notification sync service');
+    console.log('   - Clipboard sync service');
+    console.log('');
+    console.log('Waiting for client connections...');
+    console.log('Press Ctrl+C to stop the server...');
+    
+    // Keep the server running indefinitely
+    // Handle exit signals
     process.on('SIGINT', () => {
-      console.log('\n🛑 正在停止服务端...');
-      networkCommunication.destroy();
-      console.log('✅ 服务端已停止');
+      console.log('\nStopping server...');
+      server.stop();
+      console.log('Server stopped');
       process.exit(0);
     });
     
     process.on('SIGTERM', () => {
-      console.log('\n🛑 正在停止服务端...');
-      networkCommunication.destroy();
-      console.log('✅ 服务端已停止');
+      console.log('\nStopping server...');
+      server.stop();
+      console.log('Server stopped');
       process.exit(0);
     });
     
   } catch (error) {
-    console.error('❌ 服务端启动失败:', error);
+    console.error('Server failed to start:', error);
     process.exit(1);
   }
 }
 
-// 启动服务
+// Start the server
 startServer();

@@ -1,35 +1,34 @@
 @echo off
-chcp 65001 >nul
-title Windows-Android Connect 服务端
+title Windows-Android Connect Server
 
 echo.
 echo =========================================
-echo    Windows-Android Connect 服务端
+echo    Windows-Android Connect Server
 echo =========================================
 echo.
 
-:: 检查Node.js是否安装
+:: Check if Node.js is installed
 node --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo ❌ 错误: 未找到Node.js
-    echo 请先安装Node.js (https://nodejs.org/)
+    echo Error: Node.js not found
+    echo Please install Node.js first (https://nodejs.org/)
     pause
     exit /b 1
 )
 
-echo ✅ Node.js版本: 
+echo Node.js version: 
 node --version
 
 echo.
-echo 🚀 启动服务端...
+echo Starting server...
 echo.
 
-:: 在后台启动服务端
-start "Windows-Android Connect 服务端" /min node start-server.js
+:: Start the server in background
+start "Windows-Android Connect Server" /min node start-server.js
 
-echo ✅ 服务端已在后台启动
-echo 🌐 服务端监听端口: 8080
-echo 💡 请确保客户端在同一网络中连接到此服务端
+echo Server started in background
+echo Server listening on port: 8826
+echo Make sure client connects from the same network
 echo.
-echo 按任意键关闭此窗口...
+echo Press any key to close this window...
 pause >nul

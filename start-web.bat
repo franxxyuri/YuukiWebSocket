@@ -1,9 +1,9 @@
 @echo off
-title Windows-Android Connect
+title Windows-Android Connect Web
 
 echo.
 echo =========================================
-echo    Windows-Android Connect Launcher
+echo    Windows-Android Connect Web Launcher
 echo =========================================
 echo.
 
@@ -44,11 +44,19 @@ if not exist "node_modules" (
 )
 
 echo.
-echo Starting Windows-Android Connect...
+echo Starting Windows-Android Connect Web Server...
 echo.
 
-:: Start the application
-npm run start
+:: Start the WebSocket server in background
+echo Starting WebSocket server...
+start "WebSocket Server" /min npm run server
+
+:: Wait a moment for the server to start
+timeout /t 3 /nobreak >nul
+
+:: Start the Vite development server
+echo Starting Vite development server...
+npm run dev
 
 if %errorlevel% neq 0 (
     echo.

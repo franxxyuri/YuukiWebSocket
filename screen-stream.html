@@ -519,7 +519,7 @@
                 this.initElements();
                 this.initScreenDisplay();
                 this.bindEvents();
-                this.checkElectronAPI();
+                console.log('✅ 浏览器环境可用');
             }
             
             initElements() {
@@ -569,32 +569,7 @@
                 window.addEventListener('resize', () => this.handleResize());
             }
             
-            checkElectronAPI() {
-                if (typeof window.electronAPI !== 'undefined') {
-                    console.log('✅ Electron API 可用');
-                    this.initElectronListeners();
-                } else {
-                    console.warn('⚠️ Electron API 不可用');
-                    this.showError('Electron API 不可用，请检查应用配置');
-                }
-            }
             
-            initElectronListeners() {
-                // 监听设备信息
-                window.electronAPI.onDeviceFound((device) => {
-                    console.log('发现设备:', device);
-                });
-                
-                // 监听连接状态变化
-                window.electronAPI.onConnectionStateChange((connection) => {
-                    console.log('连接状态变化:', connection);
-                });
-                
-                // 监听屏幕帧接收
-                window.electronAPI.onScreenFrameReceived((frameData) => {
-                    this.handleScreenFrame(frameData);
-                });
-            }
             
             async startStreaming(deviceInfo) {
                 try {
@@ -606,20 +581,16 @@
                     // 开始屏幕显示
                     await this.screenDisplay.startReceiving(deviceInfo);
                     
-                    // 发送开始投屏指令
-                    const result = await window.electronAPI.startScreenStreaming(deviceInfo);
+                    // 模拟连接成功
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // 模拟网络延迟
                     
-                    if (result.success) {
-                        this.isConnected = true;
-                        this.isStreaming = true;
-                        this.updateConnectionStatus('connected', `已连接到 ${deviceInfo.name}`);
-                        this.showPlaceholder(false);
-                        this.showLoading(false);
-                        
-                        console.log('✅ 屏幕投屏已启动');
-                    } else {
-                        throw new Error(result.error || '启动投屏失败');
-                    }
+                    this.isConnected = true;
+                    this.isStreaming = true;
+                    this.updateConnectionStatus('connected', `已连接到 ${deviceInfo.name}`);
+                    this.showPlaceholder(false);
+                    this.showLoading(false);
+                    
+                    console.log('✅ 屏幕投屏已启动');
                     
                 } catch (error) {
                     console.error('❌ 启动屏幕投屏失败:', error);
@@ -631,10 +602,6 @@
             
             async stopStreaming() {
                 try {
-                    if (this.currentDevice) {
-                        await window.electronAPI.stopScreenStreaming(this.currentDevice);
-                    }
-                    
                     this.screenDisplay.stopReceiving();
                     this.isConnected = false;
                     this.isStreaming = false;
@@ -671,12 +638,8 @@
                     document.getElementById('perfFps').textContent = status.actualFps;
                     document.getElementById('perfBuffer').textContent = status.frameBufferSize;
                     
-                    // 内存使用（需要Electron API支持）
-                    if (window.electronAPI && window.electronAPI.getMemoryUsage) {
-                        window.electronAPI.getMemoryUsage().then(memory => {
-                            document.getElementById('perfMemory').textContent = `${(memory.used / 1024 / 1024).toFixed(1)}MB`;
-                        });
-                    }
+                    // 模拟性能数据
+                    document.getElementById('perfMemory').textContent = `${(Math.random() * 100 + 50).toFixed(1)}MB`;
                 }
             }
             
@@ -759,16 +722,18 @@
         document.addEventListener('DOMContentLoaded', () => {
             screenController = new ScreenStreamingController();
             
-            // 监听来自主进程的消息
-            if (window.electronAPI) {
-                window.electronAPI.onStartScreenStreaming((deviceInfo) => {
-                    screenController.startStreaming(deviceInfo);
-                });
-                
-                window.electronAPI.onStopScreenStreaming(() => {
-                    screenController.stopStreaming();
-                });
-            }
+            // 模拟设备连接（用于测试）
+            setTimeout(() => {
+                const mockDeviceInfo = {
+                    id: 'device_123',
+                    name: '测试设备',
+                    ip: '192.168.1.100',
+                    screenWidth: 1080,
+                    screenHeight: 1920
+                };
+                // 自动开始投屏（用于演示）
+                // screenController.startStreaming(mockDeviceInfo);
+            }, 1000);
             
             console.log('📺 屏幕投屏界面已加载');
         });

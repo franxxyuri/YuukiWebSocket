@@ -22,8 +22,7 @@ class TestRunner {
       // 1. 启动应用测试
       await this.testAppStartup();
       
-      // 2. 测试Electron主进程
-      await this.testElectronMainProcess();
+      
       
       // 3. 测试核心模块
       await this.testCoreModules();
@@ -56,8 +55,6 @@ class TestRunner {
 
         // 检查必需文件是否存在
         const requiredFiles = [
-          'electron-main.js',
-          'electron-preload.js',
           'react-main.jsx',
           'React-App.jsx',
           'package.json'
@@ -106,48 +103,7 @@ class TestRunner {
     });
   }
 
-  async testElectronMainProcess() {
-    console.log('\n⚡ 测试Electron主进程...');
-    
-    try {
-      // 检查主进程代码语法
-      const fs = require('fs');
-      const mainProcessCode = fs.readFileSync('electron-main.js', 'utf8');
-      
-      // 简单的语法检查
-      const requiredFunctions = [
-        'ipcMain.handle',
-        'app.whenReady',
-        'BrowserWindow'
-      ];
-      
-      const missingFunctions = [];
-      requiredFunctions.forEach(func => {
-        if (!mainProcessCode.includes(func)) {
-          missingFunctions.push(func);
-        }
-      });
-      
-      if (missingFunctions.length === 0) {
-        console.log('✅ Electron主进程代码结构正确');
-      } else {
-        console.log(`❌ 缺少函数: ${missingFunctions.join(', ')}`);
-      }
-      
-      // 检查IPC处理程序
-      const ipcHandlers = mainProcessCode.match(/ipcMain\.handle\('([^']+)'/g);
-      if (ipcHandlers) {
-        console.log(`✅ 发现 ${ipcHandlers.length} 个IPC处理程序`);
-        ipcHandlers.forEach(handler => {
-          const handlerName = handler.match(/ipcMain\.handle\('([^']+)'/)[1];
-          console.log(`   - ${handlerName}`);
-        });
-      }
-      
-    } catch (error) {
-      console.error('❌ Electron主进程测试失败:', error);
-    }
-  }
+  
 
   async testCoreModules() {
     console.log('\n🔧 测试核心模块...');
@@ -197,8 +153,6 @@ class TestRunner {
     
     // 检查核心文件
     const coreFiles = [
-      'electron-main.js',
-      'electron-preload.js',
       'device-discovery.js',
       'file-transfer.js',
       'network-communication.js'
@@ -272,7 +226,7 @@ class TestRunner {
     console.log('='.repeat(50));
     
     console.log('✅ **已完成的功能模块:**');
-    console.log('   • Electron应用框架');
+    console.log('   console.log('   • React Web应用框架');');
     console.log('   • React + Ant Design UI');
     console.log('   • IPC通信机制');
     console.log('   • 设备发现系统');
@@ -312,7 +266,7 @@ class TestRunner {
     
     return new Promise((resolve, reject) => {
       try {
-        this.appProcess = spawn('electron', ['.'], {
+        this.appProcess = spawn('node', ['web-server.js'], {
           stdio: 'inherit',
           shell: true
         });

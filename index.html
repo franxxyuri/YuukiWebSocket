@@ -1,126 +1,13 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Windows-Android Connect - 网页版测试</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #333;
-            text-align: center;
-        }
-        .status {
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
-        }
-        .success {
-            background-color: #d4edda;
-            border: 1px solid #c3e6cb;
-            color: #155724;
-        }
-        .warning {
-            background-color: #fff3cd;
-            border: 1px solid #ffeaa7;
-            color: #856404;
-        }
-        .info {
-            background-color: #d1ecf1;
-            border: 1px solid #bee5eb;
-            color: #0c5460;
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        .feature-list {
-            list-style-type: none;
-            padding: 0;
-        }
-        .feature-list li {
-            padding: 10px;
-            margin: 10px 0;
-            background-color: #f8f9fa;
-            border-radius: 5px;
-            border-left: 4px solid #007bff;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Windows-Android Connect</h1>
-        <p style="text-align: center; color: #666;">网页版测试界面</p>
-        
-        <div class="status info">
-            <strong>信息：</strong>这是一个简化的网页版测试界面，用于在Electron无法启动时查看应用前端。
-        </div>
-        
-        <div class="status warning">
-            <strong>警告：</strong>由于缺少Electron环境，此界面无法使用完整的应用功能。
-            文件传输、设备发现、屏幕投屏和远程控制等功能需要完整的Electron应用才能正常工作。
-        </div>
-        
-        <h2>应用功能预览</h2>
-        <ul class="feature-list">
-            <li>📁 文件传输 - 高速、安全的局域网文件传输</li>
-            <li>📺 屏幕投屏 - 实时、高清的Android屏幕镜像</li>
-            <li>🎮 远程控制 - 用鼠标键盘控制Android设备</li>
-            <li>🔔 通知同步 - 在Windows端显示Android通知</li>
-            <li>📋 剪贴板同步 - 双向剪贴板内容共享</li>
-            <li>🔒 安全加密 - 端到端AES-256加密传输</li>
-        </ul>
-        
-        <h2>下一步操作</h2>
-        <div class="status success">
-            <strong>建议：</strong>要使用完整的应用功能，请解决Electron安装问题：
-            <ol>
-                <li>确保网络连接正常</li>
-                <li>确认代理设置正确 (npm config set proxy http://127.0.0.1:10808)</li>
-                <li>运行命令: npm install electron --save-dev</li>
-                <li>然后运行: npm start</li>
-            </ol>
-        </div>
-        
-        <div style="text-align: center; margin-top: 30px;">
-            <button onclick="testConnection()">测试连接</button>
-            <button onclick="showDeviceInfo()">查看设备信息</button>
-        </div>
-    </div>
-
-    <script>
-        function testConnection() {
-            alert("连接测试功能需要Electron环境才能正常工作。");
-        }
-        
-        function showDeviceInfo() {
-            alert("设备信息功能需要Electron环境才能正常工作。");
-        }
-        
-        // 页面加载完成后显示提示
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log("Windows-Android Connect 网页版测试界面已加载");
-        });
-    </script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Windows-Android Connect - Vite 版</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>
