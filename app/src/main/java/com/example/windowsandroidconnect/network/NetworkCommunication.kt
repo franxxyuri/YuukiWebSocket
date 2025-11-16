@@ -3,30 +3,29 @@ package com.example.windowsandroidconnect.network
 import android.util.Log
 import kotlinx.coroutines.*
 import org.json.JSONObject
-import java.io.DataInputStream
-import java.io.DataOutputStream
-import java.net.InetSocketAddress
-import java.net.Socket
-import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import okhttp3.*
+import okio.ByteString
+import java.util.concurrent.TimeUnit
 
 /**
  * 网络通信模块
- * 处理Android与Windows端之间的TCP通信
+ * 处理Android与Windows端之间的WebSocket通信
  */
 class NetworkCommunication {
     
-    private var socket: Socket? = null
-    private var outputStream: DataOutputStream? = null
-    private var inputStream: DataInputStream? = null
+    private var webSocket: WebSocket? = null
     private var isConnected = false
-    private var isListening = false
     private val messageHandlers = ConcurrentHashMap<String, (JSONObject) -> Unit>()
     private val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .build()
     
     companion object {
         private const val TAG = "NetworkCommunication"
-        private const val BUFFER_SIZE = 8192
     }
     
     /**
@@ -35,25 +34,73 @@ class NetworkCommunication {
     suspend fun connect(ip: String, port: Int): Boolean {
         return withContext(Dispatchers.IO) {
             try {
-                socket = Socket()
-                socket?.connect(InetSocketAddress(ip, port), 5000) // 5秒超时
+                val serverUrl = "ws://$ip:$port"
+                Log.d(TAG, "正在连接到: $serverUrl")
                 
-                outputStream = DataOutputStream(socket?.getOutputStream())
-                inputStream = DataInputStream(socket?.getInputStream())
+                val request = Request.Builder()
+                    .url(serverUrl)
+                    .build()
                 
-                isConnected = true
-                Log.d(TAG, "已连接到Windows端: $ip:$port")
+                val listener = object : WebSocketListener() {
+                    override fun onOpen(webSocket: WebSocket, response: Response) {
+                        Log.d(TAG, "WebSocket连接已建立")
+                        this@NetworkCommunication.webSocket = webSocket
+                        isConnected = true
+                        
+                        // 发送设备信息
+                        sendDeviceInfo()
+                    }
+                    
+                    override fun onMessage(webSocket: WebSocket, text: String) {
+                        try {
+                            val message = JSONObject(text.trim())
+                            val messageType = message.optString("type")
+                            Log.d(TAG, "收到消息: $messageType")
+                            
+                            if (messageType == "screen_frame_header") {
+                                // 如果是屏幕帧头消息，实际的帧数据会作为二进制消息发送
+                                // 这里处理普通JSON消息
+                                handleMessage(message)
+                            } else {
+                                // 处理普通JSON消息
+                                handleMessage(message)
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "解析消息失败: $text", e)
+                        }
+                    }
+                    
+                    override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+                        // 处理二进制数据（如屏幕帧）
+                        Log.d(TAG, "收到二进制数据: ${bytes.size} bytes")
+                        // 这里可以处理二进制帧数据
+                    }
+                    
+                    override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                        Log.e(TAG, "WebSocket连接失败", t)
+                        isConnected = false
+                        this@NetworkCommunication.webSocket = null
+                    }
+                    
+                    override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                        Log.d(TAG, "WebSocket连接已关闭: $code - $reason")
+                        isConnected = false
+                        this@NetworkCommunication.webSocket = null
+                    }
+                    
+                    override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                        Log.d(TAG, "WebSocket连接正在关闭: $code - $reason")
+                    }
+                }
                 
-                // 开始监听消息
-                startListening()
+                val result = client.newWebSocket(request, listener)
+                // 等待连接建立
+                delay(1000) // 简单等待连接完成
                 
-                // 发送设备信息
-                sendDeviceInfo()
-                
-                true
+                isConnected
             } catch (e: Exception) {
-                Log.e(TAG, "连接Windows端失败: $ip:$port", e)
-                disconnect()
+                Log.e(TAG, "连接Windows端失败", e)
+                isConnected = false
                 false
             }
         }
@@ -64,18 +111,12 @@ class NetworkCommunication {
      */
     fun disconnect() {
         try {
-            isListening = false
-            inputStream?.close()
-            outputStream?.close()
-            socket?.close()
+            webSocket?.close(1000, "客户端主动断开")
+            webSocket = null
+            isConnected = false
+            Log.d(TAG, "已断开连接")
         } catch (e: Exception) {
             Log.e(TAG, "关闭连接时出错", e)
-        } finally {
-            isConnected = false
-            socket = null
-            inputStream = null
-            outputStream = null
-            Log.d(TAG, "已断开连接")
         }
     }
     
@@ -87,12 +128,11 @@ class NetworkCommunication {
             val deviceInfo = JSONObject().apply {
                 put("type", "device_info")
                 put("deviceInfo", JSONObject().apply {
-                    put("deviceId", UUID.randomUUID().toString())
+                    put("deviceId", java.util.UUID.randomUUID().toString())
                     put("deviceName", android.os.Build.MODEL)
                     put("platform", "android")
                     put("version", "1.0.0")
                     put("ip", getLocalIpAddress())
-                    put("port", 8827)
                     put("capabilities", listOf(
                         "file_transfer",
                         "screen_mirror",
@@ -146,13 +186,12 @@ class NetworkCommunication {
         
         coroutineScope.launch {
             try {
-                val messageStr = message.toString() + "\n"
-                outputStream?.writeUTF(messageStr)
-                outputStream?.flush()
+                val messageStr = message.toString()
+                webSocket?.send(messageStr)
                 Log.d(TAG, "消息已发送: ${message.optString("type", "unknown")}")
             } catch (e: Exception) {
                 Log.e(TAG, "发送消息失败", e)
-                disconnect()
+                isConnected = false
             }
         }
     }
@@ -170,23 +209,22 @@ class NetworkCommunication {
             try {
                 // 发送帧头信息
                 val headerMessage = JSONObject().apply {
-                    put("type", "screen_frame_header")
+                    put("type", "screen_frame")
                     put("timestamp", System.currentTimeMillis())
                     put("frameSize", frameData.size)
                 }
                 
-                val headerStr = headerMessage.toString() + "\n"
-                outputStream?.writeUTF(headerStr)
-                outputStream?.flush()
+                // 发送屏幕帧头（JSON格式）
+                webSocket?.send(headerMessage.toString())
                 
-                // 发送实际的帧数据
-                outputStream?.write(frameData)
-                outputStream?.flush()
+                // 发送实际的帧数据（二进制格式）
+                val byteString = okio.ByteString.of(*frameData)
+                webSocket?.send(byteString)
                 
                 Log.d(TAG, "屏幕帧已发送: ${frameData.size} bytes")
             } catch (e: Exception) {
                 Log.e(TAG, "发送屏幕帧失败", e)
-                disconnect()
+                isConnected = false
             }
         }
     }
@@ -207,61 +245,6 @@ class NetworkCommunication {
             sendMessage(message)
         } catch (e: Exception) {
             Log.e(TAG, "发送文件传输进度失败", e)
-        }
-    }
-    
-    /**
-     * 开始监听消息
-     */
-    private fun startListening() {
-        if (isListening) return
-        
-        isListening = true
-        coroutineScope.launch {
-            try {
-                while (isConnected && isListening) {
-                    val messageStr = inputStream?.readUTF()
-                    if (messageStr != null) {
-                        try {
-                            val message = JSONObject(messageStr.trim())
-                            val messageType = message.optString("type")
-                            
-                            if (messageType == "screen_frame_header") {
-                                // 如果是屏幕帧头消息，接下来需要接收二进制数据
-                                val frameSize = message.optInt("frameSize")
-                                if (frameSize > 0) {
-                                    val frameData = ByteArray(frameSize)
-                                    inputStream?.readFully(frameData)
-                                    
-                                    // 处理完整的屏幕帧
-                                    handleScreenFrame(message, frameData)
-                                }
-                            } else {
-                                // 处理普通JSON消息
-                                handleMessage(message)
-                            }
-                        } catch (e: Exception) {
-                            Log.e(TAG, "解析消息失败: $messageStr", e)
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "监听消息时出错", e)
-                disconnect()
-            }
-        }
-    }
-    
-    /**
-     * 处理屏幕帧数据
-     */
-    private fun handleScreenFrame(header: JSONObject, frameData: ByteArray) {
-        // 向注册的处理器发送屏幕帧
-        val handler = messageHandlers["screen_frame"]
-        if (handler != null) {
-            val frameMessage = JSONObject(header.toString())
-            // 注意：JSON不直接支持二进制数据，实际应用中可能需要Base64编码
-            handler(frameMessage)
         }
     }
     
@@ -329,8 +312,9 @@ class NetworkCommunication {
      * 销毁通信模块
      */
     fun destroy() {
-        coroutineScope.cancel()
         disconnect()
+        client.dispatcher.executorService.shutdown()
+        client.connectionPool.evictAll()
         messageHandlers.clear()
         Log.d(TAG, "网络通信模块已销毁")
     }

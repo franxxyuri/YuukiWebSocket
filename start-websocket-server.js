@@ -1,4 +1,4 @@
-const WebSocketServer = require('./websocket-server.js');
+import WebSocketServer from './websocket-server.js';
 
 console.log('Starting Windows-Android Connect WebSocket Server on port 8828...');
 console.log('==================================================');

@@ -45,11 +45,8 @@
     <h2>日志:</h2>
     <div id="logs" style="background-color: #f5f5f5; padding: 10px; height: 300px; overflow-y: scroll; font-family: monospace; font-size: 12px;"></div>
 
-    <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io('http://localhost:8826', {
-            transports: ['websocket']
-        });
+        let socket = null;
         
         const statusDiv = document.getElementById('status');
         const connectBtn = document.getElementById('connectBtn');
@@ -63,42 +60,91 @@
             logsDiv.scrollTop = logsDiv.scrollHeight;
         }
         
-        socket.on('connect', () => {
-            statusDiv.textContent = '连接状态: 已连接';
-            statusDiv.className = 'status connected';
-            addLog('✅ 已连接到服务器');
-        });
-        
-        socket.on('connect_error', (error) => {
-            statusDiv.textContent = '连接状态: 连接错误';
-            statusDiv.className = 'status disconnected';
-            addLog(`❌ 连接错误: ${error.message}`);
-        });
-        
-        socket.on('disconnect', (reason) => {
-            statusDiv.textContent = '连接状态: 已断开';
-            statusDiv.className = 'status disconnected';
-            addLog(`⚠️ 连接断开: ${reason}`);
-        });
-        
-        socket.on('device_discovered', (deviceInfo) => {
-            addLog(`📱 发现设备: ${JSON.stringify(deviceInfo)}`);
-        });
+        function connectToServer() {
+            // 使用原生WebSocket连接到端口8828
+            socket = new WebSocket('ws://localhost:8828');
+            
+            socket.onopen = function(event) {
+                statusDiv.textContent = '连接状态: 已连接';
+                statusDiv.className = 'status connected';
+                addLog('✅ 已连接到服务器');
+                
+                // 发送设备信息（模拟Web客户端）
+                socket.send(JSON.stringify({
+                    type: 'device_info',
+                    deviceInfo: {
+                        platform: 'web',
+                        deviceName: 'Test Connection Client',
+                        deviceId: 'web-test-' + Date.now()
+                    }
+                }));
+            };
+            
+            socket.onclose = function(event) {
+                statusDiv.textContent = '连接状态: 已断开';
+                statusDiv.className = 'status disconnected';
+                addLog(`⚠️ 连接断开: ${event.reason || '未知原因'}`);
+            };
+            
+            socket.onerror = function(error) {
+                statusDiv.textContent = '连接状态: 连接错误';
+                statusDiv.className = 'status disconnected';
+                addLog(`❌ 连接错误: ${error.message}`);
+            };
+            
+            socket.onmessage = function(event) {
+                try {
+                    const message = JSON.parse(event.data);
+                    switch (message.type) {
+                        case 'device_found':
+                            addLog(`📱 发现设备: ${JSON.stringify(message.device)}`);
+                            break;
+                        case 'android_connected':
+                            addLog(`📱 Android设备已连接: ${JSON.stringify(message.deviceInfo)}`);
+                            break;
+                        case 'screen_frame':
+                            addLog(`📺 收到屏幕帧: ${message.timestamp}`);
+                            break;
+                        case 'file_transfer':
+                            addLog(`📁 文件传输: ${message.action}`);
+                            break;
+                        case 'clipboard':
+                            addLog(`📋 剪贴板: ${message.data.substring(0, 50)}...`);
+                            break;
+                        case 'notification':
+                            addLog(`🔔 通知: ${message.title}`);
+                            break;
+                        default:
+                            addLog(`📥 消息: ${message.type}`);
+                            break;
+                    }
+                } catch (e) {
+                    addLog(`📥 原始消息: ${event.data}`);
+                }
+            };
+        }
         
         connectBtn.addEventListener('click', () => {
-            if (socket.disconnected) {
-                socket.connect();
+            if (!socket || socket.readyState === WebSocket.CLOSED) {
+                connectToServer();
             }
         });
         
         disconnectBtn.addEventListener('click', () => {
-            socket.disconnect();
+            if (socket) {
+                socket.close();
+            }
         });
         
         discoverBtn.addEventListener('click', () => {
-            socket.emit('start_device_discovery', (response) => {
-                addLog(`🔍 设备发现响应: ${JSON.stringify(response)}`);
-            });
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'start_device_discovery'
+                }));
+                addLog(`🔍 开始设备发现`);
+            } else {
+                addLog(`❌ 未连接到服务器`);
+            }
         });
     </script>
 </body>

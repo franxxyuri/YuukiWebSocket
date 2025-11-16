@@ -1,13 +1,13 @@
-import express from 'express';
-import http from 'http';
-import { WebSocketServer as WSServer } from 'ws';
-import path from 'path';
-import { networkInterfaces, hostname } from 'os';
-import cors from 'cors';
-import dgram from 'dgram';
-import { promises as fs } from 'fs';
+const express = require('express');
+const http = require('http');
+const WebSocket = require('ws');
+const path = require('path');
+const { networkInterfaces } = require('os');
+const cors = require('cors');
+const dgram = require('dgram');
+const fs = require('fs').promises;
 
-class WebSocketServer {
+class WindowsAndroidConnectServer {
   constructor(port = 8828) {
     this.port = port;
     this.app = express();
@@ -20,7 +20,7 @@ class WebSocketServer {
     this.app.use(express.static('.'));
     
     // 创建WebSocket服务器
-    this.wss = new WSServer({ server: this.server });
+    this.wss = new WebSocket.Server({ server: this.server });
     
     // 存储连接的客户端
     this.clients = new Map();
@@ -46,7 +46,7 @@ class WebSocketServer {
   setupRoutes() {
     // 主页路由
     this.app.get('/', (req, res) => {
-      res.sendFile(path.join(__dirname, 'screen-stream.html'));
+      res.sendFile(path.join(__dirname, '../../../../screen-stream.html'));
     });
     
     // API路由
@@ -414,8 +414,8 @@ class WebSocketServer {
   // 设备发现广播
   broadcastDeviceDiscovery() {
     const deviceInfo = {
-      deviceId: 'windows-pc-' + hostname(),
-      deviceName: hostname(),
+      deviceId: 'windows-pc-' + require('os').hostname(),
+      deviceName: require('os').hostname(),
       platform: 'windows',
       version: '1.0.0',
       capabilities: ['file_transfer', 'screen_mirror', 'remote_control', 'notification', 'clipboard_sync']
@@ -541,4 +541,4 @@ class WebSocketServer {
   }
 }
 
-export default WebSocketServer;
+module.exports = WindowsAndroidConnectServer;

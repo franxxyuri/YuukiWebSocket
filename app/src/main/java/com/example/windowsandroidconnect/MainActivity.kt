@@ -1,30 +1,34 @@
-package com.example.windowsandroidconnect
-
-import android.app.Activity
-import android.content.Intent
-import android.content.Context
-import android.net.wifi.WifiManager
-import android.os.Bundle
-import android.provider.Settings
-import android.util.Log
-import android.view.View
-import android.widget.Button
-import android.widget.TextView
-import android.widget.Toast
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.example.windowsandroidconnect.network.NetworkCommunication
-import com.example.windowsandroidconnect.service.ClipboardService
-import com.example.windowsandroidconnect.service.DeviceDiscoveryService
-import com.example.windowsandroidconnect.service.NotificationService
-import com.example.windowsandroidconnect.service.RemoteControlService
-import com.example.windowsandroidconnect.service.ScreenCaptureService
-import kotlinx.coroutines.*
-import org.json.JSONObject
-import java.util.*
-
-// 导入R类以访问资源
-import com.example.windowsandroidconnect.R
+import android.app.Activity
+import android.content.Intent
+import android.content.Context
+import android.net.wifi.WifiManager
+import android.os.Bundle
+import android.provider.Settings
+import android.util.Log
+import android.view.View
+import android.widget.Button
+import android.widget.TextView
+import android.widget.Toast
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.example.windowsandroidconnect.network.NetworkCommunication
+import com.example.windowsandroidconnect.service.ClipboardService
+import com.example.windowsandroidconnect.service.DeviceDiscoveryService
+import com.example.windowsandroidconnect.service.NotificationService
+import com.example.windowsandroidconnect.service.RemoteControlService
+import com.example.windowsandroidconnect.service.ScreenCaptureService
+import kotlinx.coroutines.*
+import org.json.JSONObject
+import java.util.*
+
+// 导入R类以访问资源
+import com.example.windowsandroidconnect.R
+
+// 导入DeviceInfo类
+import com.example.windowsandroidconnect.DeviceInfo
+
+// 导入DeviceAdapter类
+import com.example.windowsandroidconnect.DeviceAdapter
 
 /**
  * Windows-Android Connect Android客户端
@@ -72,11 +76,11 @@ class MainActivity : Activity() {
         deviceListRecycler = findViewById(R.id.device_list_recycler)
         statusText = findViewById(R.id.status_text)
         
-        // 初始化设备适配器
-        deviceAdapter = DeviceAdapter(discoveredDevices) { device ->
-            // 点击设备项时的处理
-            showToast("选择设备: ${device.deviceName}")
-            // 可以在这里实现连接逻辑
+        // 初始化设备适配器
+        deviceAdapter = DeviceAdapter(discoveredDevices) { device: DeviceInfo ->
+            // 点击设备项时的处理
+            showToast("选择设备: ${device.deviceName}")
+            // 可以在这里实现连接逻辑
         }
         
         // 设置RecyclerView
@@ -125,6 +129,9 @@ class MainActivity : Activity() {
         }
         networkCommunication.registerMessageHandler("screen_stream_request") { message ->
             handleScreenStreamRequest(message)
+        }
+        networkCommunication.registerMessageHandler("device_discovered") { message ->
+            handleDeviceDiscovered(message)
         }
     }
 
@@ -221,87 +228,124 @@ class MainActivity : Activity() {
             版本: ${deviceInfo.version}
         """.trimIndent()
         
-        // 开始设备发现
-        startDeviceDiscovery()
+        // 开始设备发现服务
+        startDeviceDiscoveryService()
     }
     
     /**
-     * 开始设备发现
-     * 发送UDP广播和mDNS查询
+     * 启动设备发现服务
+     * 通过启动后台服务来发现Windows设备
      */
-    private fun startDeviceDiscovery() {
-        statusText.text = "正在搜索Windows设备..."
+    private fun startDeviceDiscoveryService() {
+        statusText.text = "正在启动设备发现服务..."
         
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                // 发送UDP广播
-                broadcastDeviceInfo()
-                
-                // 等待设备响应
-                delay(5000)
-                
-                withContext(Dispatchers.Main) {
-                    statusText.text = "设备发现完成"
-                    // 更新设备列表UI
-                    deviceAdapter.updateDevices(discoveredDevices)
-                    updateUI()
-                }
-                
-            } catch (e: Exception) {
-                Log.e(TAG, "设备发现失败", e)
-                withContext(Dispatchers.Main) {
-                    statusText.text = "设备发现失败"
-                }
-            }
+        try {
+            // 启动设备发现服务
+            val intent = Intent(this, DeviceDiscoveryService::class.java)
+            intent.action = DeviceDiscoveryService.ACTION_START_DISCOVERY
+            startService(intent)
+            
+            statusText.text = "设备发现服务已启动"
+            showToast("设备发现服务已启动")
+        } catch (e: Exception) {
+            Log.e(TAG, "启动设备发现服务失败", e)
+            statusText.text = "启动设备发现服务失败"
+            showToast("启动设备发现服务失败")
+        }
+    }
+    
+    /**
+     * 停止设备发现服务
+     */
+    private fun stopDeviceDiscoveryService() {
+        try {
+            val intent = Intent(this, DeviceDiscoveryService::class.java)
+            intent.action = DeviceDiscoveryService.ACTION_STOP_DISCOVERY
+            startService(intent)
+            
+            statusText.text = "设备发现服务已停止"
+            showToast("设备发现服务已停止")
+        } catch (e: Exception) {
+            Log.e(TAG, "停止设备发现服务失败", e)
+            statusText.text = "停止设备发现服务失败"
+            showToast("停止设备发现服务失败")
         }
     }
     
     /**
      * 发送设备信息广播
+     * @deprecated 使用 DeviceDiscoveryService 替代
      */
+    @Deprecated("使用 DeviceDiscoveryService 替代此功能")
     private suspend fun broadcastDeviceInfo() {
-        // TODO: 实现UDP广播逻辑
-        // 这里需要发送设备信息到局域网的广播地址
-        Log.d(TAG, "发送设备信息广播")
+        // 旧的实现方法，现在使用 DeviceDiscoveryService 进行设备发现
+        Log.d(TAG, "使用旧的设备发现方法")
     }
     
-    /**
-     * 连接到Windows设备
-     */
-    private fun connectToWindowsDevice() {
-        // 这里需要用户输入Windows设备的IP地址，或者从发现的设备列表中选择
-        // 简化处理，使用固定IP进行演示
-        val windowsDeviceIp = "192.168.1.100" // 需要替换为实际的Windows设备IP
-        
-        serviceScope.launch {
-            try {
-                withContext(Dispatchers.Main) {
-                    statusText.text = "正在连接..."
-                }
-                
-                // 连接到Windows设备 (端口8827是网络通信端口)
-                val success = networkCommunication.connect(windowsDeviceIp, 8827)
-                
-                withContext(Dispatchers.Main) {
-                    if (success) {
-                        isConnected = true
-                        statusText.text = "已连接到Windows设备: $windowsDeviceIp"
-                        showToast("连接成功")
-                        updateUI()
-                    } else {
-                        statusText.text = "连接失败"
-                        showToast("连接失败")
-                    }
-                }
-                
-            } catch (e: Exception) {
-                Log.e(TAG, "连接设备失败", e)
-                withContext(Dispatchers.Main) {
-                    statusText.text = "连接失败: ${e.message}"
-                    showToast("连接失败: ${e.message}")
-                }
-            }
-        }
+    /**
+     * 连接到Windows设备
+     */
+    private fun connectToWindowsDevice() {
+        // 如果没有发现设备，提示用户手动输入IP
+        if (discoveredDevices.isEmpty()) {
+            // 简化处理，使用固定IP进行演示，实际应用中应弹出对话框让用户输入
+            val windowsDeviceIp = getLocalIPAddress().replace(Regex("\\d+$"), "1") // 获取网段的网关IP作为默认值，例如192.168.1.1
+            connectToDeviceIP(windowsDeviceIp)
+            return
+        }
+        
+        // 从发现的设备列表中选择第一个Windows设备
+        val windowsDevice = discoveredDevices.find { it.platform == "windows" }
+        if (windowsDevice != null) {
+            connectToDeviceIP(windowsDevice.ip)
+        } else {
+            // 如果没有发现Windows设备，提示用户手动输入IP
+            val defaultIp = getLocalIPAddress().replace(Regex("\\d+$"), "1")
+            connectToDeviceIP(defaultIp)
+        }
+    }
+    
+    /**
+     * 连接到指定IP的设备
+     */
+    private fun connectToDeviceIP(ip: String) {
+        serviceScope.launch {
+            try {
+                withContext(Dispatchers.Main) {
+                    statusText.text = "正在连接到 $ip..."
+                }
+                
+                // 连接到Windows设备 (端口8828是WebSocket通信端口)
+                val success = networkCommunication.connect(ip, 8828)
+                
+                withContext(Dispatchers.Main) {
+                    if (success) {
+                        isConnected = true
+                        currentDevice = DeviceInfo(
+                            deviceId = generateDeviceId(),
+                            deviceName = "Connected Windows Device",
+                            platform = "windows",
+                            version = "1.0.0",
+                            ip = ip,
+                            capabilities = listOf("file_transfer", "screen_mirror", "remote_control", "notification", "clipboard_sync")
+                        )
+                        statusText.text = "已连接到Windows设备: $ip"
+                        showToast("连接成功")
+                        updateUI()
+                    } else {
+                        statusText.text = "连接失败: $ip"
+                        showToast("连接失败")
+                    }
+                }
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "连接设备失败", e)
+                withContext(Dispatchers.Main) {
+                    statusText.text = "连接失败: ${e.message}"
+                    showToast("连接失败: ${e.message}")
+                }
+            }
+        }
     }
     
     /**
@@ -314,6 +358,45 @@ class MainActivity : Activity() {
         statusText.text = "已断开连接"
         updateUI()
         showToast("已断开连接")
+    }
+    
+    /**
+     * 处理设备发现消息
+     */
+    private fun handleDeviceDiscovered(message: JSONObject) {
+        try {
+            val deviceInfo = message.getJSONObject("deviceInfo")
+            val deviceId = deviceInfo.getString("deviceId")
+            val deviceName = deviceInfo.getString("deviceName")
+            val platform = deviceInfo.getString("platform")
+            val ip = deviceInfo.getString("ip")
+            
+            Log.d(TAG, "发现设备: $deviceName ($ip)")
+            
+            // 更新UI
+            this@MainActivity.runOnUiThread {
+                statusText.text = "发现设备: $deviceName"
+                showToast("发现设备: $deviceName")
+                
+                // 添加到设备列表
+                val newDevice = DeviceInfo(
+                    deviceId = deviceId,
+                    deviceName = deviceName,
+                    platform = platform,
+                    version = deviceInfo.optString("version", "1.0.0"),
+                    ip = ip,
+                    capabilities = emptyList()
+                )
+                
+                // 检查是否已存在
+                if (!discoveredDevices.any { it.deviceId == deviceId }) {
+                    discoveredDevices.add(newDevice)
+                    deviceAdapter.updateDevices(discoveredDevices)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "处理设备发现消息失败", e)
+        }
     }
     
     /**
@@ -429,20 +512,9 @@ class MainActivity : Activity() {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
     
-    companion object {
-        private const val TAG = "MainActivity"
-    }
+    // runOnUiThread 方法已由 Activity 父类提供，无需重新定义
+    
+    companion object {
+        private const val TAG = "MainActivity"
+    }
 }
-
-/**
- * 设备信息数据类
- */
-data class DeviceInfo(
-    val deviceId: String,
-    val deviceName: String,
-    val platform: String,
-    val version: String,
-    val ip: String,
-    val capabilities: List<String>,
-    var lastSeen: Long = System.currentTimeMillis()
-)

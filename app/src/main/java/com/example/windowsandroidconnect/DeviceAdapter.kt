@@ -1,10 +1,13 @@
-package com.example.windowsandroidconnect
-
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import android.widget.TextView
-import androidx.recyclerview.widget.RecyclerView
+package com.example.windowsandroidconnect
+
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.TextView
+import androidx.recyclerview.widget.RecyclerView
+
+// 导入DeviceInfo类
+import com.example.windowsandroidconnect.DeviceInfo
 
 /**
  * 设备列表适配器

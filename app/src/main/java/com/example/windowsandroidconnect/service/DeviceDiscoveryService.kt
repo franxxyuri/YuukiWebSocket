@@ -60,7 +60,7 @@ class DeviceDiscoveryService : Service() {
 
     
 
-    private val broadcastPort = 8080
+    private val broadcastPort = 8090 // 设备发现UDP广播端口
 
     private val deviceTimeout = 30000L // 30秒超时
 
