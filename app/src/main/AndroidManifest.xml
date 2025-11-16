@@ -27,26 +27,58 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
+
+        android:name="com.example.windowsandroidconnect.MyApplication"
+
         android:allowBackup="true"
+
         android:dataExtractionRules="@xml/data_extraction_rules"
+
         android:fullBackupContent="@xml/backup_rules"
+
         android:icon="@mipmap/ic_launcher"
+
         android:label="@string/app_name"
+
         android:roundIcon="@mipmap/ic_launcher_round"
+
         android:supportsRtl="true"
+
         android:theme="@style/Theme.MyApplication">
         
         <activity
+
             android:name="com.example.windowsandroidconnect.MainActivity"
+
             android:exported="true"
+
             android:label="@string/app_name"
+
             android:theme="@style/Theme.MyApplication.NoActionBar">
+
             <intent-filter>
+
                 <action android:name="android.intent.action.MAIN" />
 
+
+
                 <category android:name="android.intent.category.LAUNCHER" />
+
             </intent-filter>
+
         </activity>
+
+
+
+        <!-- 屏幕捕获权限请求Activity -->
+
+        <activity
+
+            android:name="com.example.windowsandroidconnect.ScreenCaptureRequestActivity"
+
+            android:exported="false"
+
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
         <!-- 屏幕捕获服务 -->
         <service
@@ -67,10 +99,24 @@
             android:exported="false" />
             
         <!-- 通知服务 -->
+
         <service
+
             android:name="com.example.windowsandroidconnect.service.NotificationService"
+
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+
             android:enabled="true"
-            android:exported="false" />
+
+            android:exported="false">
+
+            <intent-filter>
+
+                <action android:name="android.service.notification.NotificationListenerService" />
+
+            </intent-filter>
+
+        </service>
             
         <!-- 剪贴板同步服务 -->
         <service

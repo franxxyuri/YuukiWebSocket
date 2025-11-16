@@ -17,6 +17,7 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.example.windowsandroidconnect.network.NetworkCommunication
 import kotlinx.coroutines.*
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
@@ -33,9 +34,10 @@ class ScreenCaptureService : Service() {
     private var isCapturing = false
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     
-    private val screenWidth = 1920
-    private val screenHeight = 1080
+    private val screenWidth = 1280
+    private val screenHeight = 720
     private val screenDpi = 240
+    private var networkCommunication: NetworkCommunication? = null
     
     override fun onCreate() {
         super.onCreate()
@@ -46,6 +48,8 @@ class ScreenCaptureService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "收到服务启动命令: ${intent?.action}")
         
+        // 获取网络通信实例（需要从应用单例或通过其他方式获取）
+        // 这里简化处理，实际开发中需要更好的架构设计
         startScreenCapture()
         return START_STICKY
     }
@@ -78,7 +82,7 @@ class ScreenCaptureService : Service() {
             
             val notification = NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Windows-Android Connect")
-                .setContentText("屏幕捕获服务运行中")
+                .setContentText("屏幕投屏服务运行中")
                 .setSmallIcon(android.R.drawable.ic_menu_camera)
                 .build()
             
@@ -94,8 +98,13 @@ class ScreenCaptureService : Service() {
         
         val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         
-        // TODO: 请求用户授权屏幕捕获
-        Log.d(TAG, "开始屏幕捕获...")
+        // 请求用户授权屏幕捕获
+
+        val intent = Intent(this, com.example.windowsandroidconnect.ScreenCaptureRequestActivity::class.java)
+
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+        startActivity(intent)
         
         // 模拟屏幕捕获
         serviceScope.launch {
@@ -104,8 +113,8 @@ class ScreenCaptureService : Service() {
                 while (isCapturing || !isCapturing) {
                     kotlinx.coroutines.delay(100) // 10 FPS
                     
-                    // TODO: 捕获实际屏幕数据
-                    // captureScreenFrame()
+                    // 捕获实际屏幕数据
+                    captureScreenFrame()
                     
                     Log.d(TAG, "捕获屏幕帧...")
                 }
@@ -158,7 +167,7 @@ class ScreenCaptureService : Service() {
                     screenHeight
                 )
                 
-                // TODO: 发送到Windows端
+                // 发送到Windows端
                 val compressedData = compressBitmap(croppedBitmap)
                 sendFrameToWindows(compressedData)
                 
@@ -183,16 +192,31 @@ class ScreenCaptureService : Service() {
      * 发送帧到Windows端
      */
     private suspend fun sendFrameToWindows(data: ByteArray) {
+
         try {
-            // TODO: 通过WebSocket发送到Windows端
-            Log.d(TAG, "发送屏幕帧到Windows端: ${data.size} bytes")
-            
-            // 模拟网络传输
-            kotlinx.coroutines.delay(10)
-            
+
+            // 获取网络通信实例并发送数据
+
+            // 这里简化处理，实际中需要确保networkCommunication已经被初始化
+
+            val networkComm = (application as? com.example.windowsandroidconnect.MyApplication)?.networkCommunication
+
+            if (networkComm != null && networkComm.isConnected()) {
+
+                networkComm.sendScreenFrame(data)
+
+            } else {
+
+                Log.w(TAG, "网络未连接，无法发送屏幕帧")
+
+            }
+
         } catch (e: Exception) {
+
             Log.e(TAG, "发送帧到Windows端失败", e)
+
         }
+
     }
     
     companion object {

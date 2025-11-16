@@ -1,4 +1,4 @@
-const WebSocketServer = require('./websocket-server.js');
+const WebSocketServerModule = require('./websocket-server.js');
 
 console.log('Starting Windows-Android Connect WebSocket Server...');
 console.log('==================================================');
@@ -6,14 +6,12 @@ console.log('==================================================');
 // Start server function
 async function startServer() {
   try {
-    console.log('Starting WebSocket server on port 8826...');
+    console.log('Starting WebSocket server...');
     
     // Create and start WebSocket server
-    const server = new WebSocketServer(8826);
-    await server.start();
+    const server = new WebSocketServerModule();
     
     console.log('Server started successfully!');
-    console.log('Server listening on port: 8826');
     console.log('Start time: ' + new Date().toLocaleString());
     console.log('');
     console.log('Server features:');
@@ -31,14 +29,12 @@ async function startServer() {
     // Handle exit signals
     process.on('SIGINT', () => {
       console.log('\nStopping server...');
-      server.stop();
       console.log('Server stopped');
       process.exit(0);
     });
     
     process.on('SIGTERM', () => {
       console.log('\nStopping server...');
-      server.stop();
       console.log('Server stopped');
       process.exit(0);
     });

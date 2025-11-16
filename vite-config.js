@@ -13,14 +13,16 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
-        test: path.resolve(__dirname, 'test-ui.html')
+        test: path.resolve(__dirname, 'test-ui.html'),
+        screen: path.resolve(__dirname, 'screen-stream.html')
       }
     }
   },
   server: {
     port: 3000,
     open: true,
-    host: 'localhost'
+    host: '0.0.0.0',
+    strictPort: false
   },
   resolve: {
     alias: {
@@ -38,6 +40,6 @@ export default defineConfig({
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
   },
   optimizeDeps: {
-    include: ['react', 'react-dom']
+    include: ['react', 'react-dom', 'socket.io-client']
   }
 });

@@ -1,317 +1,312 @@
-const express = require('express');
+const WebSocket = require('ws');
 const http = require('http');
-const socketIo = require('socket.io');
-const NetworkCommunication = require('./network-communication.js');
+const express = require('express');
+const path = require('path');
+const { networkInterfaces } = require('os');
 
-class WebSocketServer {
-  constructor(port = 8827) {
-    this.port = port;
-    this.app = express();
-    this.server = http.createServer(this.app);
-    this.io = socketIo(this.server, {
-      cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-      }
+// 创建Express应用
+const app = express();
+const server = http.createServer(app);
+
+// 创建WebSocket服务器
+const wss = new WebSocket.Server({ server });
+
+// 存储连接的客户端
+
+const clients = new Map();
+let androidDevice = null; // 存储连接的Android设备
+
+// 静态文件服务
+app.use(express.static('.'));
+
+// 设备发现端口
+const discoveryPort = 8080;
+const discoveryServer = require('dgram').createSocket('udp4');
+
+// 设备发现广播
+function broadcastDeviceDiscovery() {
+    const deviceInfo = {
+        deviceId: 'windows-pc-' + require('os').hostname(),
+        deviceName: require('os').hostname(),
+        platform: 'windows',
+        version: '1.0.0',
+        capabilities: ['file_transfer', 'screen_mirror', 'remote_control', 'notification', 'clipboard_sync']
+    };
+
+    const message = `WINDOWS_DEVICE:${deviceInfo.deviceId}:${deviceInfo.deviceName}:${deviceInfo.version}`;
+    const buffer = Buffer.from(message);
+
+    discoveryServer.send(buffer, 0, buffer.length, 8080, '255.255.255.255', (err) => {
+        if (err) console.error('广播错误:', err);
     });
+}
+
+// UDP监听器
+discoveryServer.on('listening', () => {
+    console.log('设备发现服务在UDP端口 8080 上运行');
+    discoveryServer.setBroadcast(true);
     
-    this.networkCommunication = new NetworkCommunication();
-    this.deviceDiscoveryActive = false;
-    this.discoveredDevices = new Map();
-    
-    this.setupSocketHandlers();
-    this.setupNetworkCommunicationHandlers();
-  }
+    // 每3秒广播一次
+    setInterval(() => {
+        broadcastDeviceDiscovery();
+    }, 3000);
+});
 
-  setupSocketHandlers() {
-    this.io.on('connection', (socket) => {
-      console.log('New client connected:', socket.id);
+discoveryServer.bind(8080);
 
-      // 处理设备发现请求
-      socket.on('start_device_discovery', async (callback) => {
-        try {
-          console.log('Starting device discovery');
-          this.deviceDiscoveryActive = true;
-          
-          // 在这里触发网络发现
-          // 实际的设备发现应该通过 NetworkCommunication 实现
-          const devices = await this.startDeviceDiscovery();
-          
-          if (callback) {
-            callback({ success: true, devices: Array.from(this.discoveredDevices.values()) });
-          }
-        } catch (error) {
-          console.error('Device discovery error:', error);
-          if (callback) {
-            callback({ success: false, error: error.message });
-          }
+// 获取本机IP地址
+function getLocalIP() {
+    const interfaces = networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+        const netInterface = interfaces[name];
+        for (const net of netInterface) {
+            if (!net.internal || net.family !== 'IPv4') continue;
+            if (net.address.startsWith('192.168.') || 
+                net.address.startsWith('10.') || 
+                net.address.startsWith('172.')) {
+                return net.address;
+            }
         }
-      });
-
-      // 处理停止设备发现
-      socket.on('stop_device_discovery', (callback) => {
-        this.deviceDiscoveryActive = false;
-        if (callback) {
-          callback({ success: true });
-        }
-      });
-
-      // 处理获取已发现设备
-      socket.on('get_discovered_devices', (callback) => {
-        if (callback) {
-          callback({ 
-            success: true, 
-            devices: Array.from(this.discoveredDevices.values()) 
-          });
-        }
-      });
-
-      // 处理发送文件
-      socket.on('send_file', async (data, callback) => {
-        try {
-          console.log('Sending file:', data);
-          // 这里应该实现文件传输逻辑
-          // 通过 NetworkCommunication 发送文件
-          if (callback) {
-            callback({ success: true, transferInfo: { id: 'mock_transfer_id' } });
-          }
-        } catch (error) {
-          console.error('File transfer error:', error);
-          if (callback) {
-            callback({ success: false, error: error.message });
-          }
-        }
-      });
-
-      // 处理接收文件
-      socket.on('receive_file', (data, callback) => {
-        try {
-          console.log('Receiving file:', data);
-          if (callback) {
-            callback({ success: true, transferInfo: data.transferInfo });
-          }
-        } catch (error) {
-          if (callback) {
-            callback({ success: false, error: error.message });
-          }
-        }
-      });
-
-      // 处理开始屏幕投屏
-      socket.on('start_screen_streaming', async (deviceInfo, callback) => {
-        try {
-          console.log('Starting screen streaming for:', deviceInfo);
-          // 通过 NetworkCommunication 开始屏幕流
-          if (callback) {
-            callback({ success: true });
-          }
-        } catch (error) {
-          if (callback) {
-            callback({ success: false, error: error.message });
-          }
-        }
-      });
-
-      // 处理停止屏幕投屏
-      socket.on('stop_screen_streaming', (deviceInfo, callback) => {
-        try {
-          console.log('Stopping screen streaming for:', deviceInfo);
-          if (callback) {
-            callback({ success: true });
-          }
-        } catch (error) {
-          if (callback) {
-            callback({ success: false, error: error.message });
-          }
-        }
-      });
-
-      // 处理启用远程控制
-      socket.on('enable_remote_control', async (deviceInfo, callback) => {
-        try {
-          console.log('Enabling remote control for:', deviceInfo);
-          // 通过 NetworkCommunication 启用远程控制
-          if (callback) {
-            callback({ success: true });
-          }
-        } catch (error) {
-          if (callback) {
-            callback({ success: false, error: error.message });
-          }
-        }
-      });
-
-      // 处理发送控制事件
-      socket.on('send_control_event', (eventData, callback) => {
-        try {
-          console.log('Sending control event:', eventData);
-          // 通过 NetworkCommunication 发送控制事件
-          
-          // 广播控制事件响应
-          this.io.emit('control_response', { 
-            success: true, 
-            eventId: eventData.id 
-          });
-          
-          if (callback) {
-            callback({ success: true });
-          }
-        } catch (error) {
-          if (callback) {
-            callback({ success: false, error: error.message });
-          }
-        }
-      });
-
-      // 处理断开连接
-      socket.on('disconnect', (reason) => {
-        console.log('Client disconnected:', socket.id, 'Reason:', reason);
-      });
-    });
-  }
-
-  setupNetworkCommunicationHandlers() {
-    // 监听网络通信事件并转发到 WebSocket
-    this.networkCommunication.on('device-authenticated', (connection) => {
-      console.log('Device authenticated:', connection.deviceInfo);
-      
-      // 添加到已发现设备列表
-      if (connection.deviceInfo) {
-        this.discoveredDevices.set(connection.deviceInfo.deviceId, {
-          id: connection.deviceInfo.deviceId,
-          name: connection.deviceInfo.deviceName,
-          type: connection.deviceInfo.platform,
-          status: 'connected',
-          ...connection.deviceInfo
-        });
-        
-        // 广播设备发现事件
-        this.io.emit('device_discovered', {
-          id: connection.deviceInfo.deviceId,
-          name: connection.deviceInfo.deviceName,
-          type: connection.deviceInfo.platform,
-          status: 'connected',
-          ...connection.deviceInfo
-        });
-      }
-    });
-
-    this.networkCommunication.on('connection-closed', (connection) => {
-      console.log('Device connection closed:', connection.id);
-      
-      // 更新设备状态
-      if (connection.deviceInfo) {
-        this.io.emit('device_status_update', {
-          id: connection.deviceInfo.deviceId,
-          status: 'disconnected'
-        });
-      }
-    });
-
-    // 监听屏幕帧数据
-    this.networkCommunication.on('screen-frame-received', (data) => {
-      this.io.emit('screen_stream_data', data);
-    });
-
-    // 监听文件传输事件
-    this.networkCommunication.on('file-transfer-request', (data) => {
-      this.io.emit('file_transfer_progress', data);
-    });
-
-    // 监听控制事件
-    this.networkCommunication.on('control-event-received', (data) => {
-      this.io.emit('control_response', data);
-    });
-
-    // 监听通知同步
-    this.networkCommunication.on('notification-received', (data) => {
-      this.io.emit('notification_received', data);
-    });
-
-    // 监听剪贴板同步
-    this.networkCommunication.on('clipboard-synced', (data) => {
-      this.io.emit('clipboard_update', data);
-    });
-  }
-
-  async startDeviceDiscovery() {
-    // 检查网络通信服务器是否已经在运行
-    if (!this.networkCommunication.isServerRunning) {
-      // 使用一个未被占用的端口，而不是WebSocket服务器的端口
-      // WebSocket服务器运行在this.port，我们使用this.port+1作为NetworkCommunication服务器端口
-      await this.networkCommunication.startServer(this.port + 1);
     }
-    this.networkCommunication.startHeartbeatCheck();
+    return '127.0.0.1';
+}
+
+// WebSocket连接处理
+wss.on('connection', (ws, request) => {
+    console.log('新客户端连接:', request.socket.remoteAddress);
     
-    // 模拟设备发现过程
-    // 在实际应用中，这里会通过网络协议发现设备
-    console.log('Network communication server started on port:', this.networkCommunication.port);
+    // 生成客户端ID
+    const clientId = 'client-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
     
-    return Array.from(this.discoveredDevices.values());
-  }
-
-  start() {
-    return new Promise((resolve, reject) => {
-      this.server.listen(this.port, () => {
-        console.log(`WebSocket server listening on port ${this.port}`);
-        console.log('WebSocket server started successfully!');
-        console.log('Server features:');
-        console.log('   - WebSocket communication');
-        console.log('   - Device discovery via WebSocket');
-        console.log('   - File transfer via WebSocket');
-        console.log('   - Screen mirroring via WebSocket');
-        console.log('   - Remote control via WebSocket');
-        console.log('   - Notification sync via WebSocket');
-        console.log('   - Clipboard sync via WebSocket');
-        console.log('');
-        console.log('Waiting for client connections...');
-        console.log('Press Ctrl+C to stop the server...');
-        resolve();
-      });
-
-      this.server.on('error', (error) => {
-        console.error('Server startup failed:', error);
-        reject(error);
-      });
+    // 存储客户端连接
+    clients.set(clientId, {
+        ws: ws,
+        type: 'unknown', // 'android' or 'web'
+        ip: request.socket.remoteAddress
     });
-  }
-
-  stop() {
-    this.networkCommunication.destroy();
-    this.server.close(() => {
-      console.log('WebSocket server stopped');
+    
+    // 发送欢迎消息
+    ws.send(JSON.stringify({
+        type: 'connection_established',
+        clientId: clientId,
+        timestamp: Date.now()
+    }));
+    
+    // 处理消息
+    ws.on('message', (data) => {
+        try {
+            const message = JSON.parse(data);
+            console.log('收到消息:', message.type);
+            
+            // 根据消息类型处理
+            switch (message.type) {
+                case 'device_info':
+                    handleDeviceInfo(clientId, message.deviceInfo);
+                    break;
+                case 'screen_frame_header':
+                    handleScreenFrame(clientId, message, ws);
+                    break;
+                case 'file_transfer':
+                    handleFileTransfer(clientId, message);
+                    break;
+                case 'control_command':
+                    handleControlCommand(clientId, message);
+                    break;
+                case 'clipboard':
+                    handleClipboard(clientId, message);
+                    break;
+                case 'notification':
+                    handleNotification(clientId, message);
+                    break;
+                case 'heartbeat':
+                    handleHeartbeat(clientId, message);
+                    break;
+                default:
+                    console.log('未知消息类型:', message.type);
+                    break;
+            }
+        } catch (error) {
+            console.error('处理消息时出错:', error);
+        }
     });
+    
+    // 处理连接关闭
+    ws.on('close', () => {
+        console.log('客户端断开连接:', clientId);
+        const client = clients.get(clientId);
+        if (client && client.type === 'android') {
+            androidDevice = null;
+        }
+        clients.delete(clientId);
+    });
+    
+    // 处理错误
+    ws.on('error', (error) => {
+        console.error('WebSocket错误:', error);
+    });
+});
+
+// 处理设备信息
+function handleDeviceInfo(clientId, deviceInfo) {
+    console.log('收到设备信息:', deviceInfo);
+    
+    const client = clients.get(clientId);
+    if (client) {
+        client.type = deviceInfo.platform;
+        
+        if (deviceInfo.platform === 'android') {
+            androidDevice = {
+                id: clientId,
+                info: deviceInfo,
+                ws: client.ws
+            };
+            console.log('Android设备已连接:', deviceInfo.deviceName);
+        }
+    }
+    
+    // 向所有Web客户端广播设备信息
+    broadcastToWebClients({
+        type: 'device_connected',
+        deviceInfo: deviceInfo,
+        clientId: clientId
+    });
+}
+
+// 处理屏幕帧
+function handleScreenFrame(clientId, header, ws) {
+    // 这里需要接收后续的二进制数据
+    // 当前实现需要客户端先发送屏幕帧头，然后发送二进制数据
+    console.log('收到屏幕帧头:', header);
+    
+    // 广播屏幕帧给所有Web客户端
+    broadcastToWebClients({
+        type: 'screen_frame',
+        header: header,
+        timestamp: Date.now()
+    }, clientId); // 排除发送方
+}
+
+// 处理文件传输
+function handleFileTransfer(clientId, message) {
+    console.log('收到文件传输消息:', message.action);
+    
+    // 转发给其他客户端（如Web前端）
+    broadcastToWebClients({
+        type: 'file_transfer',
+        ...message,
+        sourceClientId: clientId
+    }, clientId);
+}
+
+// 处理控制命令
+function handleControlCommand(clientId, message) {
+    console.log('收到控制命令:', message.commandType);
+    
+    // 如果是Web客户端发送的控制命令，转发给Android设备
+    const client = clients.get(clientId);
+    if (client && client.type === 'web') {
+        if (androidDevice && androidDevice.ws) {
+            androidDevice.ws.send(JSON.stringify(message));
+            console.log('控制命令已转发给Android设备');
+        } else {
+            console.log('没有连接的Android设备');
+        }
+    }
+}
+
+// 处理剪贴板同步
+function handleClipboard(clientId, message) {
+    console.log('收到剪贴板消息:', message.data.substring(0, 50) + '...');
+    
+    // 转发给所有其他客户端（实现双向同步）
+    broadcastToAllClients({
+        type: 'clipboard',
+        ...message,
+        sourceClientId: clientId
+    }, clientId);
+}
+
+// 处理通知
+function handleNotification(clientId, message) {
+    console.log('收到通知消息:', message.packageName, message.title);
+    
+    // 转发给所有Web客户端
+    broadcastToWebClients({
+        type: 'notification',
+        ...message,
+        sourceClientId: clientId
+    }, clientId);
+}
+
+// 处理心跳
+function handleHeartbeat(clientId, message) {
+    console.log('收到心跳:', clientId);
+    
+    // 回复心跳
+    const client = clients.get(clientId);
+    if (client) {
+        client.ws.send(JSON.stringify({
+            type: 'heartbeat',
+            timestamp: Date.now()
+        }));
+    }
+}
+
+// 向所有Web客户端广播消息
+function broadcastToWebClients(message, excludeClientId = null) {
+    const messageStr = JSON.stringify(message);
+    
+    for (const [clientId, client] of clients) {
+        if (client.type === 'web' && clientId !== excludeClientId) {
+            try {
+                client.ws.send(messageStr);
+            } catch (error) {
+                console.error('广播消息失败:', error);
+            }
+        }
+    }
+}
+
+// 向所有客户端广播消息
+function broadcastToAllClients(message, excludeClientId = null) {
+    const messageStr = JSON.stringify(message);
+    
+    for (const [clientId, client] of clients) {
+        if (clientId !== excludeClientId) {
+            try {
+                client.ws.send(messageStr);
+            } catch (error) {
+                console.error('广播消息失败:', error);
+            }
+        }
+    }
+}
+
+// 启动服务器
+const PORT = process.env.PORT || 8827;
+server.listen(PORT, () => {
+    const localIP = getLocalIP();
+    console.log(`WebSocket服务器运行在: http://${localIP}:${PORT}`);
+    console.log(`WebSocket服务器运行在: http://localhost:${PORT}`);
+    console.log('等待Android设备连接...');
+    
+    // 定期广播设备发现信息
+    setInterval(() => {
+        broadcastDeviceDiscovery();
+    }, 3000);
+});
+
+// 错误处理
+server.on('error', (error) => {
+    console.error('服务器错误:', error);
+});
+
+// 导出WebSocketServer类
+class WebSocketServer {
+  constructor() {
+    // 这个类只是为了兼容性
+    // 服务器已经在上面启动了
   }
 }
 
 module.exports = WebSocketServer;
-
-// 如果直接运行此文件，启动服务器
-if (require.main === module) {
-  console.log('Starting Windows-Android Connect WebSocket Server...');
-  console.log('==================================================');
-
-  const server = new WebSocketServer();
-
-  server.start()
-    .then(() => {
-      // 处理退出信号
-      process.on('SIGINT', () => {
-        console.log('\nStopping server...');
-        server.stop();
-        console.log('Server stopped');
-        process.exit(0);
-      });
-
-      process.on('SIGTERM', () => {
-        console.log('\nStopping server...');
-        server.stop();
-        console.log('Server stopped');
-        process.exit(0);
-      });
-    })
-    .catch((error) => {
-      console.error('Failed to start server:', error);
-      process.exit(1);
-    });
-}

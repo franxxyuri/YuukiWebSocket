@@ -1,21 +1,23 @@
-{
-  "name": "windows-android-connect",
-  "version": "1.0.0",
-  "description": "一个功能完整的Windows-Android局域网互联软件",
-  "author": "Developer",
-  "license": "MIT",
-  "scripts": {
-    "start": "node full-integrated-server.js",
-    "dev": "node full-integrated-server.js",
-    "build": "vite build",
-    "preview": "vite preview",
-    "server": "node start-server.js",
-    "install:android": "cd app && ./gradlew build",
-    "test": "node test-runner.js",
-    "lint": "eslint *.js *.jsx",
-    "clean": "del /s /q node_modules",
-    "android-build": "cd app && ./gradlew build",
-    "check-deps": "npm list --depth=0"
+{
+  "name": "windows-android-connect",
+  "version": "1.0.0",
+  "description": "一个功能完整的Windows-Android局域网互联软件",
+  "author": "Developer",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "start": "node complete-server.js",
+    "dev": "node complete-server.js",
+    "dev:vite": "node start-vite-server.js",
+    "build": "vite build",
+    "preview": "vite preview",
+    "server": "node complete-server.js",
+    "install:android": "cd app && ./gradlew build",
+    "test": "node test-runner.js",
+    "lint": "eslint *.js *.jsx",
+    "clean": "del /s /q node_modules",
+    "android-build": "cd app && ./gradlew build",
+    "check-deps": "npm list --depth=0"
   },
   "keywords": [
     "react",
@@ -41,9 +43,16 @@
   },
   "homepage": "https://github.com/your-username/windows-android-connect#readme",
   "dependencies": {
+
     "cors": "^2.8.5",
+
     "express": "^5.1.0",
+
     "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.1"
+
+    "socket.io-client": "^4.8.1",
+
+    "ws": "^8.18.0"
+
   }
 }
