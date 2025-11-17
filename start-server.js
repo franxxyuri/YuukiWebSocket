@@ -1,4 +1,4 @@
-const WebSocketServerModule = require('./websocket-server.js');
+import WebSocketServer from './websocket-server.js';
 
 console.log('Starting Windows-Android Connect WebSocket Server...');
 console.log('==================================================');
@@ -9,7 +9,10 @@ async function startServer() {
     console.log('Starting WebSocket server...');
     
     // Create and start WebSocket server
-    const server = new WebSocketServerModule();
+    const server = new WebSocketServer();
+    
+    // Start the server
+    await server.start();
     
     console.log('Server started successfully!');
     console.log('Start time: ' + new Date().toLocaleString());
@@ -25,16 +28,17 @@ async function startServer() {
     console.log('Waiting for client connections...');
     console.log('Press Ctrl+C to stop the server...');
     
-    // Keep the server running indefinitely
     // Handle exit signals
-    process.on('SIGINT', () => {
+    process.on('SIGINT', async () => {
       console.log('\nStopping server...');
+      await server.stop();
       console.log('Server stopped');
       process.exit(0);
     });
     
-    process.on('SIGTERM', () => {
+    process.on('SIGTERM', async () => {
       console.log('\nStopping server...');
+      await server.stop();
       console.log('Server stopped');
       process.exit(0);
     });

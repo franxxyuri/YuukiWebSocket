@@ -7,23 +7,42 @@ function App() {
   const [isConnected, setIsConnected] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState('未连接')
 
-  // 连接到WebSocket服务器
-  const connectToServer = async () => {
-    try {
-      setConnectionStatus('正在连接...')
-      await websocketService.connect('ws://localhost:8828')
-      setIsConnected(true)
-      setConnectionStatus('已连接到服务器')
-      
-      // 开始设备发现
-      const devices = await websocketService.startDeviceDiscovery()
-      setConnectedDevices(devices)
-      
-      console.log('✅ 连接成功')
-    } catch (error) {
-      console.error('❌ 连接失败:', error)
-      setConnectionStatus(`连接失败: ${error.message}`)
-    }
+  // 连接到WebSocket服务器
+
+  const connectToServer = async () => {
+
+    try {
+
+      setConnectionStatus('正在连接...')
+
+      // 使用 Vite 代理路径，将通过 ws://localhost:8080/ws 代理到 ws://localhost:8828
+
+      await websocketService.connect('ws://localhost:8080/ws')
+
+      setIsConnected(true)
+
+      setConnectionStatus('已连接到服务器')
+
+      
+
+      // 开始设备发现
+
+      const devices = await websocketService.startDeviceDiscovery()
+
+      setConnectedDevices(devices)
+
+      
+
+      console.log('✅ 连接成功')
+
+    } catch (error) {
+
+      console.error('❌ 连接失败:', error)
+
+      setConnectionStatus(`连接失败: ${error.message}`)
+
+    }
+
   }
 
   // 断开连接
@@ -201,10 +220,14 @@ function App() {
         <section className="info-section">
           <h2>应用信息</h2>
           <div className="info-grid">
-            <div className="info-card">
-              <h3>服务端状态</h3>
-              <p>端口: 8828</p>
-              <p>状态: {connectionStatus}</p>
+            <div className="info-card">
+
+              <h3>服务端状态</h3>
+
+              <p>端口: 8828</p>
+
+              <p>状态: {connectionStatus}</p>
+
             </div>
             <div className="info-card">
               <h3>应用版本</h3>

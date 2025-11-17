@@ -4,199 +4,392 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Windows-Android Connect</title>
-    
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        
-        header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        
-        h1 {
-            color: #333;
-        }
-        
-        .status-bar {
-            background-color: #fff;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-        
-        .device-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .device-card {
-            background-color: #fff;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            flex: 1;
-            min-width: 300px;
-        }
-        
-        .device-card h3 {
-            margin-top: 0;
-            color: #333;
-        }
-        
-        .device-card.connected {
-            border-left: 5px solid #4CAF50;
-        }
-        
-        .device-card.disconnected {
-            border-left: 5px solid #f44336;
-        }
-        
-        .controls {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .control-panel {
-            background-color: #fff;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .control-panel h3 {
-            margin-top: 0;
-            color: #333;
-        }
-        
-        .button-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        
-        button {
-            padding: 10px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background-color 0.3s;
-        }
-        
-        .btn-primary {
-            background-color: #2196F3;
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background-color: #1976D2;
-        }
-        
-        .btn-success {
-            background-color: #4CAF50;
-            color: white;
-        }
-        
-        .btn-success:hover {
-            background-color: #388E3C;
-        }
-        
-        .btn-danger {
-            background-color: #f44336;
-            color: white;
-        }
-        
-        .btn-danger:hover {
-            background-color: #D32F2F;
-        }
-        
-        .btn-warning {
-            background-color: #FF9800;
-            color: white;
-        }
-        
-        .btn-warning:hover {
-            background-color: #F57C00;
-        }
-        
-        .screen-display {
-            background-color: #000;
-            border-radius: 8px;
-            overflow: hidden;
-            position: relative;
-            min-height: 400px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-        }
-        
-        .screen-placeholder {
-            text-align: center;
-        }
-        
-        .progress-bar {
-            width: 100%;
-            height: 20px;
-            background-color: #e0e0e0;
-            border-radius: 10px;
-            overflow: hidden;
-            margin-top: 10px;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background-color: #4CAF50;
-            width: 0%;
-            transition: width 0.3s;
-        }
-        
-        .log-area {
-            background-color: #fff;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            height: 200px;
-            overflow-y: auto;
-            font-family: monospace;
-            font-size: 14px;
-        }
-        
-        .log-entry {
-            margin-bottom: 5px;
-        }
-        
-        .log-info {
-            color: #2196F3;
-        }
-        
-        .log-success {
-            color: #4CAF50;
-        }
-        
-        .log-error {
-            color: #f44336;
-        }
-        
-        .log-warning {
-            color: #FF9800;
-        }
+    
+
+    <style>
+
+        body {
+
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+            margin: 0;
+
+            padding: 20px;
+
+            background-color: #f5f5f5;
+
+        }
+
+        
+
+        .container {
+
+            max-width: 1200px;
+
+            margin: 0 auto;
+
+        }
+
+        
+
+        header {
+
+            text-align: center;
+
+            margin-bottom: 30px;
+
+        }
+
+        
+
+        h1 {
+
+            color: #333;
+
+        }
+
+        
+
+        .status-bar {
+
+            background-color: #fff;
+
+            padding: 15px;
+
+            border-radius: 8px;
+
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+            margin-bottom: 20px;
+
+        }
+
+        
+
+        .device-list {
+
+            display: flex;
+
+            flex-wrap: wrap;
+
+            gap: 20px;
+
+            margin-bottom: 30px;
+
+        }
+
+        
+
+        .device-card {
+
+            background-color: #fff;
+
+            border-radius: 8px;
+
+            padding: 20px;
+
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+            flex: 1;
+
+            min-width: 300px;
+
+        }
+
+        
+
+        .device-card h3 {
+
+            margin-top: 0;
+
+            color: #333;
+
+        }
+
+        
+
+        .device-card.connected {
+
+            border-left: 5px solid #4CAF50;
+
+        }
+
+        
+
+        .device-card.disconnected {
+
+            border-left: 5px solid #f44336;
+
+        }
+
+        
+
+        .controls {
+
+            display: grid;
+
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+
+            gap: 20px;
+
+            margin-bottom: 30px;
+
+        }
+
+        
+
+        .control-panel {
+
+            background-color: #fff;
+
+            border-radius: 8px;
+
+            padding: 20px;
+
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+        }
+
+        
+
+        .control-panel h3 {
+
+            margin-top: 0;
+
+            color: #333;
+
+        }
+
+        
+
+        .button-group {
+
+            display: flex;
+
+            flex-wrap: wrap;
+
+            gap: 10px;
+
+            margin-bottom: 15px;
+
+        }
+
+        
+
+        button {
+
+            padding: 10px 15px;
+
+            border: none;
+
+            border-radius: 4px;
+
+            cursor: pointer;
+
+            font-weight: bold;
+
+            transition: background-color 0.3s;
+
+        }
+
+        
+
+        .btn-primary {
+
+            background-color: #2196F3;
+
+            color: white;
+
+        }
+
+        
+
+        .btn-primary:hover {
+
+            background-color: #1976D2;
+
+        }
+
+        
+
+        .btn-success {
+
+            background-color: #4CAF50;
+
+            color: white;
+
+        }
+
+        
+
+        .btn-success:hover {
+
+            background-color: #388E3C;
+
+        }
+
+        
+
+        .btn-danger {
+
+            background-color: #f44336;
+
+            color: white;
+
+        }
+
+        
+
+        .btn-danger:hover {
+
+            background-color: #D32F2F;
+
+        }
+
+        
+
+        .btn-warning {
+
+            background-color: #FF9800;
+
+            color: white;
+
+        }
+
+        
+
+        .btn-warning:hover {
+
+            background-color: #F57C00;
+
+        }
+
+        
+
+        .screen-display {
+
+            background-color: #000;
+
+            border-radius: 8px;
+
+            overflow: hidden;
+
+            position: relative;
+
+            min-height: 400px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            color: white;
+
+        }
+
+        
+
+        .screen-placeholder {
+
+            text-align: center;
+
+        }
+
+        
+
+        .progress-bar {
+
+            width: 100%;
+
+            height: 20px;
+
+            background-color: #e0e0e0;
+
+            border-radius: 10px;
+
+            overflow: hidden;
+
+            margin-top: 10px;
+
+        }
+
+        
+
+        .progress-fill {
+
+            height: 100%;
+
+            background-color: #4CAF50;
+
+            width: 0%;
+
+            transition: width 0.3s;
+
+        }
+
+        
+
+        .log-area {
+
+            background-color: #fff;
+
+            border-radius: 8px;
+
+            padding: 20px;
+
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+            height: 200px;
+
+            overflow-y: auto;
+
+            font-family: monospace;
+
+            font-size: 14px;
+
+        }
+
+        
+
+        .log-entry {
+
+            margin-bottom: 5px;
+
+        }
+
+        
+
+        .log-info {
+
+            color: #2196F3;
+
+        }
+
+        
+
+        .log-success {
+
+            color: #4CAF50;
+
+        }
+
+        
+
+        .log-error {
+
+            color: #f44336;
+
+        }
+
+        
+
+        .log-warning {
+
+            color: #FF9800;
+
+        }
+
     </style>
 </head>
 <body>
@@ -317,77 +510,155 @@
         };
         
         // 连接到WebSocket服务器
+
         function connectToServer() {
+
+            // 根据当前页面URL决定WebSocket连接地址
+
+            const isViteDevServer = window.location.port === '8080';
+
+            const wsUrl = isViteDevServer ? 'ws://localhost:8080/ws' : 'ws://localhost:8828';
+
+            
+
             // 使用原生WebSocket连接
-            ws = new WebSocket('ws://localhost:8828');
+
+            ws = new WebSocket(wsUrl);
+
+
 
             ws.onopen = function(event) {
-                log('已连接到服务器', 'success');
-                elements.connectionStatus.textContent = '已连接到服务器';
+
+                log('已连接到服务器: ' + wsUrl, 'success');
+
+                elements.connectionStatus.textContent = '已连接到服务器: ' + wsUrl;
+
                 elements.connectionStatus.style.color = '#4CAF50';
+
                 
+
                 // 发送设备信息（模拟Web客户端）
+
                 ws.send(JSON.stringify({
+
                     type: 'device_info',
+
                     deviceInfo: {
+
                         platform: 'web',
+
                         deviceName: 'Screen Stream Web Client',
+
                         deviceId: 'web-screen-' + Date.now()
+
                     }
+
                 }));
+
             };
+
+
 
             ws.onclose = function(event) {
-                log('与服务器断开连接', 'error');
-                elements.connectionStatus.textContent = '与服务器断开连接';
+
+                log('与服务器断开连接: ' + wsUrl, 'error');
+
+                elements.connectionStatus.textContent = '与服务器断开连接: ' + wsUrl;
+
                 elements.connectionStatus.style.color = '#f44336';
+
             };
+
+
 
             ws.onerror = function(error) {
-                log('WebSocket连接错误: ' + error.message, 'error');
+
+                log('WebSocket连接错误: ' + error.message + ' (URL: ' + wsUrl + ')', 'error');
+
             };
 
+
+
             ws.onmessage = function(event) {
+
                 try {
+
                     const message = JSON.parse(event.data);
+
                     handleMessage(message);
+
                 } catch (e) {
+
                     log('消息解析错误: ' + e.message, 'error');
+
                 }
+
             };
+
         }
         
-                // 处理接收到的消息
-        function handleMessage(message) {
-            switch (message.type) {
-                case 'connection_established':
-                    log('连接已建立，客户端ID: ' + message.clientId, 'success');
-                    break;
-                    
-                case 'device_connected':
-                    handleDeviceConnected(message.deviceInfo);
-                    break;
-                    
-                case 'screen_frame':
-                    handleScreenFrame(message);
-                    break;
-                    
-                case 'file_transfer':
-                    handleFileTransfer(message);
-                    break;
-                    
-                case 'clipboard':
-                    handleClipboard(message);
-                    break;
-                    
-                case 'notification':
-                    handleNotification(message);
-                    break;
-                    
-                default:
-                    log('收到未知消息类型: ' + message.type, 'warning');
-                    break;
-            }
+                // 处理接收到的消息
+
+        function handleMessage(message) {
+
+            switch (message.type) {
+
+                case 'connection_established':
+
+                    log('连接已建立，客户端ID: ' + message.clientId, 'success');
+
+                    break;
+
+                    
+
+                case 'device_connected':
+
+                    handleDeviceConnected(message.deviceInfo);
+
+                    break;
+
+                    
+
+                case 'screen_frame':
+
+                    handleScreenFrame(message);
+
+                    break;
+
+                    
+
+                case 'file_transfer':
+
+                    handleFileTransfer(message);
+
+                    break;
+
+                    
+
+                case 'clipboard':
+
+                    handleClipboard(message);
+
+                    break;
+
+                    
+
+                case 'notification':
+
+                    handleNotification(message);
+
+                    break;
+
+                    
+
+                default:
+
+                    log('收到未知消息类型: ' + message.type, 'warning');
+
+                    break;
+
+            }
+
         }
         
         // 处理设备连接
@@ -449,25 +720,44 @@
             elements.progressText.textContent = percent + '%';
         }
         
-        // 发送控制命令
-        function sendControlCommand(command) {
-            if (!ws || ws.readyState !== WebSocket.OPEN) {
-                log('WebSocket未连接', 'error');
-                return;
-            }
-            
-            if (!androidDevice) {
-                log('没有连接的Android设备', 'error');
-                return;
-            }
-            
-            const message = {
-                type: 'control_command',
-                ...command
-            };
-            
-            ws.send(JSON.stringify(message));
-            log('发送控制命令: ' + command.commandType, 'info');
+        // 发送控制命令
+
+        function sendControlCommand(command) {
+
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+
+                log('WebSocket未连接', 'error');
+
+                return;
+
+            }
+
+            
+
+            if (!androidDevice) {
+
+                log('没有连接的Android设备', 'error');
+
+                return;
+
+            }
+
+            
+
+            const message = {
+
+                type: 'control_command',
+
+                ...command
+
+            };
+
+            
+
+            ws.send(JSON.stringify(message));
+
+            log('发送控制命令: ' + command.commandType, 'info');
+
         }
         
         // 日志记录

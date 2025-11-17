@@ -26,7 +26,8 @@ echo.
 echo Server restart completed!
 echo.
 echo Main server will run on port 8828
-echo Vite development server will run on port 3000
+
+echo Vite development server will run on port 8080
 echo.
 echo Device discovery service will run on port 8090
 echo.

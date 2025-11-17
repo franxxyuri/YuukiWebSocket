@@ -45,7 +45,7 @@ timeout /t 3 /nobreak >nul
 
 :: 启动 Vite 开发服务器
 echo 启动 Vite 开发服务器...
-npm run dev:vite
+npm run dev
 
 if %errorlevel% neq 0 (
     echo.

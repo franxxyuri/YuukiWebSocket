@@ -1,0 +1,324 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/title_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Android客户端调试测试页面"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_gravity="center"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/status_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="未连接"
+        android:textSize="16sp"
+        android:layout_gravity="center"
+        android:layout_marginBottom="16dp" />
+
+    <!-- 服务器连接设置 -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="服务器连接设置:"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <EditText
+        android:id="@+id/server_ip_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="服务器IP地址 (例如: 192.168.1.100)"
+        android:inputType="text"
+        android:layout_marginBottom="8dp" />
+
+    <EditText
+        android:id="@+id/server_port_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="服务器端口 (例如: 8828)"
+        android:inputType="number"
+        android:layout_marginBottom="8dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="16dp">
+
+        <Button
+            android:id="@+id/connect_button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="连接服务器"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/disconnect_button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="断开连接"
+            android:layout_marginStart="4dp"
+            android:enabled="false" />
+
+    </LinearLayout>
+
+    <!-- 设备信息设置 -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="设备信息设置:"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <EditText
+        android:id="@+id/device_name_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="设备名称"
+        android:inputType="text"
+        android:layout_marginBottom="8dp" />
+
+    <EditText
+        android:id="@+id/device_id_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="设备ID"
+        android:inputType="text"
+        android:layout_marginBottom="8dp" />
+
+    <Button
+        android:id="@+id/send_device_info_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="发送设备信息"
+        android:enabled="false"
+        android:layout_marginBottom="16dp" />
+
+    <!-- 设备发现功能 -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="设备发现功能:"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="16dp">
+
+        <Button
+            android:id="@+id/start_discovery_button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="开始设备发现"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/stop_discovery_button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="停止设备发现"
+            android:layout_marginStart="4dp" />
+
+    </LinearLayout>
+
+    <!-- 屏幕帧发送 -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="屏幕帧发送:"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <EditText
+        android:id="@+id/screen_frame_data_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="屏幕帧数据 (Base64)"
+        android:inputType="text"
+        android:layout_marginBottom="8dp" />
+
+    <Button
+        android:id="@+id/send_screen_frame_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="发送屏幕帧"
+        android:enabled="false"
+        android:layout_marginBottom="16dp" />
+
+    <!-- 文件传输 -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="文件传输:"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <Button
+        android:id="@+id/send_file_transfer_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="发送文件传输消息"
+        android:enabled="false"
+        android:layout_marginBottom="16dp" />
+
+    <!-- 控制命令 -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="控制命令:"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <Button
+        android:id="@+id/send_control_command_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="发送控制命令"
+        android:enabled="false"
+        android:layout_marginBottom="16dp" />
+
+    <!-- 剪贴板同步 -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="剪贴板同步:"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <EditText
+        android:id="@+id/clipboard_data_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="剪贴板内容"
+        android:inputType="text"
+        android:layout_marginBottom="8dp" />
+
+    <Button
+        android:id="@+id/send_clipboard_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="发送剪贴板内容"
+        android:enabled="false"
+        android:layout_marginBottom="16dp" />
+
+    <!-- 通知同步 -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="通知同步:"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <EditText
+        android:id="@+id/notification_title_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="通知标题"
+        android:inputType="text"
+        android:layout_marginBottom="8dp" />
+
+    <EditText
+        android:id="@+id/notification_text_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="通知内容"
+        android:inputType="text"
+        android:layout_marginBottom="8dp" />
+
+    <Button
+        android:id="@+id/send_notification_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="发送通知"
+        android:enabled="false"
+        android:layout_marginBottom="16dp" />
+
+    <!-- 自动化选项 -->
+    <CheckBox
+        android:id="@+id/auto_connect_checkbox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="自动连接到服务器"
+        android:layout_marginBottom="8dp" />
+
+    <CheckBox
+        android:id="@+id/auto_send_checkbox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="自动发送测试消息"
+        android:layout_marginBottom="16dp" />
+
+    <!-- 日志显示 -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="调试日志:"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <ScrollView
+        android:id="@+id/log_scroll_view"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:id="@+id/log_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="调试日志将显示在这里\n"
+            android:textSize="12sp" />
+
+    </ScrollView>
+
+    <!-- 底部按钮 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/clear_log_button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="清空日志"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/back_button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="返回"
+            android:layout_marginStart="4dp" />
+
+    </LinearLayout>
+
+</LinearLayout>

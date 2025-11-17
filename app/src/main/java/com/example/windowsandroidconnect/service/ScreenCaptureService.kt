@@ -4,8 +4,10 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Bitmap
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
@@ -17,6 +19,8 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.example.windowsandroidconnect.MyApplication
+import com.example.windowsandroidconnect.ScreenCaptureRequestActivity
 import com.example.windowsandroidconnect.network.NetworkCommunication
 import kotlinx.coroutines.*
 import java.io.ByteArrayOutputStream
@@ -33,23 +37,37 @@ class ScreenCaptureService : Service() {
     private var imageReader: ImageReader? = null
     private var isCapturing = false
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var captureJob: Job? = null
+    private var networkCommunication: NetworkCommunication? = null
     
     private val screenWidth = 1280
     private val screenHeight = 720
     private val screenDpi = 240
-    private var networkCommunication: NetworkCommunication? = null
+    private val screenCaptureFormat = android.graphics.ImageFormat.PRIVATE
+    private val screenCaptureFlags = DisplayManager.VIRTUAL_DISPLAY_FLAG_PRESENTATION
+    
+    private val screenCaptureReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == ScreenCaptureRequestActivity.ACTION_CAPTURE_PERMISSION_GRANTED) {
+                val resultCode = intent.getIntExtra(ScreenCaptureRequestActivity.EXTRA_RESULT_CODE, 0)
+                val resultData = intent.getParcelableExtra<Intent>(ScreenCaptureRequestActivity.EXTRA_RESULT_DATA)
+                setupMediaProjection(resultCode, resultData)
+            }
+        }
+    }
     
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        registerReceiver(screenCaptureReceiver, IntentFilter(ScreenCaptureRequestActivity.ACTION_CAPTURE_PERMISSION_GRANTED))
         Log.d(TAG, "屏幕捕获服务已启动")
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "收到服务启动命令: ${intent?.action}")
         
-        // 获取网络通信实例（需要从应用单例或通过其他方式获取）
-        // 这里简化处理，实际开发中需要更好的架构设计
+        // 获取网络通信实例
+        networkCommunication = (application as? MyApplication)?.networkCommunication
         startScreenCapture()
         return START_STICKY
     }
@@ -61,6 +79,7 @@ class ScreenCaptureService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         stopScreenCapture()
+        unregisterReceiver(screenCaptureReceiver)
         serviceScope.cancel()
         Log.d(TAG, "屏幕捕获服务已停止")
     }
@@ -96,86 +115,131 @@ class ScreenCaptureService : Service() {
     private fun startScreenCapture() {
         if (isCapturing) return
         
-        val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        
         // 请求用户授权屏幕捕获
-
-        val intent = Intent(this, com.example.windowsandroidconnect.ScreenCaptureRequestActivity::class.java)
-
+        val intent = Intent(this, ScreenCaptureRequestActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-
         startActivity(intent)
-        
-        // 模拟屏幕捕获
-        serviceScope.launch {
-            try {
-                // 模拟屏幕捕获循环
-                while (isCapturing || !isCapturing) {
-                    kotlinx.coroutines.delay(100) // 10 FPS
-                    
-                    // 捕获实际屏幕数据
-                    captureScreenFrame()
-                    
-                    Log.d(TAG, "捕获屏幕帧...")
+    }
+    
+    /**
+     * 设置MediaProjection
+     */
+    private fun setupMediaProjection(resultCode: Int, resultData: Intent?) {
+        val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        if (resultData != null) {
+            mediaProjection = projectionManager.getMediaProjection(resultCode, resultData)
+                ?: run {
+                    Log.e(TAG, "无法获取MediaProjection")
+                    return
                 }
-                
-            } catch (e: Exception) {
-                Log.e(TAG, "屏幕捕获失败", e)
-            }
+        } else {
+            Log.e(TAG, "resultData 为 null，无法创建MediaProjection")
+            return
         }
         
+        // 创建ImageReader用于接收屏幕数据
+        imageReader = ImageReader.newInstance(screenWidth, screenHeight, screenCaptureFormat, 2)
+        imageReader?.setOnImageAvailableListener(imageAvailableListener, null)
+        
+        // 创建虚拟显示器
+        virtualDisplay = mediaProjection?.createVirtualDisplay(
+            "ScreenCapture",
+            screenWidth, screenHeight, screenDpi,
+            screenCaptureFlags,
+            imageReader?.surface,
+            null, null
+        )
+        
+        // 开始捕获屏幕
+        startCaptureLoop()
         isCapturing = true
+        Log.d(TAG, "屏幕捕获已开始")
+    }
+    
+    /**
+     * 开始捕获循环
+     */
+    private fun startCaptureLoop() {
+        captureJob = serviceScope.launch {
+            while (isCapturing) {
+                delay(50) // 20 FPS，可根据需要调整
+            }
+        }
     }
     
     /**
      * 停止屏幕捕获
      */
     private fun stopScreenCapture() {
-        if (!isCapturing) return
-        
         isCapturing = false
+        captureJob?.cancel()
         virtualDisplay?.release()
         mediaProjection?.stop()
         imageReader?.close()
-        
+        mediaProjection?.unregisterCallback(mediaProjectionCallback)
+        mediaProjection = null
         Log.d(TAG, "屏幕捕获已停止")
     }
     
     /**
-     * 捕获屏幕帧
+     * Image可用监听器
      */
-    private suspend fun captureScreenFrame() {
-        try {
-            val image = imageReader?.acquireLatestImage()
-            if (image != null) {
+    private val imageAvailableListener = ImageReader.OnImageAvailableListener { reader ->
+        val image: Image? = reader.acquireLatestImage()
+        if (image != null) {
+            serviceScope.launch {
+                try {
+                    val bitmap = imageToBitmap(image)
+                    val compressedData = compressBitmap(bitmap)
+                    sendFrameToWindows(compressedData)
+                } catch (e: Exception) {
+                    Log.e(TAG, "处理屏幕帧失败", e)
+                } finally {
+                    image.close()
+                }
+            }
+        }
+    }
+    
+    /**
+     * Image转Bitmap
+     */
+    private fun imageToBitmap(image: Image): Bitmap {
+        val format = image.format
+        return when (format) {
+            android.graphics.ImageFormat.JPEG -> {
+                val buffer = image.planes[0].buffer
+                val bytes = ByteArray(buffer.remaining())
+                buffer.get(bytes)
+                android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            }
+            else -> {
+                // 对于其他格式（包括RGBA_8888等），使用通用处理方法
                 val planes = image.planes
                 val buffer = planes[0].buffer
                 val pixelStride = planes[0].pixelStride
                 val rowStride = planes[0].rowStride
                 val rowPadding = rowStride - pixelStride * screenWidth
                 
-                val bitmap = Bitmap.createBitmap(
-                    screenWidth + rowPadding / pixelStride,
-                    screenHeight, Bitmap.Config.ARGB_8888
-                )
-                bitmap.copyPixelsFromBuffer(buffer)
+                // 确保不会出现负数或零的尺寸
+                val actualWidth = if (screenWidth + rowPadding / pixelStride <= 0) screenWidth else screenWidth + rowPadding / pixelStride
+                val actualHeight = if (screenHeight <= 0) 1 else screenHeight
                 
-                val croppedBitmap = Bitmap.createBitmap(
-                    bitmap,
-                    0, 0,
-                    screenWidth,
-                    screenHeight
-                )
-                
-                // 发送到Windows端
-                val compressedData = compressBitmap(croppedBitmap)
-                sendFrameToWindows(compressedData)
-                
-                image.close()
+                try {
+                    val bitmap = Bitmap.createBitmap(
+                        actualWidth,
+                        actualHeight, Bitmap.Config.ARGB_8888
+                    )
+                    if (buffer.remaining() > 0) {
+                        bitmap.copyPixelsFromBuffer(buffer)
+                    }
+                    Bitmap.createBitmap(bitmap, 0, 0, screenWidth, screenHeight)
+                } catch (e: Exception) {
+                    Log.e(TAG, "创建位图失败", e)
+                    // 如果创建位图失败，返回一个空位图
+                    Bitmap.createBitmap(screenWidth, screenHeight, Bitmap.Config.ARGB_8888)
+                }
             }
-            
-        } catch (e: Exception) {
-            Log.e(TAG, "捕获屏幕帧失败", e)
         }
     }
     
@@ -184,7 +248,8 @@ class ScreenCaptureService : Service() {
      */
     private fun compressBitmap(bitmap: Bitmap): ByteArray {
         val outputStream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
+        // 根据网络状况调整压缩质量，以平衡清晰度和性能
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 70, outputStream)
         return outputStream.toByteArray()
     }
     
@@ -192,31 +257,38 @@ class ScreenCaptureService : Service() {
      * 发送帧到Windows端
      */
     private suspend fun sendFrameToWindows(data: ByteArray) {
-
         try {
-
-            // 获取网络通信实例并发送数据
-
-            // 这里简化处理，实际中需要确保networkCommunication已经被初始化
-
-            val networkComm = (application as? com.example.windowsandroidconnect.MyApplication)?.networkCommunication
-
-            if (networkComm != null && networkComm.isConnected()) {
-
-                networkComm.sendScreenFrame(data)
-
+            if (networkCommunication != null && networkCommunication!!.isConnected()) {
+                val frameHeader = mapOf(
+                    "type" to "screen_frame",
+                    "timestamp" to System.currentTimeMillis(),
+                    "width" to screenWidth,
+                    "height" to screenHeight,
+                    "size" to data.size
+                )
+                
+                // 先发送帧头信息
+                val headerMessage = org.json.JSONObject(frameHeader).toString()
+                networkCommunication?.sendMessage(org.json.JSONObject(headerMessage))
+                
+                // 再发送实际的帧数据
+                networkCommunication?.sendScreenFrame(data)
             } else {
-
                 Log.w(TAG, "网络未连接，无法发送屏幕帧")
-
             }
-
         } catch (e: Exception) {
-
             Log.e(TAG, "发送帧到Windows端失败", e)
-
         }
-
+    }
+    
+    /**
+     * MediaProjection回调
+     */
+    private val mediaProjectionCallback = object : MediaProjection.Callback() {
+        override fun onStop() {
+            Log.d(TAG, "MediaProjection已停止")
+            stopScreenCapture()
+        }
     }
     
     companion object {

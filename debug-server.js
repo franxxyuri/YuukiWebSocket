@@ -1,66 +1,47 @@
-console.log('Debug: Starting Windows-Android Connect Server...');
-console.log('Debug: ==================================================');
+import express from 'express';
+import http from 'http';
+import { WebSocketServer } from 'ws';
+import path from 'path';
+import { networkInterfaces, hostname } from 'os';
+import cors from 'cors';
+import dgram from 'dgram';
+import { fileURLToPath } from 'url';
 
-// Import modules
-console.log('Debug: Importing modules...');
-const NetworkCommunication = require('./network-communication.js');
-console.log('Debug: Modules imported successfully');
+// 获取当前目录路径
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// Create network communication instance
-console.log('Debug: Creating NetworkCommunication instance...');
-const networkCommunication = new NetworkCommunication();
-console.log('Debug: NetworkCommunication instance created');
+console.log('当前目录:', __dirname);
+console.log('尝试发送文件路径:', path.join(__dirname, 'screen-stream.html'));
 
-// Start server function
-async function startServer() {
-  try {
-    console.log('Debug: About to start server on port 8826...');
-    
-    // Start network communication server
-    console.log('Debug: Calling networkCommunication.startServer(8826)...');
-    const result = await networkCommunication.startServer(8826);
-    console.log('Debug: networkCommunication.startServer returned:', result);
-    
-    console.log('Debug: Starting heartbeat check...');
-    networkCommunication.startHeartbeatCheck();
-    console.log('Debug: Heartbeat check started');
-    
-    console.log('Debug: Server started successfully!');
-    console.log('Debug: Server listening on port: 8826');
-    console.log('Debug: Start time: ' + new Date().toLocaleString());
-    
-    // Keep the server running indefinitely
-    console.log('Debug: Setting up exit handlers...');
-    
-    // Handle exit signals
-    process.on('SIGINT', () => {
-      console.log('Debug: SIGINT received, stopping server...');
-      networkCommunication.destroy();
-      console.log('Debug: Server stopped');
-      process.exit(0);
+// 创建Express应用
+const app = express();
+const server = http.createServer(app);
+
+// 启用CORS
+app.use(cors());
+
+// 静态文件服务
+app.use(express.static('.'));
+
+// 路由
+app.get('/', (req, res) => {
+    const filePath = path.join(__dirname, 'screen-stream.html');
+    console.log('发送文件:', filePath);
+    res.sendFile(filePath, (err) => {
+        if (err) {
+            console.error('发送文件失败:', err);
+            res.status(500).send('服务器内部错误');
+        }
     });
-    
-    process.on('SIGTERM', () => {
-      console.log('Debug: SIGTERM received, stopping server...');
-      networkCommunication.destroy();
-      console.log('Debug: Server stopped');
-      process.exit(0);
-    });
-    
-    console.log('Debug: Server is now running and waiting for connections...');
-    
-  } catch (error) {
-    console.error('Debug: Server failed to start:', error);
-    console.error('Debug: Error stack:', error.stack);
-    process.exit(1);
-  }
-}
-
-// Start the server
-console.log('Debug: About to call startServer()');
-startServer().then(() => {
-  console.log('Debug: startServer() promise resolved');
-}).catch((error) => {
-  console.error('Debug: startServer() promise rejected:', error);
 });
-console.log('Debug: startServer() called');
+
+app.get('/test', (req, res) => {
+    res.send('<h1>测试页面</h1><p>如果能看到这段文字，说明服务器正常工作</p>');
+});
+
+// 启动服务器
+const PORT = process.env.PORT || 8828;
+server.listen(PORT, () => {
+    console.log(`调试服务器运行在: http://localhost:${PORT}`);
+});

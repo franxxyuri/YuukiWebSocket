@@ -7,25 +7,29 @@ import cors from 'cors';
 import dgram from 'dgram';
 import crypto from 'crypto';
 
-// 创建Express应用
-const app = express();
-const server = http.createServer(app);
-
-// 启用CORS
-app.use(cors());
-
-// 静态文件服务
-app.use(express.static('.'));
-
-// 创建WebSocket服务器
-const wss = new WebSocketServer({ server });
-
-// 存储连接的客户端
-const clients = new Map();
-let androidDevice = null; // 存储连接的Android设备
-
-// 设备发现端口
-const discoveryPort = 8090;
+// 导入配置文件
+import config from './config.mjs';
+
+// 创建Express应用
+const app = express();
+const server = http.createServer(app);
+
+// 启用CORS
+app.use(cors());
+
+// 静态文件服务
+app.use(express.static('.'));
+
+// 创建WebSocket服务器
+const wss = new WebSocketServer({ server });
+
+// 存储连接的客户端
+const clients = new Map();
+let androidDevice = null; // 存储连接的Android设备
+
+// 设备发现端口
+const discoveryPort = config.discovery.port;
+
 const discoveryServer = dgram.createSocket('udp4');
 
 // 设备发现广播
@@ -42,7 +46,9 @@ function broadcastDeviceDiscovery() {
     const buffer = Buffer.from(message);
 
     discoveryServer.send(buffer, 0, buffer.length, 8090, '255.255.255.255', (err) => {
+
         if (err) console.error('广播错误:', err);
+
     });
 }
 
@@ -407,18 +413,19 @@ function broadcastToAllClients(message, excludeClientId = null) {
     }
 }
 
-// 启动服务器
-const PORT = process.env.PORT || 8828;
-server.listen(PORT, () => {
-    const localIP = getLocalIP();
-    console.log(`服务器运行在: http://${localIP}:${PORT}`);
-    console.log(`服务器运行在: http://localhost:${PORT}`);
-    console.log('等待Android设备连接...');
-    
-    // 定期广播设备发现信息
-    setInterval(() => {
-        broadcastDeviceDiscovery();
-    }, 3000);
+// 启动服务器
+const PORT = config.server.port;
+const HOST = config.server.host;
+server.listen(PORT, HOST, () => {
+    const localIP = getLocalIP();
+    console.log(`服务器运行在: http://${localIP}:${PORT}`);
+    console.log(`服务器运行在: http://${HOST}:${PORT}`);
+    console.log('等待Android设备连接...');
+    
+    // 定期广播设备发现信息
+    setInterval(() => {
+        broadcastDeviceDiscovery();
+    }, 3000);
 });
 
 // 错误处理
