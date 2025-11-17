@@ -60,7 +60,10 @@ class DeviceDiscoveryService : Service() {
 
     
 
-    private val broadcastPort = 8090 // 设备发现UDP广播端口
+    // 设备发现UDP广播端口 (从配置读取)
+    private val broadcastPort: Int by lazy {
+        com.example.windowsandroidconnect.config.ClientConfig.getInstance(this@DeviceDiscoveryService).discoveryPort
+    }
 
     private val deviceTimeout = 30000L // 30秒超时
 

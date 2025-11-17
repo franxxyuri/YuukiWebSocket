@@ -27,23 +27,14 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
-
         android:name="com.example.windowsandroidconnect.MyApplication"
-
         android:allowBackup="true"
-
         android:dataExtractionRules="@xml/data_extraction_rules"
-
         android:fullBackupContent="@xml/backup_rules"
-
         android:icon="@mipmap/ic_launcher"
-
         android:label="@string/app_name"
-
         android:roundIcon="@mipmap/ic_launcher_round"
-
         android:supportsRtl="true"
-
         android:theme="@style/Theme.MyApplication">
         
         <activity
@@ -60,24 +51,42 @@
 
                 <action android:name="android.intent.action.MAIN" />
 
-
-
                 <category android:name="android.intent.category.LAUNCHER" />
 
             </intent-filter>
 
         </activity>
 
+        <activity
 
+            android:name="com.example.windowsandroidconnect.DeviceDiscoveryTestActivity"
 
-        <!-- 屏幕捕获权限请求Activity -->
+            android:exported="true"
+
+            android:label="设备发现测试"
+
+            android:theme="@style/Theme.MyApplication.NoActionBar">
+
+        </activity>
+
+        
 
         <activity
 
+            android:name="com.example.windowsandroidconnect.DebugTestActivity"
+
+            android:exported="true"
+
+            android:label="调试测试页面"
+
+            android:theme="@style/Theme.MyApplication.NoActionBar">
+
+        </activity>
+
+        <!-- 屏幕捕获权限请求Activity -->
+        <activity
             android:name="com.example.windowsandroidconnect.ScreenCaptureRequestActivity"
-
             android:exported="false"
-
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
         <!-- 屏幕捕获服务 -->
@@ -99,23 +108,14 @@
             android:exported="false" />
             
         <!-- 通知服务 -->
-
         <service
-
             android:name="com.example.windowsandroidconnect.service.NotificationService"
-
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
-
             android:enabled="true"
-
             android:exported="false">
-
             <intent-filter>
-
                 <action android:name="android.service.notification.NotificationListenerService" />
-
             </intent-filter>
-
         </service>
             
         <!-- 剪贴板同步服务 -->
@@ -124,18 +124,22 @@
             android:enabled="true"
             android:exported="false" />
 
-        <!-- 远程控制服务 -->
-        <service
-            android:name="com.example.windowsandroidconnect.service.RemoteControlService"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
-            android:enabled="true"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.accessibilityservice"
-                android:resource="@xml/accessibility_service_config" />
+        <activity
+            android:name=".ClientConfigActivity"
+            android:label="客户端配置管理"
+            android:exported="false" />
+            
+        <service
+            android:name="com.example.windowsandroidconnect.service.RemoteControlService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
         </service>
 
         <!-- 接收器 -->

@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Android客户端测试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            text-align: center;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            min-width: 120px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .device-list {
+            margin-top: 20px;
+        }
+        .device-item {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 5px 0;
+            background-color: #f8f9fa;
+        }
+        .log-panel {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 2px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .log-info {
+            color: #007bff;
+        }
+        .log-error {
+            color: #dc3545;
+        }
+        .log-success {
+            color: #28a745;
+        }
+        .log-warning {
+            color: #ffc107;
+        }
+        .form-group {
+            margin: 10px 0;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .form-group textarea {
+            height: 100px;
+            resize: vertical;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Android客户端测试页面</h1>
+        
+        <div id="connectionStatus" class="status disconnected">
+            未连接到服务器
+        </div>
+        
+        <div class="form-group">
+            <label for="serverUrl">服务器地址:</label>
+            <input type="text" id="serverUrl" value="ws://localhost:8828/ws" placeholder="输入服务器WebSocket地址">
+        </div>
+        
+        <div style="text-align: center; margin: 20px 0;">
+            <button id="connectBtn">连接服务器</button>
+            <button id="disconnectBtn" disabled>断开连接</button>
+        </div>
+        
+        <div id="deviceInfo">
+            <h2>设备信息</h2>
+            <div class="form-group">
+                <label for="deviceName">设备名称:</label>
+                <input type="text" id="deviceName" value="Android测试设备" placeholder="输入设备名称">
+            </div>
+            <div class="form-group">
+                <label for="deviceId">设备ID:</label>
+                <input type="text" id="deviceId" value="android-test-device" placeholder="输入设备ID">
+            </div>
+            <div style="text-align: center; margin: 10px 0;">
+                <button id="sendDeviceInfoBtn" disabled>发送设备信息</button>
+            </div>
+        </div>
+        
+        <div id="screenStreaming">
+            <h2>屏幕投屏</h2>
+            <div class="form-group">
+                <label for="screenFrameData">屏幕帧数据:</label>
+                <textarea id="screenFrameData" placeholder="输入屏幕帧数据(base64)">iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==</textarea>
+            </div>
+            <div style="text-align: center; margin: 10px 0;">
+                <button id="sendScreenFrameBtn" disabled>发送屏幕帧</button>
+                <button id="startStreamBtn" disabled>开始流式发送</button>
+                <button id="stopStreamBtn" disabled>停止流式发送</button>
+            </div>
+        </div>
+        
+        <div id="fileTransfer">
+            <h2>文件传输</h2>
+            <div class="form-group">
+                <label for="filePath">文件路径:</label>
+                <input type="text" id="filePath" value="/storage/emulated/0/test.txt" placeholder="输入文件路径">
+            </div>
+            <div class="form-group">
+                <label for="fileName">文件名:</label>
+                <input type="text" id="fileName" value="test.txt" placeholder="输入文件名">
+            </div>
+            <div class="form-group">
+                <label for="fileSize">文件大小:</label>
+                <input type="number" id="fileSize" value="1024" placeholder="输入文件大小(字节)">
+            </div>
+            <div style="text-align: center; margin: 10px 0;">
+                <button id="sendFileBtn" disabled>发送文件传输信息</button>
+            </div>
+        </div>
+        
+        <div id="controlCommands">
+            <h2>控制命令</h2>
+            <div class="form-group">
+                <label for="controlCommand">命令类型:</label>
+                <select id="controlCommand">
+                    <option value="start_streaming">开始投屏</option>
+                    <option value="stop_streaming">停止投屏</option>
+                    <option value="enable_control">启用控制</option>
+                    <option value="disable_control">禁用控制</option>
+                    <option value="click">点击事件</option>
+                    <option value="swipe">滑动事件</option>
+                    <option value="key_event">按键事件</option>
+                    <option value="text_input">文本输入</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="commandParams">命令参数(JSON):</label>
+                <textarea id="commandParams" placeholder="输入命令参数">{}</textarea>
+            </div>
+            <div style="text-align: center; margin: 10px 0;">
+                <button id="sendControlCommandBtn" disabled>发送控制命令</button>
+            </div>
+        </div>
+        
+        <div id="clipboardSync">
+            <h2>剪贴板同步</h2>
+            <div class="form-group">
+                <label for="clipboardData">剪贴板内容:</label>
+                <textarea id="clipboardData" placeholder="输入剪贴板内容">Android客户端测试剪贴板内容</textarea>
+            </div>
+            <div style="text-align: center; margin: 10px 0;">
+                <button id="sendClipboardBtn" disabled>发送剪贴板内容</button>
+            </div>
+        </div>
+        
+        <div id="notifications">
+            <h2>通知同步</h2>
+            <div class="form-group">
+                <label for="notificationTitle">标题:</label>
+                <input type="text" id="notificationTitle" value="测试通知" placeholder="输入通知标题">
+            </div>
+            <div class="form-group">
+                <label for="notificationText">内容:</label>
+                <input type="text" id="notificationText" value="这是一条测试通知" placeholder="输入通知内容">
+            </div>
+            <div class="form-group">
+                <label for="notificationPackage">应用包名:</label>
+                <input type="text" id="notificationPackage" value="com.example.test" placeholder="输入应用包名">
+            </div>
+            <div style="text-align: center; margin: 10px 0;">
+                <button id="sendNotificationBtn" disabled>发送通知</button>
+            </div>
+        </div>
+        
+        <div id="deviceDiscovery">
+            <h2>设备发现</h2>
+            <div style="text-align: center; margin: 10px 0;">
+                <button id="sendDiscoveryBtn" disabled>发送设备发现广播</button>
+            </div>
+        </div>
+        
+        <div id="logPanel" class="log-panel">
+            <h3>日志输出</h3>
+            <div id="logEntries"></div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let streamingInterval = null;
+        let logEntries = [];
+        
+        // DOM元素
+        const connectionStatus = document.getElementById('connectionStatus');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const sendDeviceInfoBtn = document.getElementById('sendDeviceInfoBtn');
+        const sendScreenFrameBtn = document.getElementById('sendScreenFrameBtn');
+        const startStreamBtn = document.getElementById('startStreamBtn');
+        const stopStreamBtn = document.getElementById('stopStreamBtn');
+        const sendFileBtn = document.getElementById('sendFileBtn');
+        const sendControlCommandBtn = document.getElementById('sendControlCommandBtn');
+        const sendClipboardBtn = document.getElementById('sendClipboardBtn');
+        const sendNotificationBtn = document.getElementById('sendNotificationBtn');
+        const sendDiscoveryBtn = document.getElementById('sendDiscoveryBtn');
+        const logEntriesDiv = document.getElementById('logEntries');
+        const serverUrlInput = document.getElementById('serverUrl');
+        const deviceNameInput = document.getElementById('deviceName');
+        const deviceIdInput = document.getElementById('deviceId');
+        const screenFrameDataInput = document.getElementById('screenFrameData');
+        const filePathInput = document.getElementById('filePath');
+        const fileNameInput = document.getElementById('fileName');
+        const fileSizeInput = document.getElementById('fileSize');
+        const controlCommandSelect = document.getElementById('controlCommand');
+        const commandParamsTextarea = document.getElementById('commandParams');
+        const clipboardDataInput = document.getElementById('clipboardData');
+        const notificationTitleInput = document.getElementById('notificationTitle');
+        const notificationTextInput = document.getElementById('notificationText');
+        const notificationPackageInput = document.getElementById('notificationPackage');
+        
+        // 日志函数
+        function log(message, level = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = {
+                timestamp,
+                message,
+                level
+            };
+            logEntries.push(logEntry);
+            
+            const logElement = document.createElement('div');
+            logElement.className = `log-entry log-${level}`;
+            logElement.textContent = `[${timestamp}] ${message}`;
+            logEntriesDiv.appendChild(logElement);
+            
+            // 滚动到底部
+            logEntriesDiv.scrollTop = logEntriesDiv.scrollHeight;
+            
+            // 限制日志数量
+            if (logEntries.length > 100) {
+                logEntries.shift();
+                logEntriesDiv.removeChild(logEntriesDiv.firstChild);
+            }
+            
+            console.log(`[${timestamp}] ${message}`);
+        }
+        
+        // 更新连接状态显示
+        function updateConnectionStatus(connected) {
+            if (connected) {
+                connectionStatus.textContent = '已连接到服务器';
+                connectionStatus.className = 'status connected';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                
+                // 启用所有功能按钮
+                sendDeviceInfoBtn.disabled = false;
+                sendScreenFrameBtn.disabled = false;
+                startStreamBtn.disabled = false;
+                stopStreamBtn.disabled = false;
+                sendFileBtn.disabled = false;
+                sendControlCommandBtn.disabled = false;
+                sendClipboardBtn.disabled = false;
+                sendNotificationBtn.disabled = false;
+                sendDiscoveryBtn.disabled = false;
+                
+                log('成功连接到服务器', 'success');
+            } else {
+                connectionStatus.textContent = '未连接到服务器';
+                connectionStatus.className = 'status disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                
+                // 禁用所有功能按钮
+                sendDeviceInfoBtn.disabled = true;
+                sendScreenFrameBtn.disabled = true;
+                startStreamBtn.disabled = true;
+                stopStreamBtn.disabled = true;
+                sendFileBtn.disabled = true;
+                sendControlCommandBtn.disabled = true;
+                sendClipboardBtn.disabled = true;
+                sendNotificationBtn.disabled = true;
+                sendDiscoveryBtn.disabled = true;
+                
+                log('已断开与服务器的连接', 'warning');
+            }
+        }
+        
+        // 连接服务器
+        connectBtn.addEventListener('click', () => {
+            const serverUrl = serverUrlInput.value;
+            if (!serverUrl) {
+                log('请输入服务器地址', 'error');
+                return;
+            }
+            
+            try {
+                // 处理URL格式
+                let wsUrl = serverUrl;
+                if (wsUrl.startsWith('http://')) {
+                    wsUrl = 'ws://' + wsUrl.substring(7);
+                } else if (wsUrl.startsWith('https://')) {
+                    wsUrl = 'wss://' + wsUrl.substring(8);
+                }
+                
+                socket = new WebSocket(wsUrl);
+                log(`正在连接到服务器: ${wsUrl}`, 'info');
+                
+                socket.onopen = function(event) {
+                    log('WebSocket连接已建立', 'success');
+                    updateConnectionStatus(true);
+                    
+                    // 自动发送Android设备信息
+                    sendDeviceInfo();
+                };
+                
+                socket.onclose = function(event) {
+                    log(`WebSocket连接已关闭: ${event.reason || '未知原因'}`, 'warning');
+                    updateConnectionStatus(false);
+                    if (streamingInterval) {
+                        clearInterval(streamingInterval);
+                        streamingInterval = null;
+                    }
+                };
+                
+                socket.onerror = function(error) {
+                    log(`WebSocket连接错误: ${error.message}`, 'error');
+                    updateConnectionStatus(false);
+                };
+                
+                socket.onmessage = function(event) {
+                    try {
+                        const message = JSON.parse(event.data);
+                        log(`收到服务器消息: ${message.type}`, 'info');
+                        
+                        // 根据消息类型处理
+                        switch (message.type) {
+                            case 'device_info':
+                                log(`收到设备信息请求: ${JSON.stringify(message.deviceInfo)}`, 'info');
+                                break;
+                            case 'file_transfer':
+                                log(`收到文件传输请求: ${message.action}`, 'info');
+                                break;
+                            case 'control_command':
+                                log(`收到控制命令: ${message.commandType}`, 'info');
+                                break;
+                            case 'get_discovered_devices_response':
+                                log(`收到设备列表: ${JSON.stringify(message.devices)}`, 'info');
+                                break;
+                            case 'start_device_discovery_response':
+                                log(`设备发现启动响应: ${message.success}`, 'success');
+                                break;
+                            case 'stop_device_discovery_response':
+                                log(`设备发现停止响应: ${message.success}`, 'success');
+                                break;
+                            default:
+                                log(`未知消息类型: ${message.type} - ${JSON.stringify(message).substring(0, 100)}`, 'warning');
+                                break;
+                        }
+                    } catch (error) {
+                        log(`处理消息时出错: ${error.message}`, 'error');
+                    }
+                };
+            } catch (error) {
+                log(`连接失败: ${error.message}`, 'error');
+                updateConnectionStatus(false);
+            }
+        });
+        
+        // 断开连接
+        disconnectBtn.addEventListener('click', () => {
+            if (socket) {
+                socket.close();
+                socket = null;
+                updateConnectionStatus(false);
+                
+                if (streamingInterval) {
+                    clearInterval(streamingInterval);
+                    streamingInterval = null;
+                }
+                
+                log('已断开连接', 'info');
+            }
+        });
+        
+        // 发送设备信息
+        function sendDeviceInfo() {
+            if (socket) {
+                const deviceInfo = {
+                    platform: 'android',
+                    deviceName: deviceNameInput.value,
+                    deviceId: deviceIdInput.value,
+                    model: 'Android Test Device',
+                    version: '1.0.0'
+                };
+                
+                socket.send(JSON.stringify({
+                    type: 'device_info',
+                    deviceInfo: deviceInfo
+                }));
+                
+                log(`已发送设备信息: ${JSON.stringify(deviceInfo)}`, 'success');
+            }
+        }
+        
+        sendDeviceInfoBtn.addEventListener('click', sendDeviceInfo);
+        
+        // 发送屏幕帧
+        sendScreenFrameBtn.addEventListener('click', () => {
+            if (socket) {
+                const screenFrame = {
+                    type: 'screen_frame',
+                    frameData: screenFrameDataInput.value,
+                    timestamp: Date.now(),
+                    width: 1080,
+                    height: 1920
+                };
+                
+                socket.send(JSON.stringify(screenFrame));
+                log(`已发送屏幕帧`, 'success');
+            }
+        });
+        
+        // 开始流式发送屏幕帧
+        startStreamBtn.addEventListener('click', () => {
+            if (socket && !streamingInterval) {
+                streamingInterval = setInterval(() => {
+                    const screenFrame = {
+                        type: 'screen_frame',
+                        frameData: screenFrameDataInput.value,
+                        timestamp: Date.now(),
+                        width: 1080,
+                        height: 1920
+                    };
+                    
+                    socket.send(JSON.stringify(screenFrame));
+                }, 1000); // 每秒发送一次
+                
+                log('开始流式发送屏幕帧', 'success');
+            }
+        });
+        
+        // 停止流式发送屏幕帧
+        stopStreamBtn.addEventListener('click', () => {
+            if (streamingInterval) {
+                clearInterval(streamingInterval);
+                streamingInterval = null;
+                log('停止流式发送屏幕帧', 'info');
+            }
+        });
+        
+        // 发送文件传输信息
+        sendFileBtn.addEventListener('click', () => {
+            if (socket) {
+                const fileTransfer = {
+                    type: 'file_transfer',
+                    action: 'send',
+                    filePath: filePathInput.value,
+                    fileName: fileNameInput.value,
+                    fileSize: parseInt(fileSizeInput.value)
+                };
+                
+                socket.send(JSON.stringify(fileTransfer));
+                log(`已发送文件传输信息: ${JSON.stringify(fileTransfer)}`, 'success');
+            }
+        });
+        
+        // 发送控制命令
+        sendControlCommandBtn.addEventListener('click', () => {
+            if (socket) {
+                try {
+                    const params = JSON.parse(commandParamsTextarea.value);
+                    const controlCommand = {
+                        type: 'control_command',
+                        commandType: controlCommandSelect.value,
+                        ...params
+                    };
+                    
+                    socket.send(JSON.stringify(controlCommand));
+                    log(`已发送控制命令: ${JSON.stringify(controlCommand)}`, 'success');
+                } catch (error) {
+                    log(`控制命令参数JSON格式错误: ${error.message}`, 'error');
+                }
+            }
+        });
+        
+        // 发送剪贴板内容
+        sendClipboardBtn.addEventListener('click', () => {
+            if (socket) {
+                const clipboard = {
+                    type: 'clipboard',
+                    action: 'sync',
+                    data: clipboardDataInput.value,
+                    timestamp: Date.now()
+                };
+                
+                socket.send(JSON.stringify(clipboard));
+                log(`已发送剪贴板内容: ${clipboardDataInput.value.substring(0, 50)}...`, 'success');
+            }
+        });
+        
+        // 发送通知
+        sendNotificationBtn.addEventListener('click', () => {
+            if (socket) {
+                const notification = {
+                    type: 'notification',
+                    action: 'new',
+                    title: notificationTitleInput.value,
+                    text: notificationTextInput.value,
+                    packageName: notificationPackageInput.value,
+                    timestamp: Date.now()
+                };
+                
+                socket.send(JSON.stringify(notification));
+                log(`已发送通知: ${notification.title}`, 'success');
+            }
+        });
+        
+        // 发送设备发现广播
+        sendDiscoveryBtn.addEventListener('click', () => {
+            if (socket) {
+                // 模拟UDP广播，但通过WebSocket发送发现信息
+                const deviceInfo = {
+                    type: 'device_info',
+                    deviceInfo: {
+                        platform: 'android',
+                        deviceName: deviceNameInput.value,
+                        deviceId: deviceIdInput.value,
+                        ip: '127.0.0.1',
+                        port: 8828
+                    }
+                };
+                
+                socket.send(JSON.stringify(deviceInfo));
+                log(`已发送设备发现信息`, 'success');
+            }
+        });
+        
+        // 初始化
+        updateConnectionStatus(false);
+    </script>
+</body>
+</html>

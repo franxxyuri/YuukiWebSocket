@@ -3,12 +3,12 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
 console.log('启动Vite开发服务器...');
-console.log('主页面: http://localhost:3000');
-console.log('测试页面: http://localhost:3000/test-ui.html');
-console.log('屏幕投屏页面: http://localhost:3000/screen-stream.html');
+console.log('主页面: http://localhost:8080');
+console.log('测试页面: http://localhost:8080/test-ui.html');
+console.log('屏幕投屏页面: http://localhost:8080/screen-stream.html');
 
 // 使用spawn启动vite命令
-const viteProcess = spawn('npx', ['vite', '--host', '0.0.0.0', '--port', '3000'], {
+const viteProcess = spawn('npx', ['vite', '--config', 'vite-config.js', '--host', '0.0.0.0', '--port', '8080'], {
   stdio: 'inherit',
   shell: true
 });
