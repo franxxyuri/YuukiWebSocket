@@ -150,6 +150,24 @@ class NetworkCommunication {
 
                         Log.e(TAG, "连接失败详情 - 响应: $response")
 
+                        // 提供详细的错误信息
+                        val errorMessage = when (t) {
+                            is java.net.UnknownHostException -> "无法解析主机名，请检查IP地址是否正确"
+                            is java.net.ConnectException -> "连接被拒绝，服务器可能未运行或端口未开放"
+                            is java.net.SocketTimeoutException -> "连接超时，请检查网络连接和防火墙设置"
+                            is java.net.UnknownServiceException -> {
+                                if (t.message?.contains("CLEARTEXT") == true) {
+                                    "明文通信被网络安全策略阻止，请检查网络安全配置"
+                                } else {
+                                    "未知服务错误: ${t.message}"
+                                }
+                            }
+                            is javax.net.ssl.SSLException -> "SSL连接错误: ${t.message}"
+                            else -> "连接失败: ${t.message ?: "未知错误"}"
+                        }
+
+                        Log.e(TAG, "详细错误信息: $errorMessage")
+
                         isConnected = false
 
                         this@NetworkCommunication.webSocket = null
@@ -256,6 +274,20 @@ class NetworkCommunication {
 
             Log.d(TAG, "准备构建设备信息")
 
+            val capabilitiesArray = org.json.JSONArray().apply {
+
+                put("file_transfer")
+
+                put("screen_mirror")
+
+                put("remote_control")
+
+                put("notification")
+
+                put("clipboard_sync")
+
+            }
+
             val deviceInfo = JSONObject().apply {
 
                 put("type", "device_info")
@@ -272,19 +304,7 @@ class NetworkCommunication {
 
                     put("ip", getLocalIpAddress())
 
-                    put("capabilities", listOf(
-
-                        "file_transfer",
-
-                        "screen_mirror",
-
-                        "remote_control",
-
-                        "notification",
-
-                        "clipboard_sync"
-
-                    ))
+                    put("capabilities", capabilitiesArray)
 
                 })
 
@@ -299,6 +319,46 @@ class NetworkCommunication {
         } catch (e: Exception) {
 
             Log.e(TAG, "发送设备信息失败", e)
+
+            // 发送简化的设备信息作为备选方案
+
+            try {
+
+                val fallbackDeviceInfo = JSONObject().apply {
+
+                    put("type", "device_info")
+
+                    put("deviceInfo", JSONObject().apply {
+
+                        put("deviceId", java.util.UUID.randomUUID().toString())
+
+                        put("deviceName", android.os.Build.MODEL)
+
+                        put("platform", "android")
+
+                        put("version", "1.0.0")
+
+                        put("ip", getLocalIpAddress())
+
+                        // 简化capabilities为字符串
+
+                        put("capabilities", "file_transfer,screen_mirror,remote_control,notification,clipboard_sync")
+
+                    })
+
+                }
+
+                
+
+                Log.d(TAG, "发送备选设备信息: $fallbackDeviceInfo")
+
+                sendMessage(fallbackDeviceInfo)
+
+            } catch (fallbackError: Exception) {
+
+                Log.e(TAG, "发送备选设备信息也失败", fallbackError)
+
+            }
 
         }
 

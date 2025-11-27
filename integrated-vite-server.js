@@ -1,15 +1,15 @@
-import express from 'express';
-import http from 'http';
-import { WebSocketServer } from 'ws';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { networkInterfaces, hostname } from 'os';
-import cors from 'cors';
-import dgram from 'dgram';
-import { createServer } from 'vite';
-import react from '@vitejs/plugin-react';
-
-// 导入配置文件
+import express from 'express';
+import http from 'http';
+import { WebSocketServer } from 'ws';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { networkInterfaces, hostname } from 'os';
+import cors from 'cors';
+import dgram from 'dgram';
+import { createServer } from 'vite';
+import react from '@vitejs/plugin-react';
+
+// 导入配置文件
 import config from './config.mjs';
 
 // 解决 ES 模块中 __dirname 不可用的问题
@@ -33,8 +33,8 @@ const wss = new WebSocketServer({ server });
 const clients = new Map();
 let androidDevice = null; // 存储连接的Android设备
 
-// 设备发现端口 (从配置文件读取)
-const discoveryPort = config.discovery.port;
+// 设备发现端口 (从配置读取)
+const discoveryPort = config.discovery.port;
 const discoveryServer = dgram.createSocket('udp4');
 
 // 设备发现广播
@@ -682,21 +682,21 @@ async function startViteServer() {
     const vite = await createServer({
         plugins: [react()],
         server: {
-            port: 8080,
-            host: '0.0.0.0',
+            port: config.vite.port,
+            host: config.vite.host,
             strictPort: false,
             proxy: {
-                // 将WebSocket请求代理到后端服务器
-                    '/ws': {
-                        target: config.proxy.target,
-                        ws: true,
-                        changeOrigin: true
-                    },
-                    // 代理API请求
-                    '/api': {
-                        target: config.proxy.apiTarget,
-                        changeOrigin: true
-                    }
+                // 将WebSocket请求代理到后端服务器
+                '/ws': {
+                    target: config.proxy.target,
+                    ws: true,
+                    changeOrigin: true
+                },
+                // 代理API请求
+                '/api': {
+                    target: config.proxy.apiTarget,
+                    changeOrigin: true
+                }
             }
         },
         root: '.',
@@ -730,7 +730,7 @@ async function startViteServer() {
     
     // 启动Vite服务器
     await vite.listen();
-    console.log('Vite开发服务器已在端口8080启动');
+    console.log(`Vite开发服务器已在端口${config.vite.port}启动`);
     
     return vite;
 }
@@ -742,13 +742,13 @@ async function startServer() {
         const vite = await startViteServer();
         console.log('Vite开发服务器已启动');
         
-        // 启动主服务器 (8828端口)
-        server.listen(8828, () => {
+        // 启动主服务器 (使用配置的端口)
+        server.listen(config.server.port, config.server.host, () => {
             const localIP = getLocalIP();
-            console.log(`Windows主服务运行在: http://${localIP}:8828`);
-            console.log(`Windows主服务运行在: http://localhost:8828`);
-            console.log(`Vite开发服务器运行在: http://${localIP}:8080`);
-            console.log(`Vite开发服务器运行在: http://localhost:8080`);
+            console.log(`Windows主服务运行在: http://${localIP}:${config.server.port}`);
+            console.log(`Windows主服务运行在: http://${config.server.host}:${config.server.port}`);
+            console.log(`Vite开发服务器运行在: http://${localIP}:${config.vite.port}`);
+            console.log(`Vite开发服务器运行在: http://${config.vite.host}:${config.vite.port}`);
             console.log('等待Android设备连接...');
         });
         
