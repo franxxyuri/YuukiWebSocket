@@ -8,7 +8,7 @@ const dgram = require('dgram');
 const fs = require('fs').promises;
 
 class WindowsAndroidConnectServer {
-  constructor(port = 8828) {
+  constructor(port = 8928) {
     this.port = port;
     this.app = express();
     this.server = http.createServer(this.app);
@@ -28,7 +28,7 @@ class WindowsAndroidConnectServer {
     this.discoveredDevices = new Map(); // 存储发现的设备
     
     // 设备发现服务
-    this.discoveryPort = 8081;
+    this.discoveryPort = 8190;
     this.discoveryServer = dgram.createSocket('udp4');
     this.discoveryInterval = null;
     
@@ -46,7 +46,7 @@ class WindowsAndroidConnectServer {
   setupRoutes() {
     // 主页路由
     this.app.get('/', (req, res) => {
-      res.sendFile(path.join(__dirname, '../../../../screen-stream.html'));
+      res.sendFile(path.join(__dirname, '../../../frontend/index.html'));
     });
     
     // API路由
