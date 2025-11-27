@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    id("kotlin-parcelize")
 }
 
 android {
@@ -45,27 +46,27 @@ android {
     }
 }
 
-dependencies {
-    // 显式声明kotlin-stdlib依赖
-    implementation(libs.kotlin.stdlib)
-    
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
-    implementation(libs.material)
-    implementation(libs.androidx.constraintlayout)
-    implementation(libs.androidx.lifecycle.livedata.ktx)
-    implementation(libs.androidx.lifecycle.viewmodel.ktx)
-    implementation(libs.androidx.navigation.fragment.ktx)
-    implementation(libs.androidx.navigation.ui.ktx)
-    
-    // 添加JSON支持
-    implementation("org.json:json:20231013")
-    // 添加协程支持
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-    // 添加OkHttp支持WebSocket
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
+dependencies {
+    // 显式声明kotlin-stdlib依赖
+    implementation(libs.kotlin.stdlib)
+    
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.material)
+    implementation(libs.androidx.constraintlayout)
+    implementation(libs.androidx.lifecycle.livedata.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.navigation.fragment.ktx)
+    implementation(libs.androidx.navigation.ui.ktx)
+    
+    // 添加JSON支持
+    implementation("org.json:json:20231013")
+    // 添加协程支持
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    // 添加OkHttp支持WebSocket
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
 }

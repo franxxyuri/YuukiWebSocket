@@ -401,6 +401,7 @@
         
         <div class="status-bar">
             <h2>连接状态</h2>
+            <p id="local-ip-display">正在获取本机IP地址...</p>
             <p id="connection-status">正在连接到服务器...</p>
         </div>
         
@@ -485,6 +486,7 @@
         
         // DOM元素
         const elements = {
+            localIpDisplay: document.getElementById('local-ip-display'),
             connectionStatus: document.getElementById('connection-status'),
             androidStatus: document.getElementById('android-status'),
             androidName: document.getElementById('android-name'),
@@ -509,20 +511,26 @@
             logArea: document.getElementById('log-area')
         };
         
-        // 连接到WebSocket服务器
-
         function connectToServer() {
 
             // 根据当前页面URL决定WebSocket连接地址
+            const isViteDevServer = window.location.port === '8781' || window.location.port === '9781';
+            const isMainServer = window.location.port === '8928' || window.location.port === '9928';
+            let wsUrl;
 
-            const isViteDevServer = window.location.port === '8781';
-
-            const wsUrl = isViteDevServer ? 'ws://localhost:8781/ws' : 'ws://localhost:8928';
-
-            
+            if (isViteDevServer) {
+                // Vite开发服务器
+                wsUrl = 'ws://localhost:' + window.location.port + '/ws';
+            } else if (isMainServer) {
+                // 主服务器
+                wsUrl = 'ws://' + window.location.hostname + ':' + window.location.port;
+            } else {
+                // 默认使用主服务器端口 - 修复：移除process.env引用，使用具体的端口
+                const defaultPort = window.location.hostname.includes('9928') ? '9928' : '8928';
+                wsUrl = 'ws://' + window.location.hostname + ':' + defaultPort;
+            }
 
             // 使用原生WebSocket连接
-
             ws = new WebSocket(wsUrl);
 
 
@@ -860,9 +868,52 @@
             });
         }
         
+        // 获取本地IP地址
+        async function getLocalIP() {
+            try {
+                // 使用WebRTC API获取本地IP地址
+                const pc = new RTCPeerConnection({
+                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                });
+                
+                pc.createDataChannel('');
+                pc.createOffer()
+                    .then(offer => pc.setLocalDescription(offer))
+                    .catch(() => {});
+                
+                pc.onicecandidate = (ice) => {
+                    if (ice && ice.candidate && ice.candidate.candidate) {
+                        const myIP = /([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/.exec(ice.candidate.candidate)[1];
+                        
+                        if (myIP && !myIP.startsWith('192.168.1') && !myIP.startsWith('10.') && !myIP.startsWith('172.')) {
+                            // 这是一个公网IP，跳过
+                        } else {
+                            // 这是一个局域网IP
+                            elements.localIpDisplay.textContent = `💻 本机IP地址: ${myIP} (端口 8928)`;
+                        }
+                    }
+                };
+                
+                // 等待一段时间收集IP地址
+                setTimeout(() => {
+                    pc.close();
+                    if (!elements.localIpDisplay.textContent.includes('192.168')) {
+                        // 如果WebRTC方法失败，使用默认IP
+                        elements.localIpDisplay.textContent = `💻 本机IP地址: 192.168.124.18 (端口 8928) - 请根据实际情况调整`;
+                    }
+                }, 1000);
+            } catch (error) {
+                // 如果WebRTC方法失败，显示用户指定的IP
+                elements.localIpDisplay.textContent = `💻 本机IP地址: 192.168.124.18 (端口 8928) - 请根据实际情况调整`;
+            }
+        }
+        
         // 初始化应用
         function init() {
             log('应用启动中...', 'info');
+            
+            // 获取本地IP地址
+            getLocalIP();
             
             // 设置事件监听器
             setupEventListeners();
@@ -872,7 +923,7 @@
             
             // 获取Windows设备信息
             elements.windowsName.textContent = navigator.platform;
-            elements.windowsIp.textContent = window.location.hostname;
+            elements.windowsIp.textContent = window.location.hostname || '192.168.124.18';
         }
         
         // 页面加载完成后初始化

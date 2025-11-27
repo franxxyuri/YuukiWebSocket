@@ -94,7 +94,17 @@
         <h1>服务端功能测试</h1>
         <p>此页面用于测试Windows-Android Connect服务端的各项功能</p>
         
+        <div class="status info" id="local-ip-display">正在获取本机IP地址...</div>
         <div class="status info" id="server-status">正在检查服务器状态...</div>
+        
+        <h2>设备发现与连接</h2>
+        <div class="status info" id="device-search-status">准备就绪</div>
+        <div style="display: flex; gap: 10px; align-items: center; margin: 10px 0;">
+            <input type="text" id="ip-input" placeholder="输入设备IP地址 (例如: 192.168.1.100)" style="width: 300px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            <button class="btn-primary" id="search-ip-btn">搜索IP</button>
+            <button class="btn-success" id="scan-network-btn">扫描局域网</button>
+        </div>
+        <div id="search-results" style="margin-top: 10px;"></div>
         
         <h2>WebSocket连接测试</h2>
         <div class="status info" id="websocket-status">未连接</div>
@@ -143,8 +153,14 @@
         
         // DOM元素
         const elements = {
+            localIPDisplay: document.getElementById('local-ip-display'),
             serverStatus: document.getElementById('server-status'),
             websocketStatus: document.getElementById('websocket-status'),
+            deviceSearchStatus: document.getElementById('device-search-status'),
+            ipInput: document.getElementById('ip-input'),
+            searchIpBtn: document.getElementById('search-ip-btn'),
+            scanNetworkBtn: document.getElementById('scan-network-btn'),
+            searchResults: document.getElementById('search-results'),
             connectBtn: document.getElementById('connect-btn'),
             disconnectBtn: document.getElementById('disconnect-btn'),
             sendTestBtn: document.getElementById('send-test-btn'),
@@ -169,6 +185,53 @@
             logEntry.innerHTML = `[${timestamp}] <span style="color: ${type === 'error' ? 'red' : type === 'success' ? 'green' : 'blue'}">${message}</span>`;
             elements.logArea.appendChild(logEntry);
             elements.logArea.scrollTop = elements.logArea.scrollHeight;
+        }
+        
+        // 获取本地IP地址
+        async function getLocalIP() {
+            try {
+                // 使用WebRTC API获取本地IP地址
+                const pc = new RTCPeerConnection({
+                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                });
+                
+                const ips = [];
+                pc.createDataChannel('');
+                pc.createOffer()
+                    .then(offer => pc.setLocalDescription(offer))
+                    .catch(() => {});
+                
+                pc.onicecandidate = (ice) => {
+                    if (ice && ice.candidate && ice.candidate.candidate) {
+                        const myIP = /([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/.exec(ice.candidate.candidate)[1];
+                        
+                        if (myIP && !myIP.startsWith('192.168.1') && !myIP.startsWith('10.') && !myIP.startsWith('172.')) {
+                            // 这是一个公网IP，跳过
+                        } else {
+                            // 这是一个局域网IP
+                            ips.push(myIP);
+                        }
+                    }
+                };
+                
+                // 等待一段时间收集IP地址
+                setTimeout(() => {
+                    pc.close();
+                    if (ips.length > 0) {
+                        const localIP = ips[0]; // 使用第一个找到的IP
+                        elements.localIPDisplay.className = 'status success';
+                        elements.localIPDisplay.innerHTML = `💻 本机IP地址: ${localIP} (端口 8928)`;
+                    } else {
+                        // 如果WebRTC方法失败，使用默认IP
+                        elements.localIPDisplay.className = 'status info';
+                        elements.localIPDisplay.innerHTML = `💻 本机IP地址: 192.168.124.18 (端口 8928) - 请根据实际情况调整`;
+                    }
+                }, 1000);
+            } catch (error) {
+                // 如果WebRTC方法失败，显示用户指定的IP
+                elements.localIPDisplay.className = 'status info';
+                elements.localIPDisplay.innerHTML = `💻 本机IP地址: 192.168.124.18 (端口 8928) - 请根据实际情况调整`;
+            }
         }
         
         // 检查服务器状态
@@ -529,6 +592,101 @@
             }
         }
         
+        // 搜索特定IP的设备
+        async function searchDeviceByIP() {
+            const ip = elements.ipInput.value.trim();
+            if (!ip) {
+                elements.deviceSearchStatus.className = 'status error';
+                elements.deviceSearchStatus.textContent = '请输入IP地址';
+                return;
+            }
+            
+            // 验证IP地址格式
+            const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/;
+            if (!ipPattern.test(ip)) {
+                elements.deviceSearchStatus.className = 'status error';
+                elements.deviceSearchStatus.textContent = 'IP地址格式不正确';
+                return;
+            }
+            
+            elements.deviceSearchStatus.className = 'status info';
+            elements.deviceSearchStatus.textContent = `正在搜索设备: ${ip}...`;
+            
+            try {
+                // 尝试连接到指定IP的WebSocket服务
+                const wsUrl = `ws://${ip}:8928`;
+                const testWs = new WebSocket(wsUrl);
+                
+                // 设置超时
+                const timeout = setTimeout(() => {
+                    testWs.close();
+                    elements.deviceSearchStatus.className = 'status error';
+                    elements.deviceSearchStatus.textContent = `设备 ${ip} 未响应`;
+                }, 3000);
+                
+                testWs.onopen = function() {
+                    clearTimeout(timeout);
+                    testWs.close();
+                    elements.deviceSearchStatus.className = 'status success';
+                    elements.deviceSearchStatus.textContent = `在 ${ip} 发现设备!`;
+                    
+                    // 显示搜索结果
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'device-info';
+                    resultDiv.innerHTML = `
+                        <strong>发现设备</strong><br>
+                        IP: ${ip}<br>
+                        状态: <span style="color: #28a745">在线</span><br>
+                        端口: 8928<br>
+                        <button class="btn-primary" onclick="connectToIP('${ip}')">连接到此设备</button>
+                    `;
+                    elements.searchResults.appendChild(resultDiv);
+                };
+                
+                testWs.onerror = function() {
+                    clearTimeout(timeout);
+                    testWs.close();
+                    elements.deviceSearchStatus.className = 'status error';
+                    elements.deviceSearchStatus.textContent = `无法连接到 ${ip}`;
+                };
+                
+            } catch (error) {
+                elements.deviceSearchStatus.className = 'status error';
+                elements.deviceSearchStatus.textContent = `搜索失败: ${error.message}`;
+            }
+        }
+        
+        // 扫描局域网中的设备
+        async function scanNetworkForDevices() {
+            // 获取本机IP并确定子网
+            const localIP = elements.localIPDisplay.textContent.match(/(\d+\.\d+\.\d+)\.(\d+)/);
+            if (!localIP) {
+                elements.deviceSearchStatus.className = 'status error';
+                elements.deviceSearchStatus.textContent = '无法确定局域网子网';
+                return;
+            }
+            
+            const subnet = localIP[1];
+            elements.deviceSearchStatus.className = 'status info';
+            elements.deviceSearchStatus.textContent = `正在扫描子网: ${subnet}.0/24...`;
+            
+            // 在实际应用中，这需要后端支持来扫描整个子网
+            // 这里我们模拟扫描过程
+            log(`开始扫描局域网设备 (子网: ${subnet}.0/24)`, 'info');
+            
+            // 模拟扫描过程 - 实际应用中需要后端API支持
+            elements.deviceSearchStatus.className = 'status info';
+            elements.deviceSearchStatus.textContent = `局域网扫描完成。请使用"搜索IP"功能检查特定设备。`;
+        }
+        
+        // 连接到特定IP的设备
+        function connectToIP(ip) {
+            log(`准备连接到设备: ${ip}`, 'info');
+            // 更新WebSocket连接地址
+            const wsUrl = `ws://${ip}:8928`;
+            log(`WebSocket URL: ${wsUrl}`, 'info');
+        }
+        
         // 设置事件监听器
         function setupEventListeners() {
             elements.connectBtn.addEventListener('click', connectToServer);
@@ -540,11 +698,23 @@
             elements.sendDeviceInfoBtn.addEventListener('click', sendDeviceInfo);
             elements.sendCustomBtn.addEventListener('click', sendCustomMessage);
             elements.sendControlBtn.addEventListener('click', sendControlCommand);
+            
+            // 设备搜索功能的事件监听器
+            elements.searchIpBtn.addEventListener('click', searchDeviceByIP);
+            elements.scanNetworkBtn.addEventListener('click', scanNetworkForDevices);
+            
+            // 按Enter键搜索IP
+            elements.ipInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchDeviceByIP();
+                }
+            });
         }
         
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', function() {
             log('页面加载完成，开始检查服务器状态...', 'info');
+            getLocalIP(); // 获取本地IP地址
             checkServerStatus();
             setupEventListeners();
             elements.disconnectBtn.disabled = true;

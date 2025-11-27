@@ -18,8 +18,8 @@ const server = http.createServer(app);
 app.use(cors());
 
 // 静态文件服务
-app.use(express.static('.'));
-app.use('/frontend', express.static('../frontend'));
+app.use(express.static('../../'));
+app.use('/frontend', express.static('../../frontend'));
 
 // 创建WebSocket服务器
 const wss = new WebSocketServer({ server });
@@ -111,7 +111,7 @@ function getLocalIP() {
 
 // 路由
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend', 'index.html'));
+    res.sendFile(path.join(__dirname, '../../frontend/index.html'));
 });
 
 app.get('/api/devices', (req, res) => {

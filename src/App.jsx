@@ -15,9 +15,19 @@ function App() {
 
       setConnectionStatus('正在连接...')
 
-      // 使用 Vite 代理路径，将通过 ws://localhost:8080/ws 代理到 ws://localhost:8828
-
-      await websocketService.connect('ws://localhost:8080/ws')
+      // 根据当前访问端口确定WebSocket服务器端口
+      // 如果在Vite开发服务器端口(8781)访问，则WebSocket连接到相同端口
+      // 否则连接到默认主服务器端口
+      const currentPort = window.location.port || '80';
+      let wsPort = '8928'; // 默认主服务器端口
+      if (currentPort === '8781') {
+        wsPort = '8781'; // 开发环境使用Vite代理端口
+      } else if (currentPort !== '') {
+        wsPort = currentPort; // 使用当前端口
+      }
+      
+      const wsUrl = `ws://${window.location.hostname}:${wsPort}/ws`;
+      await websocketService.connect(wsUrl);
 
       setIsConnected(true)
 
@@ -224,7 +234,7 @@ function App() {
 
               <h3>服务端状态</h3>
 
-              <p>端口: 8828</p>
+              <p>端口: {window.location.port || '80'}</p>
 
               <p>状态: {connectionStatus}</p>
 

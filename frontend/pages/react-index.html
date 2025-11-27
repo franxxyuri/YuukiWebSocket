@@ -4,9 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Windows-Android Connect</title>
+    <script type="module">
+      // 添加错误处理，确保页面不会完全空白
+      window.addEventListener('error', (e) => {
+        console.error('页面加载错误:', e.error);
+        document.body.innerHTML = '<div style="padding: 20px; font-family: Arial, sans-serif; color: #666; text-align: center;"><h2>页面加载失败</h2><p>请检查控制台获取详细信息</p><p style="color: red;">' + e.error + '</p></div>';
+      });
+    </script>
 </head>
 <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <script type="module" src="/frontend/components/react-main.jsx"></script>
 </body>
 </html>

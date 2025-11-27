@@ -1,4 +1,5 @@
 const net = require('net');
+const config = require('../config/config.cjs');
 
 console.log('创建模拟Android设备客户端...');
 
@@ -11,12 +12,12 @@ const deviceInfo = {
   deviceName: '模拟Android设备',
   platform: 'Android',
   ip: '127.0.0.1',
-  port: 8829, // NetworkCommunication服务器端口
+  port: config.networkCommunication.port, // NetworkCommunication服务器端口
   version: '1.0.0',
   capabilities: ['file_transfer', 'screen_mirror', 'remote_control', 'notification', 'clipboard']
 };
 
-client.connect(8829, '127.0.0.1', function() {
+client.connect(config.networkCommunication.port, '127.0.0.1', function() {
     console.log('连接到服务器成功');
     
     // 发送设备信息进行认证

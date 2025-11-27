@@ -1,4 +1,5 @@
 const NetworkCommunication = require('./network-communication.js');
+const config = require('../config/config.cjs');
 
 console.log('启动 Network Communication 服务...');
 
@@ -9,7 +10,7 @@ const networkComm = new NetworkCommunication();
 async function startServer() {
   try {
     console.log('正在启动服务器...');
-    await networkComm.startServer(8826);
+    await networkComm.startServer(config.networkCommunication.port);
     
     console.log('服务器已启动');
     
@@ -30,7 +31,7 @@ async function startServer() {
     networkComm.startHeartbeatCheck();
     
     console.log('Network Communication 服务启动成功！');
-    console.log('监听端口: 8826');
+    console.log(`监听端口: ${config.networkCommunication.port}`);
     
   } catch (error) {
     console.error('服务器启动失败:', error);

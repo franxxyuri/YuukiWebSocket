@@ -23,9 +23,42 @@ const server = http.createServer(app);
 // 启用CORS
 app.use(cors());
 
-// 静态文件服务
-app.use(express.static('.'));
-app.use('/frontend', express.static('../frontend'));
+// 静态文件服务 - 设置正确的路径
+app.use(express.static(path.join(__dirname, '../../frontend')));
+app.use('/pages', express.static(path.join(__dirname, '../../frontend/pages')));
+app.use('/components', express.static(path.join(__dirname, '../../frontend/components')));
+app.use('/styles', express.static(path.join(__dirname, '../../frontend/styles')));
+app.use('/utils', express.static(path.join(__dirname, '../../frontend/utils')));
+app.use('/tests', express.static(path.join(__dirname, '../../frontend/tests')));
+
+// 确保根路径指向正确的index.html文件
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, '../../frontend/index.html'));
+});
+
+// 添加其他页面路由以处理前端路由
+// 注意：由于path-to-regexp版本问题，暂时禁用通配符路由
+// app.all('/pages/*', (req, res) => {
+//     const requestedPage = req.path.substring(7); // 移除 '/pages/' 前缀
+//     const filePath = path.join(__dirname, `../../frontend/pages/${requestedPage}`);
+//     res.sendFile(filePath, (err) => {
+//         if (err) {
+//             // 如果文件不存在，返回index.html用于前端路由处理
+//             res.sendFile(path.join(__dirname, '../../frontend/index.html'));
+//         }
+//     });
+// });
+// 
+// app.all('/tests/*', (req, res) => {
+//     const requestedPage = req.path.substring(7); // 移除 '/tests/' 前缀
+//     const filePath = path.join(__dirname, `../../frontend/tests/${requestedPage}`);
+//     res.sendFile(filePath, (err) => {
+//         if (err) {
+//             // 如果文件不存在，返回index.html用于前端路由处理
+//             res.sendFile(path.join(__dirname, '../../frontend/index.html'));
+//         }
+//     });
+// });
 
 // 创建WebSocket服务器 (8928端口)
 const wss = new WebSocketServer({ server });
@@ -109,7 +142,7 @@ function getLocalIP() {
 
 // 路由
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend', 'index.html'));
+    res.sendFile(path.join(__dirname, '../../frontend/index.html'));
 });
 
 app.get('/api/devices', (req, res) => {
@@ -697,31 +730,42 @@ async function startViteServer() {
                 '/api': {
                     target: config.proxy.apiTarget,
                     changeOrigin: true
+                },
+                // 代理其他可能的API端点
+                '/device': {
+                    target: config.proxy.apiTarget,
+                    changeOrigin: true
                 }
             }
         },
-        root: '../frontend',
-        publicDir: '../frontend/public',
+        root: '../../frontend',
+        publicDir: '../../frontend/public',
         build: {
-            outDir: '../frontend/dist',
+            outDir: '../../frontend/dist',
             rollupOptions: {
                 input: {
-                    main: path.resolve(__dirname, '../frontend/index.html'),
-                    test: path.resolve(__dirname, '../frontend/tests/test-ui.html'),
-                    screen: path.resolve(__dirname, '../frontend/pages/screen-stream.html')
+                    main: path.resolve(__dirname, '../../frontend/index.html'),
+                    screen: path.resolve(__dirname, '../../frontend/pages/screen-stream.html'),
+                    'react-index': path.resolve(__dirname, '../../frontend/pages/react-index.html'),
+                    'app-index': path.resolve(__dirname, '../../frontend/pages/app-index.html'),
+                    'device-manager': path.resolve(__dirname, '../../frontend/pages/device-manager.html'),
+                    'test-ui': path.resolve(__dirname, '../../frontend/tests/test-ui.html'),
+                    'test-connection': path.resolve(__dirname, '../../frontend/tests/test-connection.html'),
+                    'test-server-functions': path.resolve(__dirname, '../../frontend/tests/test-server-functions.html'),
+                    'test-android-client': path.resolve(__dirname, '../../frontend/tests/test-android-client.html')
                 }
             }
         },
         resolve: {
             alias: {
-                '@': path.resolve(__dirname, '../frontend/src'),
-                '@components': path.resolve(__dirname, '../frontend/components'),
-                '@pages': path.resolve(__dirname, '../frontend/pages'),
-                '@utils': path.resolve(__dirname, '../frontend/utils'),
-                '@hooks': path.resolve(__dirname, '../frontend/hooks'),
-                '@services': path.resolve(__dirname, '../frontend/services'),
-                '@store': path.resolve(__dirname, '../frontend/store'),
-                '@types': path.resolve(__dirname, '../frontend/types')
+                '@': path.resolve(__dirname, '../../frontend/src'),
+                '@components': path.resolve(__dirname, '../../frontend/components'),
+                '@pages': path.resolve(__dirname, '../../frontend/pages'),
+                '@utils': path.resolve(__dirname, '../../frontend/utils'),
+                '@hooks': path.resolve(__dirname, '../../frontend/hooks'),
+                '@services': path.resolve(__dirname, '../../frontend/services'),
+                '@store': path.resolve(__dirname, '../../frontend/store'),
+                '@types': path.resolve(__dirname, '../../frontend/types')
             }
         }
     });

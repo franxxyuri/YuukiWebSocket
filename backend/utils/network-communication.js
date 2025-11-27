@@ -1,6 +1,7 @@
 const net = require('net');
 const crypto = require('crypto');
 const EventEmitter = require('events');
+const config = require('../config/config.cjs');
 
 class NetworkCommunication extends EventEmitter {
   constructor() {
@@ -8,7 +9,7 @@ class NetworkCommunication extends EventEmitter {
     this.connections = new Map();
     this.server = null;
     this.isServerRunning = false;
-    this.port = 8826;
+    this.port = config.networkCommunication.port;
     
     // Security key (in actual application should read from config file)
     this.secretKey = crypto.randomBytes(32);
