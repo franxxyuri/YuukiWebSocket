@@ -7,8 +7,10 @@ import cors from 'cors';
 import dgram from 'dgram';
 import { promises as fs } from 'fs';
 
+import config from '../config/config.mjs';
+
 class WebSocketServer {
-  constructor(port = 8928) {
+  constructor(port = config.server.port) {
     this.port = port;
     this.app = express();
     this.server = http.createServer(this.app);
@@ -17,8 +19,8 @@ class WebSocketServer {
     this.app.use(cors());
     
     // 静态文件服务
-app.use(express.static('.'));
-app.use('/frontend', express.static('../frontend'));
+    this.app.use(express.static('../../'));
+    this.app.use('/frontend', express.static('../../frontend'));
     
     // 创建WebSocket服务器
     this.wss = new WSServer({ server: this.server });
@@ -29,7 +31,7 @@ app.use('/frontend', express.static('../frontend'));
     this.discoveredDevices = new Map(); // 存储发现的设备
     
     // 设备发现服务
-    this.discoveryPort = 8190;
+    this.discoveryPort = config.discovery.port;
     this.discoveryServer = dgram.createSocket('udp4');
     this.discoveryInterval = null;
     
@@ -47,7 +49,7 @@ app.use('/frontend', express.static('../frontend'));
   setupRoutes() {
     // 路由
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend', 'index.html'));
+    res.sendFile(path.join(__dirname, '../../frontend/index.html'));
 });
     
     // API路由

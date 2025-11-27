@@ -45,13 +45,17 @@ goto main_menu
 :dev_mode
 echo.
 echo 正在启动开发模式...
-call scripts\start-unified.bat dev
+call quick-start-dev.bat
 goto main_menu
 
 :test_mode
 echo.
 echo 正在启动测试模式...
-call scripts\start-unified.bat test
+start "Test Server" /min cmd /c "cd /d "%~dp0" && node backend/scripts/integrated-vite-server.js"
+call scripts\open-test-pages.bat 2>nul
+if errorlevel 1 (
+    echo 警告: 无法打开测试页面，可能未配置
+)
 goto main_menu
 
 :prod_mode
@@ -63,7 +67,7 @@ goto main_menu
 :config_mode
 echo.
 echo 正在启动配置模式...
-call scripts\start-unified.bat config
+call quick-start-dev.bat
 goto main_menu
 
 :check_env

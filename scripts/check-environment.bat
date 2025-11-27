@@ -1,109 +1,109 @@
 @echo off
-title 环境检查
+title Environment Check
 
 echo.
-echo ====================================
-echo   环境检查
-echo ====================================
+echo ========================================
+echo   Environment Check
+echo ========================================
 echo.
 
-:: 检查Node.js
-echo 检查 Node.js...
+REM Check Node.js
+echo Checking Node.js...
 node --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo ❌ 错误: 未找到Node.js
-    echo 请从 https://nodejs.org/ 下载并安装Node.js
+    echo ERROR: Node.js not found
+    echo Please download and install Node.js from https://nodejs.org/
     exit /b 1
 )
 for /f "tokens=*" %%i in ('node --version') do set NODE_VERSION=%%i
-echo ✅ Node.js 版本: %NODE_VERSION%
+echo SUCCESS: Node.js version: %NODE_VERSION%
 
-:: 检查npm
+REM Check npm
 echo.
-echo 检查 npm...
+echo Checking npm...
 npm --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo ❌ 错误: npm不可用
+    echo ERROR: npm not available
     exit /b 1
 )
 for /f "tokens=*" %%i in ('npm --version') do set NPM_VERSION=%%i
-echo ✅ npm 版本: %NPM_VERSION%
+echo SUCCESS: npm version: %NPM_VERSION%
 
-:: 检查项目依赖
+REM Check project dependencies
 echo.
-echo 检查项目依赖...
+echo Checking project dependencies...
 if not exist "%~dp0..\node_modules" (
-    echo 📦 首次运行，正在安装依赖...
+    echo INFO: First run, installing dependencies...
     cd /d "%~dp0.."
     npm install
     if %errorlevel% neq 0 (
-        echo ❌ 依赖安装失败
+        echo ERROR: Dependency installation failed
         exit /b 1
     )
-    echo ✅ 依赖安装完成
+    echo SUCCESS: Dependency installation completed
 ) else (
-    echo 检查依赖完整性...
+    echo Checking dependency integrity...
     cd /d "%~dp0.."
     npm list --depth=0 >nul 2>&1
     if %errorlevel% neq 0 (
-        echo 📦 依赖不完整，正在重新安装...
+        echo INFO: Dependencies incomplete, reinstalling...
         npm install
         if %errorlevel% neq 0 (
-            echo ❌ 依赖安装失败
+            echo ERROR: Dependency installation failed
             exit /b 1
         )
-        echo ✅ 依赖重新安装完成
+        echo SUCCESS: Dependency reinstallation completed
     ) else (
-        echo ✅ 依赖检查通过
+        echo SUCCESS: Dependency check passed
     )
 )
 
-:: 检查端口占用
+REM Check port usage
 echo.
-echo 检查端口占用...
+echo Checking port usage...
 netstat -an | findstr ":8928" >nul 2>&1
 if %errorlevel% equ 0 (
-    echo ⚠️  警告: 端口8928已被占用
-    echo 请关闭占用该端口的程序或修改配置
+    echo WARNING: Port 8928 is already in use
+    echo Please close the program using this port or modify the configuration
 ) else (
-    echo ✅ 端口8928可用
+    echo SUCCESS: Port 8928 is available
 )
 
 netstat -an | findstr ":8781" >nul 2>&1
 if %errorlevel% equ 0 (
-    echo ⚠️  警告: 端口8781已被占用
-    echo 请关闭占用该端口的程序或修改配置
+    echo WARNING: Port 8781 is already in use
+    echo Please close the program using this port or modify the configuration
 ) else (
-    echo ✅ 端口8781可用
+    echo SUCCESS: Port 8781 is available
 )
 
 netstat -an | findstr ":8190" >nul 2>&1
 if %errorlevel% equ 0 (
-    echo ⚠️  警告: 端口8190已被占用
-    echo 请关闭占用该端口的程序或修改配置
+    echo WARNING: Port 8190 is already in use
+    echo Please close the program using this port or modify the configuration
 ) else (
-    echo ✅ 端口8190可用
+    echo SUCCESS: Port 8190 is available
 )
 
-:: 检查关键文件
+REM Check critical files
 echo.
-echo 检查关键文件...
+echo Checking critical files...
 if not exist "%~dp0..\backend\scripts\integrated-vite-server.js" (
-    echo ❌ 错误: 找不到 integrated-vite-server.js
+    echo ERROR: integrated-vite-server.js not found
     exit /b 1
 )
-echo ✅ 集成服务器脚本存在
+echo SUCCESS: Integrated server script exists
 
 if not exist "%~dp0..\backend\config\config.mjs" (
-    echo ❌ 错误: 找不到配置文件 config.mjs
+    echo ERROR: config.mjs not found
     exit /b 1
 )
-echo ✅ 配置文件存在
+echo SUCCESS: Configuration file exists
 
 echo.
-echo ====================================
-echo   环境检查完成
-echo ====================================
+echo ========================================
+echo   Environment check completed
+echo ========================================
 echo.
 
 exit /b 0
