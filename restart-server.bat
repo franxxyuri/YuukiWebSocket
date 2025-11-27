@@ -25,11 +25,11 @@ start "Vite Server" /min node start-vite-server.js
 echo.
 echo Server restart completed!
 echo.
-echo Main server will run on port 8828
+echo Main server will run on port 8928
 
-echo Vite development server will run on port 8080
+echo Vite development server will run on port 8781
 echo.
-echo Device discovery service will run on port 8090
+echo Device discovery service will run on port 8190
 echo.
 echo Press any key to exit...
 pause >nul

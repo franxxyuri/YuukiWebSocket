@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Windows-Android Connect 测试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            text-align: center;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .device-list {
+            margin-top: 20px;
+        }
+        .device-item {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 5px 0;
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Windows-Android Connect</h1>
+        
+        <div id="connectionStatus" class="status disconnected">
+            未连接到服务器
+        </div>
+        
+        <div style="text-align: center; margin: 20px 0;">
+            <button id="connectBtn">连接服务器</button>
+            <button id="disconnectBtn" disabled>断开连接</button>
+        </div>
+        
+        <div id="deviceDiscovery">
+            <h2>设备发现</h2>
+            <div style="text-align: center; margin: 10px 0;">
+                <button id="startDiscoveryBtn" disabled>开始设备发现</button>
+                <button id="stopDiscoveryBtn" disabled>停止设备发现</button>
+                <button id="refreshDevicesBtn" disabled>刷新设备列表</button>
+            </div>
+            <div id="deviceList" class="device-list">
+                <p>暂无设备</p>
+            </div>
+        </div>
+        
+        <div id="fileTransfer">
+            <h2>文件传输</h2>
+            <div style="text-align: center; margin: 10px 0;">
+                <button id="sendFileBtn" disabled>发送文件</button>
+            </div>
+        </div>
+        
+        <div id="screenStreaming">
+            <h2>屏幕投屏</h2>
+            <div style="text-align: center; margin: 10px 0;">
+                <button id="startStreamingBtn" disabled>开始投屏</button>
+                <button id="stopStreamingBtn" disabled>停止投屏</button>
+            </div>
+        </div>
+        
+        <div id="remoteControl">
+            <h2>远程控制</h2>
+            <div style="text-align: center; margin: 10px 0;">
+                <button id="enableControlBtn" disabled>启用远程控制</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let discoveredDevices = [];
+        
+        // DOM元素
+        const connectionStatus = document.getElementById('connectionStatus');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const startDiscoveryBtn = document.getElementById('startDiscoveryBtn');
+        const stopDiscoveryBtn = document.getElementById('stopDiscoveryBtn');
+        const refreshDevicesBtn = document.getElementById('refreshDevicesBtn');
+        const sendFileBtn = document.getElementById('sendFileBtn');
+        const startStreamingBtn = document.getElementById('startStreamingBtn');
+        const stopStreamingBtn = document.getElementById('stopStreamingBtn');
+        const enableControlBtn = document.getElementById('enableControlBtn');
+        const deviceList = document.getElementById('deviceList');
+        
+        // 更新连接状态显示
+        function updateConnectionStatus(connected) {
+            if (connected) {
+                connectionStatus.textContent = '已连接到服务器';
+                connectionStatus.className = 'status connected';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                startDiscoveryBtn.disabled = false;
+                stopDiscoveryBtn.disabled = false;
+                refreshDevicesBtn.disabled = false;
+                sendFileBtn.disabled = false;
+                startStreamingBtn.disabled = false;
+                stopStreamingBtn.disabled = false;
+                enableControlBtn.disabled = false;
+            } else {
+                connectionStatus.textContent = '未连接到服务器';
+                connectionStatus.className = 'status disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                startDiscoveryBtn.disabled = true;
+                stopDiscoveryBtn.disabled = true;
+                refreshDevicesBtn.disabled = true;
+                sendFileBtn.disabled = true;
+                startStreamingBtn.disabled = true;
+                stopStreamingBtn.disabled = true;
+                enableControlBtn.disabled = true;
+            }
+        }
+        
+        // 连接服务器
+        connectBtn.addEventListener('click', () => {
+            // 连接到Vite代理的WebSocket服务器
+            socket = new WebSocket('ws://localhost:8781/ws');
+            
+            socket.onopen = function(event) {
+                console.log('Connected to server');
+                updateConnectionStatus(true);
+                
+                // 发送设备信息（模拟Web客户端）
+                socket.send(JSON.stringify({
+                    type: 'device_info',
+                    deviceInfo: {
+                        platform: 'web',
+                        deviceName: 'Web Client',
+                        deviceId: 'web-' + Date.now()
+                    }
+                }));
+            };
+            
+            socket.onclose = function(event) {
+                console.log('Disconnected from server');
+                updateConnectionStatus(false);
+            };
+            
+            socket.onerror = function(error) {
+                console.error('连接服务器失败:', error);
+                updateConnectionStatus(false);
+                alert('连接服务器失败: ' + error.message);
+            };
+            
+            socket.onmessage = function(event) {
+                try {
+                    const message = JSON.parse(event.data);
+                    console.log('收到消息:', message.type);
+                    
+                    // 根据消息类型处理
+                    switch (message.type) {
+                        case 'device_found':
+                            console.log('发现设备:', message.device);
+                            // 添加到设备列表
+                            addDeviceToList(message.device);
+                            break;
+                        case 'android_connected':
+                            console.log('Android设备已连接:', message.deviceInfo);
+                            // 更新设备状态
+                            updateDeviceStatus(message.deviceInfo.deviceId, '已连接');
+                            break;
+                        case 'screen_frame':
+                            console.log('收到屏幕帧:', message.timestamp);
+                            break;
+                        case 'file_transfer':
+                            console.log('收到文件传输消息:', message.action);
+                            break;
+                        case 'clipboard':
+                            console.log('收到剪贴板消息:', message.data.substring(0, 50) + '...');
+                            break;
+                        case 'notification':
+                            console.log('收到通知消息:', message.title);
+                            break;
+                        default:
+                            console.log('未知消息类型:', message.type);
+                            break;
+                    }
+                } catch (error) {
+                    console.error('处理消息时出错:', error);
+                }
+            };
+        });
+        
+        // 断开连接
+        disconnectBtn.addEventListener('click', () => {
+            if (socket) {
+                socket.close();
+                socket = null;
+                updateConnectionStatus(false);
+                deviceList.innerHTML = '<p>暂无设备</p>';
+                discoveredDevices = [];
+            }
+        });
+        
+        // 开始设备发现
+        startDiscoveryBtn.addEventListener('click', () => {
+            if (socket) {
+                socket.send(JSON.stringify({
+                    type: 'start_device_discovery'
+                }));
+                
+                // 模拟获取设备列表
+                socket.send(JSON.stringify({
+                    type: 'get_discovered_devices'
+                }));
+            }
+        });
+        
+        // 停止设备发现
+        stopDiscoveryBtn.addEventListener('click', () => {
+            if (socket) {
+                socket.send(JSON.stringify({
+                    type: 'stop_device_discovery'
+                }));
+                alert('设备发现已停止');
+            }
+        });
+        
+        // 刷新设备列表
+        refreshDevicesBtn.addEventListener('click', () => {
+            if (socket) {
+                socket.send(JSON.stringify({
+                    type: 'get_discovered_devices'
+                }));
+            }
+        });
+        
+        // 发送文件
+        sendFileBtn.addEventListener('click', () => {
+            if (socket && discoveredDevices.length > 0) {
+                // 模拟发送文件
+                const device = discoveredDevices[0]; // 选择第一个设备
+                socket.send(JSON.stringify({
+                    type: 'file_transfer',
+                    action: 'send',
+                    deviceId: device.deviceId,
+                    fileName: 'test.txt',
+                    fileSize: 1024
+                }));
+                alert('文件发送成功');
+            } else {
+                alert('请先发现设备');
+            }
+        });
+        
+        // 开始投屏
+        startStreamingBtn.addEventListener('click', () => {
+            if (socket && discoveredDevices.length > 0) {
+                // 模拟开始投屏
+                const device = discoveredDevices[0]; // 选择第一个设备
+                socket.send(JSON.stringify({
+                    type: 'control_command',
+                    commandType: 'start_streaming',
+                    deviceId: device.deviceId
+                }));
+                alert('投屏已开始');
+            } else {
+                alert('请先发现设备');
+            }
+        });
+        
+        // 停止投屏
+        stopStreamingBtn.addEventListener('click', () => {
+            if (socket && discoveredDevices.length > 0) {
+                // 模拟停止投屏
+                const device = discoveredDevices[0]; // 选择第一个设备
+                socket.send(JSON.stringify({
+                    type: 'control_command',
+                    commandType: 'stop_streaming',
+                    deviceId: device.deviceId
+                }));
+                alert('投屏已停止');
+            } else {
+                alert('请先发现设备');
+            }
+        });
+        
+        // 启用远程控制
+        enableControlBtn.addEventListener('click', () => {
+            if (socket && discoveredDevices.length > 0) {
+                // 模拟启用远程控制
+                const device = discoveredDevices[0]; // 选择第一个设备
+                socket.send(JSON.stringify({
+                    type: 'control_command',
+                    commandType: 'enable_control',
+                    deviceId: device.deviceId
+                }));
+                alert('远程控制已启用');
+            } else {
+                alert('请先发现设备');
+            }
+        });
+        
+        // 添加设备到列表
+        function addDeviceToList(device) {
+            // 检查设备是否已存在
+            const existingDevice = discoveredDevices.find(d => d.deviceId === device.deviceId);
+            if (!existingDevice) {
+                discoveredDevices.push(device);
+            }
+            
+            const deviceElement = document.createElement('div');
+            deviceElement.className = 'device-item';
+            deviceElement.innerHTML = `
+                <strong>${device.deviceName || '未知设备'}</strong>
+                <br>ID: ${device.deviceId}
+                <br>类型: ${device.platform || '未知'}
+                <br>状态: <span id="status-${device.deviceId}">已发现</span>
+            `;
+            deviceList.appendChild(deviceElement);
+        }
+        
+        // 更新设备状态
+        function updateDeviceStatus(deviceId, status) {
+            const statusElement = document.getElementById(`status-${deviceId}`);
+            if (statusElement) {
+                statusElement.textContent = status;
+            }
+        }
+        
+        // 初始化
+        updateConnectionStatus(false);
+    </script>
+</body>
+</html>

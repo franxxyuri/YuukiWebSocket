@@ -16,7 +16,7 @@ class WebSocketService {
 
 
 
-  connect(serverUrl = 'ws://localhost:8080/ws') {
+  connect(serverUrl = 'ws://localhost:8781/ws') {
 
     if (this.socket) {
 
