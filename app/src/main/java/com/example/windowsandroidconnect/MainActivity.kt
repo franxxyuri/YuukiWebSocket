@@ -1,6 +1,9 @@
 package com.example.windowsandroidconnect
 
 import android.app.Activity
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
@@ -8,9 +11,8 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.LinearLayoutManager
-import android.content.Intent
-import android.net.wifi.WifiManager
 import android.content.Context
+import android.net.wifi.WifiManager
 import android.provider.Settings
 import java.net.InetAddress
 import kotlinx.coroutines.*
@@ -21,6 +23,7 @@ import kotlinx.parcelize.Parcelize
 import com.example.windowsandroidconnect.service.DeviceDiscoveryService
 import com.example.windowsandroidconnect.network.NetworkCommunication
 import org.json.JSONObject
+import com.example.windowsandroidconnect.service.WebSocketConnectionService
 
 /**
  * Windows-Android Connect Android客户端
@@ -46,6 +49,25 @@ class MainActivity : Activity() {
     private var isConnected = false
     private var currentDevice: DeviceInfo? = null
     private var networkCommunication: NetworkCommunication? = null
+    private val connectionStatusReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                "com.example.windowsandroidconnect.CONNECTION_STATUS_CHANGED" -> {
+                    val connected = intent.getBooleanExtra("connected", false)
+                    isConnected = connected
+                    runOnUiThread {
+                        updateUI()
+                        if (connected) {
+                            statusText.text = "已连接到Windows设备"
+                            showToast("连接成功")
+                        } else {
+                            statusText.text = "连接已断开"
+                        }
+                    }
+                }
+            }
+        }
+    }
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,6 +76,7 @@ class MainActivity : Activity() {
         // 初始化网络通信
         networkCommunication = (application as? MyApplication)?.networkCommunication
         setupNetworkMessageHandlers()
+        registerConnectionStatusReceiver()
         
         initViews()
         setupClickListeners()
@@ -383,7 +406,7 @@ class MainActivity : Activity() {
     }
     
     /**
-     * 获取本地IP地址
+     * 获取本地IP
      */
     private fun getLocalIPAddress(): String {
         val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
@@ -404,10 +427,17 @@ class MainActivity : Activity() {
      */
     private suspend fun connectToDevice(device: DeviceInfo): Boolean {
         return try {
-            val success = networkCommunication?.connect(device.ip, 8928) ?: false
-            success
+            // 启动WebSocket连接服务
+            val intent = Intent(this, WebSocketConnectionService::class.java).apply {
+                action = WebSocketConnectionService.ACTION_CONNECT
+                putExtra(WebSocketConnectionService.EXTRA_IP, device.ip)
+                putExtra(WebSocketConnectionService.EXTRA_PORT, 8928)
+            }
+            startService(intent)
+            // 连接状态会通过广播通知更新
+            true
         } catch (e: Exception) {
-            Log.e(TAG, "连接设备失败", e)
+            Log.e(TAG, "启动连接服务失败", e)
             false
         }
     }
@@ -430,10 +460,16 @@ class MainActivity : Activity() {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
     
+    private fun registerConnectionStatusReceiver() {
+        val filter = IntentFilter("com.example.windowsandroidconnect.CONNECTION_STATUS_CHANGED")
+        registerReceiver(connectionStatusReceiver, filter)
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         // 注销消息处理器
         networkCommunication?.unregisterMessageHandler("device_discovered")
+        unregisterReceiver(connectionStatusReceiver)
     }
     
     companion object {

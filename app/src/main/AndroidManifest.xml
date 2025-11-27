@@ -98,6 +98,12 @@
             android:exported="false"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
+        <!-- WebSocket连接服务 -->
+        <service
+            android:name="com.example.windowsandroidconnect.service.WebSocketConnectionService"
+            android:enabled="true"
+            android:exported="false" />
+
         <!-- 屏幕捕获服务 -->
         <service
             android:name="com.example.windowsandroidconnect.service.ScreenCaptureService"

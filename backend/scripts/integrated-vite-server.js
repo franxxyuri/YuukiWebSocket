@@ -23,17 +23,17 @@ const server = http.createServer(app);
 // 启用CORS
 app.use(cors());
 
-// 静态文件服务 - 设置正确的路径
-app.use(express.static(path.join(__dirname, '../../frontend')));
-app.use('/pages', express.static(path.join(__dirname, '../../frontend/pages')));
-app.use('/components', express.static(path.join(__dirname, '../../frontend/components')));
-app.use('/styles', express.static(path.join(__dirname, '../../frontend/styles')));
-app.use('/utils', express.static(path.join(__dirname, '../../frontend/utils')));
-app.use('/tests', express.static(path.join(__dirname, '../../frontend/tests')));
+// 静态文件服务 - 从配置文件读取路径
+app.use(express.static(path.join(__dirname, config.frontend.staticPaths.root)));
+app.use('/pages', express.static(path.join(__dirname, config.frontend.staticPaths.pages)));
+app.use('/components', express.static(path.join(__dirname, config.frontend.staticPaths.components)));
+app.use('/styles', express.static(path.join(__dirname, config.frontend.staticPaths.styles)));
+app.use('/utils', express.static(path.join(__dirname, config.frontend.staticPaths.utils)));
+app.use('/tests', express.static(path.join(__dirname, config.frontend.staticPaths.tests)));
 
 // 确保根路径指向正确的index.html文件
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../../frontend/index.html'));
+    res.sendFile(path.join(__dirname, config.frontend.htmlEntries.main));
 });
 
 // 添加其他页面路由以处理前端路由
@@ -738,34 +738,34 @@ async function startViteServer() {
                 }
             }
         },
-        root: '../../frontend',
-        publicDir: '../../frontend/public',
+        root: config.frontend.rootDir,
+        publicDir: config.frontend.staticPaths.public,
         build: {
-            outDir: '../../frontend/dist',
+            outDir: config.frontend.staticPaths.dist,
             rollupOptions: {
                 input: {
-                    main: path.resolve(__dirname, '../../frontend/index.html'),
-                    screen: path.resolve(__dirname, '../../frontend/pages/screen-stream.html'),
-                    'react-index': path.resolve(__dirname, '../../frontend/pages/react-index.html'),
-                    'app-index': path.resolve(__dirname, '../../frontend/pages/app-index.html'),
-                    'device-manager': path.resolve(__dirname, '../../frontend/pages/device-manager.html'),
-                    'test-ui': path.resolve(__dirname, '../../frontend/tests/test-ui.html'),
-                    'test-connection': path.resolve(__dirname, '../../frontend/tests/test-connection.html'),
-                    'test-server-functions': path.resolve(__dirname, '../../frontend/tests/test-server-functions.html'),
-                    'test-android-client': path.resolve(__dirname, '../../frontend/tests/test-android-client.html')
+                    main: path.resolve(__dirname, config.frontend.htmlEntries.main),
+                    screen: path.resolve(__dirname, config.frontend.htmlEntries.screen),
+                    'react-index': path.resolve(__dirname, config.frontend.htmlEntries.reactIndex),
+                    'app-index': path.resolve(__dirname, config.frontend.htmlEntries.appIndex),
+                    'device-manager': path.resolve(__dirname, config.frontend.htmlEntries.deviceManager),
+                    'test-ui': path.resolve(__dirname, config.frontend.htmlEntries.testUi),
+                    'test-connection': path.resolve(__dirname, config.frontend.htmlEntries.testConnection),
+                    'test-server-functions': path.resolve(__dirname, config.frontend.htmlEntries.testServerFunctions),
+                    'test-android-client': path.resolve(__dirname, config.frontend.htmlEntries.testAndroidClient)
                 }
             }
         },
         resolve: {
             alias: {
-                '@': path.resolve(__dirname, '../../frontend/src'),
-                '@components': path.resolve(__dirname, '../../frontend/components'),
-                '@pages': path.resolve(__dirname, '../../frontend/pages'),
-                '@utils': path.resolve(__dirname, '../../frontend/utils'),
-                '@hooks': path.resolve(__dirname, '../../frontend/hooks'),
-                '@services': path.resolve(__dirname, '../../frontend/services'),
-                '@store': path.resolve(__dirname, '../../frontend/store'),
-                '@types': path.resolve(__dirname, '../../frontend/types')
+                '@': path.resolve(__dirname, config.frontend.aliases['@']),
+                '@components': path.resolve(__dirname, config.frontend.aliases['@components']),
+                '@pages': path.resolve(__dirname, config.frontend.aliases['@pages']),
+                '@utils': path.resolve(__dirname, config.frontend.aliases['@utils']),
+                '@hooks': path.resolve(__dirname, config.frontend.aliases['@hooks']),
+                '@services': path.resolve(__dirname, config.frontend.aliases['@services']),
+                '@store': path.resolve(__dirname, config.frontend.aliases['@store']),
+                '@types': path.resolve(__dirname, config.frontend.aliases['@types'])
             }
         }
     });

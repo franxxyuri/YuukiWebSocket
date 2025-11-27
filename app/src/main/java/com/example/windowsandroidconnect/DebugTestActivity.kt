@@ -14,9 +14,10 @@ import android.widget.LinearLayout
 import android.view.View
 import android.view.ViewGroup
 import android.graphics.Color
-import com.example.windowsandroidconnect.service.DeviceDiscoveryService
-import com.example.windowsandroidconnect.network.NetworkCommunication
+import com.example.windowsandroidconnect.service.DeviceDiscoveryService
+import com.example.windowsandroidconnect.network.NetworkCommunication
 import com.example.windowsandroidconnect.config.ClientConfig
+import com.example.windowsandroidconnect.service.WebSocketConnectionService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -108,16 +109,17 @@ class DebugTestActivity : Activity() {
         }
         connectionLayout.addView(connectionTitle)
         
+        val config = ClientConfig.getInstance(this)
         serverIpInput = EditText(this).apply {
-            hint = "服务器IP地址 (例如: 192.168.1.100)"
-            setText("192.168.1.100")
+            hint = "服务器IP地址 (例如: ${config.serverIp})"
+            setText(config.serverIp)  // 使用配置中的IP地址
         }
         connectionLayout.addView(serverIpInput)
         
-        val defaultPort = ClientConfig.getInstance(this).serverPort
-        serverPortInput = EditText(this).apply {
-            hint = "服务器端口 (例如: $defaultPort)"
-            setText(defaultPort.toString())
+        val defaultPort = ClientConfig.getInstance(this).serverPort
+        serverPortInput = EditText(this).apply {
+            hint = "服务器端口 (例如: $defaultPort)"
+            setText(defaultPort.toString())
         }
         connectionLayout.addView(serverPortInput)
         
@@ -443,8 +445,8 @@ class DebugTestActivity : Activity() {
         logMessage("网络通信模块已初始化")
     }
     
-    private fun connectToServer() {
-        val ip = serverIpInput.text.toString()
+    private fun connectToServer() {
+        val ip = serverIpInput.text.toString()
         val port = serverPortInput.text.toString().toIntOrNull() ?: ClientConfig.getInstance(this).serverPort
         
         if (ip.isEmpty()) {
@@ -452,42 +454,32 @@ class DebugTestActivity : Activity() {
             return
         }
         
-        // 在协程中执行连接操作
-        kotlinx.coroutines.GlobalScope.launch {
-            try {
-                withContext(Dispatchers.Main) {
-                    statusText.text = "正在连接到 $ip:$port..."
-                    logMessage("正在连接到服务器: $ip:$port")
-                }
-                
-                // 连接到服务器
-                val success = networkCommunication?.connect(ip, port) ?: false
-                
-                withContext(Dispatchers.Main) {
-                    if (success) {
-                        isConnected = true
-                        updateButtonStates()
-                        statusText.text = "已连接到 $ip:$port"
-                        showToast("连接成功")
-                        logMessage("连接到服务器成功")
-                        
-                        // 自动发送设备信息
-                        if (autoSendCheckbox.isChecked) {
-                            sendDeviceInfo()
-                        }
-                    } else {
-                        statusText.text = "连接失败"
-                        showToast("连接失败")
-                        logMessage("连接到服务器失败")
-                    }
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    statusText.text = "连接失败: ${e.message}"
-                    showToast("连接失败: ${e.message}")
-                    logMessage("连接到服务器异常: ${e.message}")
-                }
+        try {
+            statusText.text = "正在连接到 $ip:$port..."
+            logMessage("正在连接到服务器: $ip:$port")
+            
+            // 启动WebSocket连接服务
+            val intent = Intent(this, WebSocketConnectionService::class.java).apply {
+                action = WebSocketConnectionService.ACTION_CONNECT
+                putExtra(WebSocketConnectionService.EXTRA_IP, ip)
+                putExtra(WebSocketConnectionService.EXTRA_PORT, port)
             }
+            startService(intent)
+            
+            isConnected = true
+            updateButtonStates()
+            statusText.text = "已连接到 $ip:$port"
+            showToast("连接服务已启动")
+            logMessage("WebSocket连接服务已启动")
+            
+            // 自动发送设备信息
+            if (autoSendCheckbox.isChecked) {
+                sendDeviceInfo()
+            }
+        } catch (e: Exception) {
+            statusText.text = "启动连接服务失败: ${e.message}"
+            showToast("启动连接服务失败: ${e.message}")
+            logMessage("启动连接服务异常: ${e.message}")
         }
     }
     
