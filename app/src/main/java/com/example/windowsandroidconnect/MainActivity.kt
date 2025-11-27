@@ -181,7 +181,8 @@ class MainActivity : Activity() {
 
 
 
-    private lateinit var configButton: Button
+    private lateinit var configButton: Button
+
     private lateinit var debugTestButton: Button
     
     private val discoveredDevices = mutableListOf<DeviceInfo>()
@@ -216,10 +217,14 @@ class MainActivity : Activity() {
 
         statusText = findViewById(R.id.status_text)
 
-        testPageButton = findViewById(R.id.test_page_button)
-
-        configButton = findViewById(R.id.config_button)
-
+        testPageButton = findViewById(R.id.test_page_button)
+
+
+
+        configButton = findViewById(R.id.config_button)
+
+
+
         debugTestButton = findViewById(R.id.debug_test_button)
 
         
@@ -384,29 +389,52 @@ class MainActivity : Activity() {
 
 
 
-        // 添加跳转到配置界面的点击监听器
-        configButton.setOnClickListener {
-            val intent = Intent(this, ClientConfigActivity::class.java)
-            startActivity(intent)
-        }
-        
-
-        // 添加跳转到调试测试页面的点击监听器
-
-
-
-        debugTestButton.setOnClickListener {
-
-
-
-            val intent = Intent(this, DebugTestActivity::class.java)
-
-
-
-            startActivity(intent)
-
-
-
+        // 添加跳转到配置界面的点击监听器
+
+        configButton.setOnClickListener {
+
+            val intent = Intent(this, ClientConfigActivity::class.java)
+
+            startActivity(intent)
+
+        }
+
+        
+
+
+
+        // 添加跳转到调试测试页面的点击监听器
+
+
+
+
+
+
+
+        debugTestButton.setOnClickListener {
+
+
+
+
+
+
+
+            val intent = Intent(this, SimpleConnectionTestActivity::class.java)
+
+
+
+
+
+
+
+            startActivity(intent)
+
+
+
+
+
+
+
         }
 
 
@@ -645,10 +673,14 @@ class MainActivity : Activity() {
 
                 
 
-                // 连接到Windows设备 (使用配置的端口)
-                val config = com.example.windowsandroidconnect.config.ClientConfig.getInstance(this@MainActivity)
-
-
+                // 连接到Windows设备 (使用配置的端口)
+
+                val config = com.example.windowsandroidconnect.config.ClientConfig.getInstance(this@MainActivity)
+
+
+
+
+
                 val success = networkCommunication.connect(ip, config.serverPort)
 
                 
