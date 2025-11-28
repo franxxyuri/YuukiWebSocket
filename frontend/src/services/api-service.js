@@ -45,6 +45,9 @@ class APIService {
     connectionManager.on('remoteControlEnabled', this.triggerEvent.bind(this));
     connectionManager.on('remoteControlDisabled', this.triggerEvent.bind(this));
     connectionManager.on('remoteControlError', this.triggerEvent.bind(this));
+    
+    // 监听剪贴板相关事件
+    connectionManager.on('clipboardContentReceived', this.triggerEvent.bind(this));
   }
   
   /**
@@ -104,7 +107,15 @@ class APIService {
    * @returns {boolean} 是否已连接
    */
   isConnected() {
-    return connectionManager.isConnected;
+    return connectionManager.isConnected();
+  }
+  
+  /**
+   * 获取连接状态详情
+   * @returns {object} 连接状态对象
+   */
+  getConnectionStatus() {
+    return connectionManager.getConnectionStatus();
   }
   
   /**
@@ -201,6 +212,15 @@ class APIService {
    */
   async connectDevice(deviceId) {
     return connectionManager.connectDevice(deviceId);
+  }
+  
+  /**
+   * 直接连接到设备（P2P模式）
+   * @param {object} deviceInfo - 设备信息对象，包含ip、port等
+   * @returns {Promise} 连接结果Promise
+   */
+  async connectDirectlyToDevice(deviceInfo) {
+    return connectionManager.connectDirectlyToDevice(deviceInfo);
   }
   
   /**
@@ -359,6 +379,35 @@ class APIService {
    */
   async sendKeyEvent(deviceId, keyCode, isDown = true) {
     return connectionManager.sendKeyEvent(deviceId, keyCode, isDown);
+  }
+  
+  // ========== 剪贴板同步相关API ==========
+  
+  /**
+   * 发送剪贴板内容
+   * @param {string} content - 剪贴板内容
+   * @returns {Promise} 发送结果Promise
+   */
+  async sendClipboardContent(content) {
+    return connectionManager.sendClipboardContent(content);
+  }
+  
+  /**
+   * 监听剪贴板内容变化
+   * @param {function} callback - 回调函数
+   * @returns {APIService} API服务实例，支持链式调用
+   */
+  onClipboardContentReceived(callback) {
+    return this.on('clipboardContentReceived', callback);
+  }
+  
+  /**
+   * 移除剪贴板内容变化监听器
+   * @param {function} callback - 回调函数
+   * @returns {APIService} API服务实例，支持链式调用
+   */
+  offClipboardContentReceived(callback) {
+    return this.off('clipboardContentReceived', callback);
   }
   
   // ========== 配置管理相关API ==========

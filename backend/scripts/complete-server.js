@@ -25,7 +25,7 @@ app.use(cors());
 
 // 静态文件服务
 app.use('/frontend', express.static('../../frontend'));
-app.use('/src', express.static('../../src'));
+app.use('/src', express.static('../../frontend/src'));
 app.use('/public', express.static('../../public'));
 app.use('/assets', express.static('../../frontend/assets'));
 app.use(express.static('../../frontend'));
@@ -169,7 +169,7 @@ app.get(['/pages', '/pages/'], (req, res) => {
 app.get('/pages/:page', (req, res) => {
     const page = req.params.page;
     // 防止路径遍历攻击
-    if (page.includes('..') || page.includes('')) {
+    if (page.includes('..')) {
         res.status(403).send('Forbidden');
         return;
     }

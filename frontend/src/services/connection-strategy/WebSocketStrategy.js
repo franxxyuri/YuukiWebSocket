@@ -129,10 +129,10 @@ class WebSocketStrategy {
    * @param {object} params - 命令参数
    */
   sendCommand(command, params = {}) {
+    // 直接发送命令作为消息类型，而不是包装在command类型中
     return this.send({
-      type: 'command',
-      command,
-      params
+      type: command,
+      ...params
     });
   }
 
@@ -255,6 +255,10 @@ class WebSocketStrategy {
           break;
         case 'android_disconnected':
           this.handleEvent('deviceDisconnected', {});
+          break;
+        case 'clipboard':
+          // 处理剪贴板消息
+          this.handleEvent('clipboardContentReceived', message.data);
           break;
       }
     }

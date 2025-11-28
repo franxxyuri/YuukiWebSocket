@@ -448,10 +448,10 @@ class ConnectionManager {
       return mockDevices;
     }
     
-    // WebSocket模式下发送命令并等待响应
+    // 发送开始设备发现命令
     await this.sendCommand('start_device_discovery', {});
-    // 立即获取已发现的设备
-    return this.getDiscoveredDevices();
+    // 不等待响应，设备发现结果将通过device_found事件返回
+    return [];
   }
 
   // 停止设备发现
@@ -498,9 +498,9 @@ class ConnectionManager {
       return mockDevices;
     }
     
-    // WebSocket模式下发送请求并返回结果
-    const response = await this.sendRequest('get_discovered_devices', {});
-    return response.devices || [];
+    // 直接返回空数组，设备发现结果将通过device_found事件返回
+    // 实际设备列表由DeviceDiscoveryService维护
+    return [];
   }
 
   // 发送文件
@@ -561,6 +561,27 @@ class ConnectionManager {
     });
   }
   
+  // 发送剪贴板内容
+  async sendClipboardContent(content) {
+    if (this.config.connectionType === 'mock') {
+      // 模拟模式下直接返回成功
+      return Promise.resolve({ success: true });
+    }
+    
+    // WebSocket模式下发送请求
+    return this.sendCommand('clipboard', {
+      data: content,
+      type: 'text',
+      timestamp: Date.now()
+    });
+  }
+  
+  // 接收剪贴板内容（由WebSocket事件触发）
+  handleClipboardContent(data) {
+    // 触发剪贴板事件
+    this.emit('clipboardContentReceived', data);
+  }
+  
   // 获取已连接的设备列表
   async getConnectedDevices() {
     if (this.config.connectionType === 'mock') {
@@ -582,6 +603,30 @@ class ConnectionManager {
     
     // WebSocket模式下发送请求
     return this.sendRequest('connect_device', { deviceId });
+  }
+  
+  // 直接连接到设备（P2P模式）
+  async connectDirectlyToDevice(deviceInfo) {
+    if (!deviceInfo || !deviceInfo.ip) {
+      throw new Error('设备信息不完整，无法直接连接');
+    }
+    
+    // 断开当前连接
+    if (this.isConnected()) {
+      await this.disconnect();
+    }
+    
+    // 根据设备信息构建WebSocket URL
+    const wsUrl = `ws://${deviceInfo.ip}:${deviceInfo.port || 8928}`;
+    
+    // 更新连接类型为websocket
+    this.setConnectionType('websocket');
+    
+    // 直接连接到设备
+    await this.connect(wsUrl);
+    
+    console.log(`已直接连接到设备: ${deviceInfo.name} (${wsUrl})`);
+    return { success: true, device: deviceInfo };
   }
   
   // 断开设备连接

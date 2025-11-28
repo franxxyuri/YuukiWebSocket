@@ -35,6 +35,21 @@ class DeviceDiscoveryService {
     apiService.on('deviceDisconnected', (device) => {
       this.handleDeviceDisconnected(device);
     });
+    
+    // 监听原始device_found事件（确保不遗漏）
+    apiService.on('device_found', (message) => {
+      this.handleDeviceDiscovered(message.device);
+    });
+    
+    // 监听android_connected事件
+    apiService.on('android_connected', (message) => {
+      this.handleDeviceConnected(message.deviceInfo);
+    });
+    
+    // 监听android_disconnected事件
+    apiService.on('android_disconnected', () => {
+      this.handleDeviceDisconnected({});
+    });
   }
 
   /**
@@ -259,46 +274,22 @@ class DeviceDiscoveryService {
     console.log('[DeviceDiscoveryService] 开始扫描设备...');
     
     try {
-      // 使用API服务获取已发现的设备
-      const discoveredDevices = await apiService.getDiscoveredDevices();
+      // 发送开始设备发现命令
+      await apiService.startDeviceDiscovery();
       
-      // 更新设备列表
-      const newDevices = [];
-      const updatedDevices = [];
-      
-      // 处理每个发现的设备
-      for (const device of discoveredDevices) {
-        const normalizedDevice = this.normalizeDeviceData(device);
-        const existingIndex = this.devices.findIndex(d => d.deviceId === normalizedDevice.deviceId || d.ip === normalizedDevice.ip);
-        
-        if (existingIndex === -1) {
-          // 添加新设备
-          this.devices.push(normalizedDevice);
-          newDevices.push(normalizedDevice);
-          this.emit('deviceFound', normalizedDevice);
-        } else {
-          // 更新现有设备
-          const existingDevice = this.devices[existingIndex];
-          const updatedDevice = {
-            ...existingDevice,
-            ...normalizedDevice,
-            lastSeen: Date.now()
-          };
-          this.devices[existingIndex] = updatedDevice;
-          updatedDevices.push(updatedDevice);
-        }
-      }
+      // 立即获取当前设备列表（包括之前发现的设备）
+      const currentDevices = [...this.devices];
       
       this.lastScanTime = Date.now();
       
       this.emit('scanCompleted', {
         timestamp: this.lastScanTime,
-        totalDevices: this.devices.length,
-        newDevices: newDevices.length,
-        devices: [...this.devices]
+        totalDevices: currentDevices.length,
+        newDevices: 0,
+        devices: currentDevices
       });
       
-      console.log(`[DeviceDiscoveryService] 扫描完成，发现 ${newDevices.length} 个新设备，更新 ${updatedDevices.length} 个设备，当前共 ${this.devices.length} 个设备`);
+      console.log(`[DeviceDiscoveryService] 扫描命令已发送，当前共 ${currentDevices.length} 个设备`);
     } catch (error) {
       console.error('扫描设备失败:', error);
       this.emit('scanError', { error: error.message, timestamp: Date.now() });
