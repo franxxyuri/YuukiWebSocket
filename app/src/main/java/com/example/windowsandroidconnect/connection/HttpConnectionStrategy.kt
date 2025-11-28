@@ -7,6 +7,8 @@ import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * HTTP连接策略实现
@@ -18,6 +20,8 @@ class HttpConnectionStrategy : ConnectionStrategy {
     private var serverUrl: String? = null
     private var isConnectedState = false
     private val messageCallbacks = ConcurrentHashMap<String, (JSONObject) -> Unit>()
+    private val statusListeners = mutableListOf<(Boolean) -> Unit>()
+    private val messageListeners = mutableListOf<(JSONObject) -> Unit>()
     
     override suspend fun connect(ip: String, port: Int): Boolean {
         return try {
@@ -39,8 +43,12 @@ class HttpConnectionStrategy : ConnectionStrategy {
             if (success) {
                 isConnectedState = true
                 Log.d("HttpConnectionStrategy", "HTTP连接成功")
+                // 通知所有状态监听器
+                statusListeners.forEach { it(true) }
             } else {
                 Log.e("HttpConnectionStrategy", "HTTP连接测试失败")
+                // 通知所有状态监听器
+                statusListeners.forEach { it(false) }
             }
             
             success
@@ -60,6 +68,9 @@ class HttpConnectionStrategy : ConnectionStrategy {
         serverUrl = null
         isConnectedState = false
         messageCallbacks.clear()
+        
+        // 通知所有状态监听器
+        statusListeners.forEach { it(false) }
     }
     
     override fun sendMessage(message: JSONObject) {
@@ -91,7 +102,16 @@ class HttpConnectionStrategy : ConnectionStrategy {
                                 val responseBody = responseObj.body?.string()
                                 if (responseBody != null) {
                                     // 处理响应
-                                    handleResponse(responseBody)
+                            val jsonResponse = try {
+                                JSONObject(responseBody)
+                            } catch (e: Exception) {
+                                Log.e("HttpConnectionStrategy", "解析响应为JSON失败", e)
+                                null
+                            }
+                            if (jsonResponse != null) {
+                                // 通知所有消息监听器
+                                messageListeners.forEach { it(jsonResponse) }
+                            }
                                 }
                             } else {
                                 Log.e("HttpConnectionStrategy", "HTTP消息发送失败: ${responseObj.code}")
@@ -116,6 +136,66 @@ class HttpConnectionStrategy : ConnectionStrategy {
     
     override fun getConnectionType(): String {
         return "HTTP"
+    }
+    
+    override fun getConfig(): Map<String, Any> {
+        val config = mutableMapOf<String, Any>()
+        config["connectionType"] = getConnectionType()
+        config["connected"] = isConnected()
+        config["serverUrl"] = serverUrl ?: ""
+        return config
+    }
+    
+    override fun updateConfig(config: Map<String, Any>) {
+        Log.d("HttpConnectionStrategy", "更新配置: $config")
+        // 处理配置参数，如更新serverUrl、超时时间等
+        if (config.containsKey("serverUrl")) {
+            serverUrl = config["serverUrl"] as? String
+        }
+    }
+    
+    override fun registerStatusListener(listener: (Boolean) -> Unit) {
+        statusListeners.add(listener)
+    }
+    
+    override fun unregisterStatusListener(listener: (Boolean) -> Unit) {
+        statusListeners.remove(listener)
+    }
+    
+    override fun registerMessageListener(listener: (JSONObject) -> Unit) {
+        messageListeners.add(listener)
+    }
+    
+    override fun unregisterMessageListener(listener: (JSONObject) -> Unit) {
+        messageListeners.remove(listener)
+    }
+    
+    override suspend fun reset(): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                // 断开现有连接
+                disconnect()
+                
+                // 从配置中获取服务器信息
+                val config = getConfig()
+                val url = config["serverUrl"] as? String
+                
+                if (url != null && url.isNotEmpty()) {
+                    // 提取IP和端口
+                    val parts = url.split("//").last().split(":")
+                    val ip = parts[0]
+                    val port = if (parts.size > 1) parts[1].toInt() else 80
+                    
+                    // 重新连接
+                    connect(ip, port)
+                } else {
+                    false
+                }
+            } catch (e: Exception) {
+                Log.e("HttpConnectionStrategy", "重置连接失败", e)
+                false
+            }
+        }
     }
     
     /**
@@ -154,6 +234,9 @@ class HttpConnectionStrategy : ConnectionStrategy {
             // 查找并调用相应的回调
             val callback = messageCallbacks[messageType]
             callback?.invoke(jsonResponse)
+            
+            // 通知所有消息监听器
+            messageListeners.forEach { it(jsonResponse) }
         } catch (e: Exception) {
             Log.e("HttpConnectionStrategy", "处理响应失败", e)
         }

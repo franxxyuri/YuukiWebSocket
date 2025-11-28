@@ -3,8 +3,11 @@
  * 实现WebSocket连接、消息发送和接收、事件处理等功能
  */
 
-class WebSocketStrategy {
+import ConnectionStrategy from './ConnectionStrategy';
+
+class WebSocketStrategy extends ConnectionStrategy {
   constructor(serverUrl, options = {}) {
+    super();
     this.serverUrl = serverUrl;
     this.socket = null;
     this.isConnected = false;
@@ -127,6 +130,7 @@ class WebSocketStrategy {
    * 发送命令
    * @param {string} command - 命令名称
    * @param {object} params - 命令参数
+   * @returns {boolean} 发送是否成功
    */
   sendCommand(command, params = {}) {
     // 直接发送命令作为消息类型，而不是包装在command类型中
