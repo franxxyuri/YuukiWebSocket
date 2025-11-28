@@ -326,7 +326,7 @@ class MainActivity : Activity() {
         // 使用MediaProjection API
         
         // 启动屏幕捕获服务
-        val intent = Intent(this, ScreenCaptureService::class.java)
+        val intent = Intent(this, com.example.windowsandroidconnect.service.ScreenCaptureService::class.java)
         startForegroundService(intent)
         
         showToast("正在启动屏幕共享...")

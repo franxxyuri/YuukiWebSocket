@@ -80,15 +80,19 @@ class ScreenCaptureService : Service() {
      */
     private fun requestScreenCapturePermission() {
         Log.d(TAG, "请求屏幕捕获权限")
-        val mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        val intent = mediaProjectionManager.createScreenCaptureIntent()
-        
-        // 创建一个临时Activity来请求权限
-        val permissionIntent = Intent(this, ScreenCaptureRequestActivity::class.java).apply {
-            putExtra("capture_intent", intent)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            // 创建一个临时Activity来请求权限
+            val permissionIntent = Intent(this, ScreenCaptureRequestActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            }
+            startActivity(permissionIntent)
+        } catch (e: Exception) {
+            Log.e(TAG, "启动屏幕捕获权限请求失败: ${e.message}", e)
+            Toast.makeText(this, "启动屏幕捕获权限请求失败: ${e.message}", Toast.LENGTH_LONG).show()
+            stopSelf()
         }
-        startActivity(permissionIntent)
     }
 
     /**
@@ -112,8 +116,9 @@ class ScreenCaptureService : Service() {
         }
 
         if (mediaProjection == null) {
-            Log.e(TAG, "MediaProjection未初始化，请先获取屏幕捕获权限")
-            requestScreenCapturePermission()
+            Log.e(TAG, "MediaProjection未初始化，屏幕捕获权限应由com.example.windowsandroidconnect.service.ScreenCaptureService处理")
+            // 不再请求权限，因为现在由另一个服务负责屏幕捕获
+            stopSelf()
             return
         }
 

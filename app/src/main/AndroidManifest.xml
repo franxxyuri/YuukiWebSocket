@@ -16,6 +16,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FLASHLIGHT" />
+    <!-- 添加系统级权限以支持屏幕捕获 -->
+    <uses-permission android:name="android.permission.CAPTURE_SECURE_VIDEO_OUTPUT" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.CAPTURE_VIDEO_OUTPUT" tools:ignore="ProtectedPermissions" />
     
     <!-- 辅助功能权限 -->
     <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" />
@@ -114,11 +117,14 @@
             android:enabled="true"
             android:exported="false" />
 
+        
+
         <!-- 屏幕捕获服务 -->
         <service
             android:name="com.example.windowsandroidconnect.service.ScreenCaptureService"
             android:enabled="true"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
 
         <!-- 文件传输服务 -->
         <service

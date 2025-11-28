@@ -99,6 +99,133 @@
             color: #666;
             border-top: 1px solid #eee;
         }
+        /* 现代化导航栏样式 */
+        .modern-navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+        }
+        
+        .nav-logo {
+            display: flex;
+            align-items: center;
+        }
+        
+        .nav-logo a {
+            text-decoration: none;
+            color: white;
+            display: flex;
+            align-items: center;
+        }
+        
+        .nav-logo-icon {
+            font-size: 24px;
+            margin-right: 10px;
+        }
+        
+        .nav-logo-text {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .nav-menu {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s, transform 0.2s;
+            white-space: nowrap;
+        }
+        
+        .nav-link:hover {
+            background: rgba(255,255,255,0.1);
+            transform: translateY(-2px);
+        }
+        
+        .nav-link.active {
+            background: rgba(255,255,255,0.2);
+            font-weight: bold;
+        }
+        
+        .nav-icon {
+            font-size: 18px;
+            margin-right: 8px;
+        }
+        
+        .nav-text {
+            font-size: 14px;
+        }
+        
+        .nav-toggle {
+            display: none;
+            cursor: pointer;
+        }
+        
+        .nav-toggle .bar {
+            display: block;
+            width: 25px;
+            height: 3px;
+            margin: 5px auto;
+            transition: all 0.3s ease;
+            background-color: white;
+        }
+        
+        /* 响应式设计 */
+        @media screen and (max-width: 768px) {
+            .nav-menu {
+                position: fixed;
+                left: -100%;
+                top: 70px;
+                flex-direction: column;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                width: 100%;
+                text-align: center;
+                transition: 0.3s;
+                box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+                padding: 20px 0;
+            }
+            
+            .nav-menu.active {
+                left: 0;
+            }
+            
+            .nav-toggle {
+                display: block;
+            }
+            
+            .nav-toggle.active .bar:nth-child(2) {
+                opacity: 0;
+            }
+            
+            .nav-toggle.active .bar:nth-child(1) {
+                transform: translateY(8px) rotate(45deg);
+            }
+            
+            .nav-toggle.active .bar:nth-child(3) {
+                transform: translateY(-8px) rotate(-45deg);
+            }
+        }
     </style>
 </head>
 <body>
@@ -106,32 +233,28 @@
     <nav class="modern-navbar">
         <div class="nav-container">
             <div class="nav-logo">
-                <a href="/frontend/index.html">
+                <a href="/">
                     <span class="nav-logo-icon">🔗</span>
                     <span class="nav-logo-text">Windows-Android Connect</span>
                 </a>
             </div>
             
             <div class="nav-menu" id="nav-menu">
-                <a href="/frontend/index.html" class="nav-link active" data-page="home">
+                <a href="/" class="nav-link active" data-page="home">
                     <span class="nav-icon">🏠</span>
                     <span class="nav-text">首页</span>
                 </a>
-                <a href="/frontend/pages/app-index.html" class="nav-link" data-page="dashboard">
+                <a href="/pages/app-index.html" class="nav-link" data-page="dashboard">
                     <span class="nav-icon">📊</span>
                     <span class="nav-text">仪表板</span>
                 </a>
-                <a href="/frontend/pages/device-manager.html" class="nav-link" data-page="devices">
+                <a href="/pages/device-manager.html" class="nav-link" data-page="devices">
                     <span class="nav-icon">📱</span>
                     <span class="nav-text">设备管理</span>
                 </a>
-                <a href="/frontend/pages/screen-stream.html" class="nav-link" data-page="screen">
+                <a href="/pages/screen-stream.html" class="nav-link" data-page="screen">
                     <span class="nav-icon">📺</span>
                     <span class="nav-text">屏幕投屏</span>
-                </a>
-                <a href="/frontend/pages/react-index.html" class="nav-link" data-page="react">
-                    <span class="nav-icon">⚛️</span>
-                    <span class="nav-text">React应用</span>
                 </a>
             </div>
             
@@ -159,35 +282,35 @@
                 <div class="nav-card" onclick="openPage('screen-stream')">
                     <h3>🖥️ 屏幕镜像</h3>
                     <p>实时查看和控制Android设备屏幕</p>
-                    <a href="pages/screen-stream.html" class="btn">打开屏幕流</a>
-                </div>
-                
-                <div class="nav-card" onclick="openPage('react-app')">
-                    <h3>⚛️ React应用</h3>
-                    <p>现代化的React管理界面</p>
-                    <a href="pages/react-index.html" class="btn">打开React应用</a>
+                    <a href="/pages/screen-stream.html" class="btn">打开屏幕流</a>
                 </div>
                 
                 <div class="nav-card" onclick="openPage('test-interface')">
                     <h3>🧪 测试界面</h3>
                     <p>测试和调试连接功能</p>
-                    <a href="tests/test-connection.html" class="btn">打开测试页面</a>
+                    <a href="/tests/test-connection.html" class="btn">打开测试页面</a>
+                </div>
+                
+                <div class="nav-card" onclick="openPage('device-manager')">
+                    <h3>📋 设备状态</h3>
+                    <p>查看所有已连接设备的详细信息</p>
+                    <a href="/pages/device-manager.html" class="btn">管理设备</a>
                 </div>
                 
                 <div class="nav-card" onclick="openPage('server-functions')">
                     <h3>🔧 服务器功能</h3>
                     <p>测试服务器各项功能</p>
-                    <a href="tests/test-server-functions.html" class="btn">测试服务器</a>
+                    <a href="/tests/test-server-functions.html" class="btn">测试服务器</a>
                 </div>
             </div>
             
             <div style="margin-top: 30px;">
                 <h3>📋 快速链接</h3>
                 <ul style="line-height: 1.8;">
-                    <li><a href="pages/index.html" style="color: #007bff;">主控制页面</a></li>
-                    <li><a href="pages/app-index.html" style="color: #007bff;">应用管理界面</a></li>
-                    <li><a href="tests/test-ui.html" style="color: #007bff;">UI测试页面</a></li>
-                    <li><a href="tests/test-android-client.html" style="color: #007bff;">Android客户端测试</a></li>
+                    <li><a href="/pages/index.html" style="color: #007bff;">主控制页面</a></li>
+                    <li><a href="/pages/app-index.html" style="color: #007bff;">应用管理界面</a></li>
+                    <li><a href="/tests/test-ui.html" style="color: #007bff;">UI测试页面</a></li>
+                    <li><a href="/tests/test-android-client.html" style="color: #007bff;">Android客户端测试</a></li>
                 </ul>
             </div>
         </div>

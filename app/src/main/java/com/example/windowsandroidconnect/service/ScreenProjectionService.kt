@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.IBinder
 import android.util.Log
 import com.example.windowsandroidconnect.MyApplication
+import com.example.windowsandroidconnect.ScreenCaptureService
 import com.example.windowsandroidconnect.config.ClientConfig
 import com.example.windowsandroidconnect.network.NetworkCommunication
 import kotlinx.coroutines.*
@@ -55,7 +56,7 @@ class ScreenProjectionService : Service() {
         Log.d(TAG, "开始屏幕投屏")
         
         // 首先启动屏幕捕获服务
-        val captureIntent = Intent(this, ScreenCaptureService::class.java)
+        val captureIntent = Intent(this, com.example.windowsandroidconnect.service.ScreenCaptureService::class.java)
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             startForegroundService(captureIntent)
         } else {
@@ -85,7 +86,7 @@ class ScreenProjectionService : Service() {
         Log.d(TAG, "停止屏幕投屏")
         
         // 停止屏幕捕获服务
-        val captureIntent = Intent(this, ScreenCaptureService::class.java)
+        val captureIntent = Intent(this, com.example.windowsandroidconnect.service.ScreenCaptureService::class.java)
         stopService(captureIntent)
         
         // 发送停止投屏命令到Windows端
