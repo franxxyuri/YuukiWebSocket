@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Bitmap
+import android.graphics.ImageFormat
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.media.Image
@@ -43,7 +44,7 @@ class ScreenCaptureService : Service() {
     private val screenWidth = 1280
     private val screenHeight = 720
     private val screenDpi = 240
-    private val screenCaptureFormat = android.media.ImageFormat.PRIVATE
+    private val screenCaptureFormat = ImageFormat.PRIVATE
     private val screenCaptureFlags = DisplayManager.VIRTUAL_DISPLAY_FLAG_PRESENTATION
     
     private val screenCaptureReceiver = object : BroadcastReceiver() {
@@ -64,10 +65,12 @@ class ScreenCaptureService : Service() {
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // 确保网络通信实例被初始化
+        networkCommunication = (application as? MyApplication)?.networkCommunication
+
         when (intent?.action) {
             ACTION_START_CAPTURE -> {
                 Log.d(TAG, "收到开始屏幕捕获命令")
-                // 检查是否有MediaProjection数据
                 val resultCode = intent.getIntExtra("resultCode", 0)
                 val data = intent.getParcelableExtra<Intent>("data")
                 if (resultCode != 0 && data != null) {
@@ -75,7 +78,7 @@ class ScreenCaptureService : Service() {
                     startScreenCapture()
                 } else {
                     Log.w(TAG, "未提供屏幕捕获权限，请求权限")
-                    startScreenCapture() // 这会触发权限请求
+                    startScreenCapture()
                 }
             }
             ACTION_STOP_CAPTURE -> {
@@ -84,8 +87,6 @@ class ScreenCaptureService : Service() {
             }
             else -> {
                 Log.d(TAG, "收到服务启动命令: ${intent?.action}")
-                // 获取网络通信实例
-                networkCommunication = (application as? MyApplication)?.networkCommunication
                 startScreenCapture()
             }
         }
@@ -135,6 +136,11 @@ class ScreenCaptureService : Service() {
     private fun startScreenCapture() {
         if (isCapturing) return
 
+        // 确保网络通信实例被初始化
+        if (networkCommunication == null) {
+            networkCommunication = (application as? MyApplication)?.networkCommunication
+        }
+
         // 检查是否已有MediaProjection权限
         if (mediaProjection == null) {
             Log.d(TAG, "没有MediaProjection权限，启动权限请求")
@@ -171,6 +177,11 @@ class ScreenCaptureService : Service() {
     private fun setupMediaProjection(resultCode: Int, resultData: Intent?) {
         // 首先启动前台服务
         createNotificationChannel()
+        
+        // 确保网络通信实例被初始化
+        if (networkCommunication == null) {
+            networkCommunication = (application as? MyApplication)?.networkCommunication
+        }
         
         val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         if (resultData != null) {
@@ -241,22 +252,22 @@ class ScreenCaptureService : Service() {
         try {
             image = reader.acquireLatestImage()
             if (image != null) {
-                // 在协程中处理图像，以避免阻塞主线程
-                serviceScope.launch {
-                    try {
-                        val bitmap = imageToBitmap(image)
-                        // 检查Bitmap是否有效
-                        if (bitmap != null && !bitmap.isRecycled) {
+                // 立即在主线程中处理图像，避免传递到其他线程后图像被关闭
+                val bitmap = imageToBitmap(image)
+                // 在主线程中处理位图，然后在协程中发送
+                if (bitmap != null && !bitmap.isRecycled) {
+                    serviceScope.launch {
+                        try {
                             val compressedData = compressBitmap(bitmap)
                             sendFrameToWindows(compressedData)
                             // 回收Bitmap资源
                             bitmap.recycle()
-                        } else {
-                            Log.w(TAG, "获取的Bitmap无效或转换失败")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "处理屏幕帧失败", e)
                         }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "处理屏幕帧失败", e)
                     }
+                } else {
+                    Log.w(TAG, "获取的Bitmap无效或转换失败")
                 }
             }
         } catch (e: Exception) {
@@ -279,19 +290,19 @@ class ScreenCaptureService : Service() {
     private fun imageToBitmap(image: Image): Bitmap? {
         val format = image.format
         return when (format) {
-            android.media.ImageFormat.JPEG -> {
-                val planes = image.planes
-                if (planes.isEmpty() || planes[0].buffer == null) {
-                    Log.w(TAG, "JPEG图像planes数组为空或缓冲区无效，返回null")
-                    return null
-                }
-                val buffer = planes[0].buffer
-                if (buffer.remaining() == 0) {
-                    Log.w(TAG, "JPEG图像缓冲区为空，返回null")
-                    return null
-                }
-                val bytes = ByteArray(buffer.remaining())
+            ImageFormat.JPEG -> {
                 try {
+                    val planes = image.planes
+                    if (planes.isEmpty() || planes[0].buffer == null) {
+                        Log.w(TAG, "JPEG图像planes数组为空或缓冲区无效，返回null")
+                        return null
+                    }
+                    val buffer = planes[0].buffer
+                    if (buffer.remaining() == 0) {
+                        Log.w(TAG, "JPEG图像缓冲区为空，返回null")
+                        return null
+                    }
+                    val bytes = ByteArray(buffer.remaining())
                     buffer.get(bytes)
                     val bitmap = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
                     // 如果解码失败，返回null而不是创建空位图
@@ -310,40 +321,46 @@ class ScreenCaptureService : Service() {
                     null
                 }
             }
-            android.media.ImageFormat.RGBA_8888, android.media.ImageFormat.RGBX_8888 -> {
-                val planes = image.planes
-                if (planes.isEmpty() || planes[0].buffer == null) {
-                    Log.w(TAG, "RGBA图像planes数组为空或缓冲区无效，返回null")
-                    return null
-                }
-                
-                val buffer = planes[0].buffer
-                val pixelStride = planes[0].pixelStride
-                val rowStride = planes[0].rowStride
-                val rowPadding = rowStride - pixelStride * image.width
-
-                // 确保不会出现负数或零的尺寸
-                val actualWidth = if (image.width + rowPadding / pixelStride <= 0) image.width else image.width + rowPadding / pixelStride
-                val actualHeight = if (image.height <= 0) 1 else image.height
-                
+            ImageFormat.PRIVATE -> {
+                // PRIVATE 格式不能直接访问planes，需要特殊处理
                 try {
-                    val bitmap = Bitmap.createBitmap(
-                        actualWidth,
-                        actualHeight, Bitmap.Config.ARGB_8888
-                    )
-                    // 确保缓冲区有效且有数据
-                    if (buffer != null && buffer.remaining() > 0) {
-                        try {
-                            bitmap.copyPixelsFromBuffer(buffer)
-                        } catch (e: Exception) {
-                            Log.w(TAG, "copyPixelsFromBuffer失败，可能缓冲区无效", e)
-                        }
-                    }
-                    // 调整为指定尺寸，确保返回正确的屏幕尺寸
-                    if (actualWidth >= screenWidth && actualHeight >= screenHeight) {
+                    val width = image.width
+                    val height = image.height
+                    
+                    // 创建一个空白位图作为备用
+                    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                    if (bitmap.width != screenWidth || bitmap.height != screenHeight) {
                         Bitmap.createBitmap(bitmap, 0, 0, screenWidth, screenHeight)
                     } else {
-                        // 如果尺寸不匹配，直接返回创建的bitmap
+                        bitmap
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "处理PRIVATE格式图像失败", e)
+                    null
+                }
+            }
+            1, 24 -> {  // ImageFormat.RGBA_8888 = 1, ImageFormat.RGBX_8888 = 24
+                try {
+                    val planes = image.planes
+                    if (planes.isEmpty() || planes[0].buffer == null) {
+                        Log.w(TAG, "RGBA图像planes数组为空或缓冲区无效，返回null")
+                        return null
+                    }
+                    
+                    val buffer = planes[0].buffer
+                    val pixelStride = planes[0].pixelStride
+                    val rowStride = planes[0].rowStride
+                    val rowPadding = rowStride - pixelStride * image.width
+
+                    val bitmap = Bitmap.createBitmap(
+                        image.width + rowPadding / pixelStride, 
+                        image.height, 
+                        Bitmap.Config.ARGB_8888
+                    )
+                    bitmap.copyPixelsFromBuffer(buffer)
+                    if (bitmap.width != screenWidth || bitmap.height != screenHeight) {
+                        Bitmap.createBitmap(bitmap, 0, 0, screenWidth, screenHeight)
+                    } else {
                         bitmap
                     }
                 } catch (e: Exception) {
@@ -352,14 +369,7 @@ class ScreenCaptureService : Service() {
                     Bitmap.createBitmap(screenWidth, screenHeight, Bitmap.Config.ARGB_8888)
                 }
             }
-        }
-    }
-            }
-            android.media.ImageFormat.YUV_420_888 -> {
-                // YUV_420_888转换较为复杂，这里简单返回null，实际应用中可能需要专门的转换库
-                Log.w(TAG, "YUV_420_888格式需要专门转换，当前暂不支持，返回null")
-                null
-            }
+
             else -> {
                 Log.w(TAG, "不支持的图像格式: $format，返回null")
                 null

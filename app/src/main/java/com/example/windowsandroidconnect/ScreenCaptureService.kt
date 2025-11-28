@@ -307,20 +307,31 @@ class ScreenCaptureWorker(
                 }
                 
                 if (image != null) {
-                    // 将图像转换为字节数组
+                    // 立即在主线程中处理图像，避免传递到其他线程后图像被关闭
                     val bitmap = imageToBitmap(image)
-                    val frameData = bitmapToByteArray(bitmap)
-                    
-                    // 检查帧数据是否有效
-                    if (frameData.isNotEmpty()) {
-                        // 通过网络发送帧数据
-                        if (networkCommunication?.isConnected() == true) {
-                            networkCommunication?.sendScreenFrame(frameData)
+                    if (bitmap != null) {
+                        val frameData = bitmapToByteArray(bitmap)
+                        
+                        // 检查帧数据是否有效
+                        if (frameData.isNotEmpty()) {
+                            // 通过网络发送帧数据
+                            if (networkCommunication?.isConnected() == true) {
+                                networkCommunication?.sendScreenFrame(frameData)
+                            } else {
+                                Log.w(TAG, "网络未连接，跳过帧发送")
+                            }
                         } else {
-                            Log.w(TAG, "网络未连接，跳过帧发送")
+                            Log.w(TAG, "帧数据为空，跳过发送")
+                        }
+                        
+                        // 回收位图资源
+                        try {
+                            bitmap.recycle()
+                        } catch (e: Exception) {
+                            Log.e(TAG, "回收Bitmap失败", e)
                         }
                     } else {
-                        Log.w(TAG, "帧数据为空，跳过发送")
+                        Log.w(TAG, "获取的Bitmap无效或转换失败")
                     }
                     
                     // 限制帧率（例如30fps）
@@ -349,21 +360,28 @@ class ScreenCaptureWorker(
      * 将Image转换为Bitmap
      */
     private fun imageToBitmap(image: android.media.Image): android.graphics.Bitmap? {
-        val planes = image.planes
-        if (planes.isEmpty() || planes[0].buffer == null) {
-            Log.w(TAG, "图像planes数组为空或缓冲区无效")
-            return null
-        }
-        val buffer = planes[0].buffer
-        val pixelStride = planes[0].pixelStride
-        val rowStride = planes[0].rowStride
-        val rowPadding = rowStride - pixelStride * image.width
-
-        // 确保尺寸有效
-        val actualWidth = if (image.width + rowPadding / pixelStride <= 0) image.width else image.width + rowPadding / pixelStride
-        val actualHeight = if (image.height <= 0) 1 else image.height
-
         return try {
+            // 检查图像是否已关闭
+            if (image.planes.isEmpty()) {
+                Log.w(TAG, "图像planes数组为空")
+                return android.graphics.Bitmap.createBitmap(SCREEN_WIDTH, SCREEN_HEIGHT, android.graphics.Bitmap.Config.ARGB_8888)
+            }
+            
+            val planes = image.planes
+            if (planes[0].buffer == null) {
+                Log.w(TAG, "图像planes缓冲区无效")
+                return android.graphics.Bitmap.createBitmap(SCREEN_WIDTH, SCREEN_HEIGHT, android.graphics.Bitmap.Config.ARGB_8888)
+            }
+            
+            val buffer = planes[0].buffer
+            val pixelStride = planes[0].pixelStride
+            val rowStride = planes[0].rowStride
+            val rowPadding = rowStride - pixelStride * image.width
+
+            // 确保尺寸有效
+            val actualWidth = if (image.width + rowPadding / pixelStride <= 0) image.width else image.width + rowPadding / pixelStride
+            val actualHeight = if (image.height <= 0) 1 else image.height
+
             val bitmap = android.graphics.Bitmap.createBitmap(
                 actualWidth,
                 actualHeight,

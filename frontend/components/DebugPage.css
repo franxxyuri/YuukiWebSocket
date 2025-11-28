@@ -1,0 +1,396 @@
+/* DebugPage.css */
+.debug-page {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  padding: 20px;
+}
+
+.main-debug-card {
+  background-color: #fafafa;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.main-debug-card:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+.debug-tabs {
+  margin-top: 20px;
+}
+
+.debug-tabs .ant-tabs-tab {
+  font-size: 15px;
+  padding: 12px 20px;
+  transition: all 0.3s ease;
+}
+
+.debug-tabs .ant-tabs-tab-active {
+  color: #1890ff;
+  font-weight: 500;
+}
+
+.debug-tabs .ant-tabs-ink-bar {
+  background-color: #1890ff;
+  height: 3px;
+  border-radius: 1.5px;
+  transition: all 0.3s ease;
+}
+
+.status-card, .function-card, .logs-card, .advanced-card {
+  margin-bottom: 16px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.status-card:hover, .function-card:hover, .logs-card:hover, .advanced-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+.connection-status-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.status-indicator .ant-badge {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.connection-actions button {
+  margin-left: 8px;
+  transition: all 0.3s ease;
+}
+
+.connection-actions button:hover {
+  transform: translateY(-1px);
+}
+
+.file-transfer-simulation {
+  padding: 10px 0;
+}
+
+.file-transfer-progress {
+  margin-top: 16px;
+}
+
+.progress-bar-container {
+  height: 8px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-bar {
+  height: 100%;
+  background-color: #1890ff;
+  transition: width 0.3s ease;
+  border-radius: 4px;
+}
+
+.progress-text {
+  text-align: center;
+  font-size: 12px;
+  color: #666;
+}
+
+.screen-share-simulation {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.screen-preview {
+  margin-top: 20px;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+  padding: 40px 20px;
+  background-color: #fafafa;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.preview-placeholder {
+  text-align: center;
+  color: #999;
+}
+
+.preview-placeholder p {
+  margin-top: 10px;
+}
+
+.logs-controls {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.logs-table {
+  font-size: 13px;
+}
+
+.logs-table .ant-table-row {
+  transition: all 0.2s ease;
+}
+
+.logs-table .ant-table-row:hover {
+  background-color: #f5f5f5;
+}
+
+.advanced-card .ant-collapse {
+  background-color: transparent;
+}
+
+.advanced-card .ant-collapse-item {
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.advanced-card .ant-collapse-header {
+  background-color: #fafafa;
+  transition: all 0.3s ease;
+}
+
+.advanced-card .ant-collapse-header:hover {
+  background-color: #f0f0f0;
+}
+
+.advanced-card .ant-collapse-content {
+  border-top: none;
+  padding: 16px;
+}
+
+.fault-simulation {
+  display: flex;
+  gap: 10px;
+}
+
+.performance-monitor {
+  padding: 10px 0;
+}
+
+.performance-metrics {
+  display: flex;
+  gap: 20px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.metric-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.metric-label {
+  color: #666;
+}
+
+/* 响应式布局 */
+@media (max-width: 768px) {
+  .debug-page {
+    padding: 10px;
+  }
+
+  .connection-status-container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .performance-metrics {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .fault-simulation {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+/* 添加一些动画效果 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.status-card, .function-card, .logs-card, .advanced-card {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* 针对不同类型日志行的样式 */
+.logs-table .ant-table-row.type-info {
+  background-color: rgba(24, 144, 255, 0.05);
+}
+
+.logs-table .ant-table-row.type-success {
+  background-color: rgba(82, 196, 26, 0.05);
+}
+
+.logs-table .ant-table-row.type-warning {
+  background-color: rgba(255, 149, 0, 0.05);
+}
+
+.logs-table .ant-table-row.type-error {
+  background-color: rgba(255, 77, 79, 0.05);
+}
+
+/* 按钮悬停效果增强 */
+.ant-btn {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 6px;
+}
+
+.ant-btn:hover {
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.ant-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(24, 144, 255, 0.2);
+}
+
+/* 卡片阴影动画 */
+@keyframes pulseShadow {
+  0% {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+  50% {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  }
+  100% {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+}
+
+.main-debug-card.connected {
+  animation: pulseShadow 2s infinite;
+}
+
+/* 确保表格在小屏幕上正常显示 */
+@media (max-width: 1024px) {
+  .ant-table {
+    font-size: 12px;
+  }
+
+  .ant-table th,
+  .ant-table td {
+    padding: 8px;
+  }
+
+  .logs-table {
+    font-size: 12px;
+  }
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* 输入框和文本区域的聚焦效果 */
+.ant-input:focus,
+.ant-input:hover,
+.ant-input-affix-wrapper:focus,
+.ant-input-affix-wrapper:hover,
+.ant-input-number-focused,
+.ant-input-number:hover,
+.ant-select-focused:not(.ant-select-disabled),
+.ant-select:hover:not(.ant-select-disabled),
+.ant-textarea:focus,
+.ant-textarea:hover {
+  border-color: #40a9ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+/* 标签页切换动画 */
+.ant-tabs-content {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* 开关组件美化 */
+.ant-switch-checked {
+  background-color: #1890ff;
+}
+
+.ant-switch-checked:hover:not(.ant-switch-disabled) {
+  background-color: #40a9ff;
+}
+
+/* 徽章样式增强 */
+.ant-badge {
+  font-weight: 500;
+}
+
+.ant-badge-success {
+  background-color: #52c41a;
+}
+
+.ant-badge-error {
+  background-color: #ff4d4f;
+}
+
+.ant-badge-warning {
+  background-color: #fa8c16;
+}
+
+.ant-badge-processing {
+  background-color: #1890ff;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 确保按钮组的间距 */
+.ant-btn-group > .ant-btn,
+.ant-btn-group > span > .ant-btn {
+  margin-right: 0;
+}
+
+.ant-btn-group > .ant-btn:not(:last-child) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.ant-btn-group > .ant-btn:not(:first-child) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}

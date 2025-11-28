@@ -14,12 +14,18 @@ import android.view.View
 import android.graphics.Color
 import android.content.Context
 import android.content.ClipboardManager
-import com.example.windowsandroidconnect.service.*
 import com.example.windowsandroidconnect.network.NetworkCommunication
 import com.example.windowsandroidconnect.config.ClientConfig
 import com.example.windowsandroidconnect.connection.*
+import com.example.windowsandroidconnect.service.OptimizedScreenCaptureService
+import com.example.windowsandroidconnect.service.ScreenCaptureService
+import com.example.windowsandroidconnect.service.RemoteControlService
+import com.example.windowsandroidconnect.service.ClipboardSyncService
+import com.example.windowsandroidconnect.service.NotificationSyncService
+import com.example.windowsandroidconnect.service.DeviceDiscoveryService
 import com.example.windowsandroidconnect.test.LocalTestServer
 import com.example.windowsandroidconnect.test.LocalWebSocketTestServer
+import com.example.windowsandroidconnect.FileTransferActivity
 import kotlinx.coroutines.*
 import org.json.JSONObject
 import java.util.*
@@ -63,6 +69,8 @@ class QuickTestActivity : Activity() {
     private var stopLocalServerButton: Button? = null
     private var localServerPortInput: EditText? = null
     private var oneClickTestButton: Button? = null
+    private var stopOneClickTestButton: Button? = null
+    private var isOneClickTestRunning = false  // 跟踪一键自测是否正在运行
     private var isConnected = false
     private val discoveredDevices = mutableMapOf<String, String>()  // deviceId to deviceInfo map
     private val deviceDiscoveryReceiver = object : android.content.BroadcastReceiver() {
@@ -211,6 +219,17 @@ class QuickTestActivity : Activity() {
             minWidth = 200 // 设置最小宽度
         }
         oneClickTestButtonLayout.addView(oneClickTestButton)
+        
+        // 停止一键自测按钮
+        val stopOneClickTestButton = Button(this).apply {
+            text = "停止测试"
+            setPadding(32, 16, 32, 16) // 更大的内边距
+            setBackgroundColor(Color.parseColor("#F44336")) // 红色，表示停止
+            setTextColor(Color.WHITE)
+            minWidth = 200 // 设置最小宽度
+            isEnabled = false // 默认禁用，只在测试运行时启用
+        }
+        oneClickTestButtonLayout.addView(stopOneClickTestButton)
         serverConfigCard.addView(oneClickTestButtonLayout)
         
         // 连接类型选择布局
@@ -693,15 +712,27 @@ class QuickTestActivity : Activity() {
         oneClickTestButton?.setOnClickListener {
             startOneClickTest()
         }
+        
+        stopOneClickTestButton?.setOnClickListener {
+            stopOneClickTest()
+        }
     }
     
     private fun initializeNetwork() {
         connectionManager = ConnectionManager()
-        logMessage("网络通信模块已初始化，支持连接策略: ${connectionManager?.getSupportedConnectionTypes()}")
+        // 只有在UI组件已初始化后才记录日志
+        if (::logText.isInitialized) {
+            logMessage("网络通信模块已初始化，支持连接策略: ${connectionManager?.getSupportedConnectionTypes()}")
+        }
     }
     
     private fun initializeConnectionTypeSpinner(spinner: android.widget.Spinner) {
-        val connectionTypes = connectionManager?.getSupportedConnectionTypes() ?: listOf("tcp")
+        val connectionTypes = connectionManager?.getSupportedConnectionTypes() ?: run {
+            // 如果connectionManager没有正确初始化，尝试重新初始化
+            // 注意：此时UI组件可能尚未初始化，因此不调用logMessage
+            initializeNetwork()
+            connectionManager?.getSupportedConnectionTypes() ?: listOf("tcp")
+        }
         val adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_spinner_item, connectionTypes)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         spinner.adapter = adapter
@@ -710,6 +741,9 @@ class QuickTestActivity : Activity() {
         val defaultPosition = connectionTypes.indexOf("tcp")
         if (defaultPosition >= 0) {
             spinner.setSelection(defaultPosition)
+        } else if (connectionTypes.isNotEmpty()) {
+            // 如果没有tcp，选择第一个可用的连接类型
+            spinner.setSelection(0)
         }
         
         // 设置选择监听器
@@ -717,7 +751,10 @@ class QuickTestActivity : Activity() {
             override fun onItemSelected(parent: android.widget.AdapterView<*>, view: android.view.View?, position: Int, id: Long) {
                 val selectedType = connectionTypes[position]
                 connectionManager?.selectStrategy(selectedType)
-                logMessage("已选择连接类型: $selectedType")
+                // 确保UI组件已初始化后再调用logMessage
+                if (::logText.isInitialized) {
+                    logMessage("已选择连接类型: $selectedType")
+                }
             }
             
             override fun onNothingSelected(parent: android.widget.AdapterView<*>) {
@@ -772,18 +809,18 @@ class QuickTestActivity : Activity() {
         }
     }
     
-    /**
-     * 停止本地测试服务器
-     */
     private fun stopLocalTestServer() {
         try {
             localWebSocketTestServer?.stopServer()
             
             startLocalServerButton?.isEnabled = true
             stopLocalServerButton?.isEnabled = false
-            logMessage("本地WebSocket测试服务器已停止")
             
-            showToast("本地服务器已停止")
+            // 如果不是在一键自测过程中调用此方法，则记录日志
+            if (!isOneClickTestRunning) {
+                logMessage("本地WebSocket测试服务器已停止")
+                showToast("本地服务器已停止")
+            }
         } catch (e: Exception) {
             logMessage("停止本地WebSocket测试服务器时出错: ${e.message}")
             showToast("停止服务器出错: ${e.message}")
@@ -795,8 +832,23 @@ class QuickTestActivity : Activity() {
      * 自动启动服务器、连接、测试各项功能
      */
     private fun startOneClickTest() {
+        // 检查是否已有测试在运行
+        if (isOneClickTestRunning) {
+            logMessage("一键自测已在运行中，请先停止当前测试")
+            return
+        }
+        
+        isOneClickTestRunning = true
+        runOnUiThread {
+            oneClickTestButton?.isEnabled = false
+            stopOneClickTestButton?.isEnabled = true
+        }
+        
         CoroutineScope(Dispatchers.Main).launch {
             logMessage("开始一键自测...")
+            
+            // 检查是否需要取消测试
+            if (!isOneClickTestRunning) return@launch
             
             // 1. 启动本地服务器
             logMessage("步骤1: 启动本地测试服务器...")
@@ -804,9 +856,21 @@ class QuickTestActivity : Activity() {
             if (!startServerSuccess) {
                 logMessage("一键自测失败: 无法启动本地服务器")
                 showToast("一键自测失败")
+                isOneClickTestRunning = false
+                runOnUiThread {
+                    oneClickTestButton?.isEnabled = true
+                    stopOneClickTestButton?.isEnabled = false
+                }
                 return@launch
             }
+            
+            // 检查是否需要取消测试
+            if (!isOneClickTestRunning) return@launch
+            
             delay(1000) // 等待服务器启动
+            
+            // 检查是否需要取消测试
+            if (!isOneClickTestRunning) return@launch
             
             // 2. 连接到本地服务器
             logMessage("步骤2: 连接到本地服务器...")
@@ -815,19 +879,37 @@ class QuickTestActivity : Activity() {
                 logMessage("一键自测失败: 无法连接到本地服务器")
                 stopLocalTestServer() // 连接失败时停止服务器
                 showToast("一键自测失败")
+                isOneClickTestRunning = false
+                runOnUiThread {
+                    oneClickTestButton?.isEnabled = true
+                    stopOneClickTestButton?.isEnabled = false
+                }
                 return@launch
             }
+            
+            // 检查是否需要取消测试
+            if (!isOneClickTestRunning) return@launch
+            
             delay(1000) // 等待连接建立
+            
+            // 检查是否需要取消测试
+            if (!isOneClickTestRunning) return@launch
             
             // 3. 执行各项功能测试
             logMessage("步骤3: 执行功能测试...")
             runAllTests()
             delay(2000) // 等待测试完成
             
+            // 检查是否需要取消测试
+            if (!isOneClickTestRunning) return@launch
+            
             // 4. 测试完成后断开连接
             logMessage("步骤4: 断开连接...")
             disconnectFromServer()
             delay(500)
+            
+            // 检查是否需要取消测试
+            if (!isOneClickTestRunning) return@launch
             
             // 5. 停止本地服务器
             logMessage("步骤5: 停止本地服务器...")
@@ -835,6 +917,46 @@ class QuickTestActivity : Activity() {
             
             logMessage("一键自测完成!")
             showToast("一键自测完成!")
+            
+            // 重置测试状态
+            isOneClickTestRunning = false
+            runOnUiThread {
+                oneClickTestButton?.isEnabled = true
+                stopOneClickTestButton?.isEnabled = false
+            }
+        }
+    }
+    
+    /**
+     * 停止一键自测
+     * 允许用户手动停止正在进行的测试
+     */
+    private fun stopOneClickTest() {
+        if (!isOneClickTestRunning) {
+            logMessage("没有正在进行的一键自测")
+            return
+        }
+        
+        logMessage("用户手动停止一键自测...")
+        isOneClickTestRunning = false  // 设置标志以停止测试流程
+        
+        // 断开连接（如果已连接）
+        if (isConnected) {
+            disconnectFromServer()
+        }
+        
+        // 停止本地服务器（如果正在运行）
+        if (localWebSocketTestServer?.isRunning() == true) {
+            stopLocalTestServer()
+        }
+        
+        logMessage("一键自测已停止")
+        showToast("一键自测已停止")
+        
+        // 重置按钮状态
+        runOnUiThread {
+            oneClickTestButton?.isEnabled = true
+            stopOneClickTestButton?.isEnabled = false
         }
     }
     
@@ -955,7 +1077,7 @@ class QuickTestActivity : Activity() {
     private fun testScreenCapture() {
         try {
             // 尝试启动屏幕捕获服务
-            val intent = Intent(this, com.example.windowsandroidconnect.service.ScreenCaptureService::class.java)
+            val intent = Intent(this, ScreenCaptureService::class.java)
             startForegroundService(intent)
             logMessage("屏幕捕获服务启动测试完成")
             showToast("屏幕捕获测试完成")
@@ -967,7 +1089,7 @@ class QuickTestActivity : Activity() {
     private fun testScreenCaptureOptimized() {
         try {
             // 尝试启动优化的屏幕捕获服务
-            val intent = Intent(this, com.example.windowsandroidconnect.service.OptimizedScreenCaptureService::class.java)
+            val intent = Intent(this, OptimizedScreenCaptureService::class.java)
             startForegroundService(intent)
             logMessage("优化的屏幕捕获服务启动测试完成")
             showToast("优化屏幕捕获测试完成")
