@@ -9,6 +9,7 @@ import android.util.Log
 import com.example.windowsandroidconnect.MyApplication
 import com.example.windowsandroidconnect.network.NetworkCommunication
 import com.example.windowsandroidconnect.config.ClientConfig
+import com.example.windowsandroidconnect.utils.DeviceIdManager
 import kotlinx.coroutines.*
 import org.json.JSONObject
 import java.net.DatagramPacket
@@ -41,6 +42,9 @@ class DeviceDiscoveryService : Service() {
         ClientConfig.getInstance(this@DeviceDiscoveryService).serverIp
     }
     private val deviceTimeout = 30000L // 30秒超时
+    private val deviceId: String by lazy {
+        DeviceIdManager.getDeviceId(this@DeviceDiscoveryService)
+    }
 
     override fun onCreate() {
         super.onCreate()

@@ -1,6 +1,8 @@
 package com.example.windowsandroidconnect.connection
 
 import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.DatagramPacket
 import java.net.DatagramSocket
@@ -18,6 +20,8 @@ class UdpConnectionStrategy : ConnectionStrategy {
     private var isConnectedState = false
     private var receiveThread: Thread? = null
     private var shouldStop = false
+    private val statusListeners = mutableListOf<(Boolean) -> Unit>()
+    private val messageListeners = mutableListOf<(JSONObject) -> Unit>()
     
     override suspend fun connect(ip: String, port: Int): Boolean {
         return try {
@@ -33,10 +37,14 @@ class UdpConnectionStrategy : ConnectionStrategy {
             
             isConnectedState = true
             Log.d("UdpConnectionStrategy", "UDP连接成功")
+            // 通知所有状态监听器
+            statusListeners.forEach { it(true) }
             true
         } catch (e: Exception) {
             Log.e("UdpConnectionStrategy", "UDP连接失败", e)
             isConnectedState = false
+            // 通知所有状态监听器
+            statusListeners.forEach { it(false) }
             false
         }
     }
@@ -51,6 +59,8 @@ class UdpConnectionStrategy : ConnectionStrategy {
         serverAddress = null
         serverPort = -1
         isConnectedState = false
+        // 通知所有状态监听器
+        statusListeners.forEach { it(false) }
     }
     
     override fun sendMessage(message: JSONObject) {
@@ -97,6 +107,14 @@ class UdpConnectionStrategy : ConnectionStrategy {
                     val receivedData = String(packet.data, 0, packet.length)
                     Log.d("UdpConnectionStrategy", "收到UDP消息: $receivedData")
                     
+                    // 通知所有消息监听器
+                    try {
+                        val jsonMessage = JSONObject(receivedData)
+                        messageListeners.forEach { it(jsonMessage) }
+                    } catch (e: Exception) {
+                        Log.e("UdpConnectionStrategy", "解析收到的消息为JSON失败", e)
+                    }
+                    
                     // 这里可以添加消息处理逻辑
                     // 例如：处理来自服务器的响应
                     
@@ -114,5 +132,54 @@ class UdpConnectionStrategy : ConnectionStrategy {
             }
         }
         receiveThread?.start()
+    }
+    
+    override fun getConfig(): Map<String, Any> {
+        val config = mutableMapOf<String, Any>()
+        config["connectionType"] = getConnectionType()
+        config["connected"] = isConnected()
+        config["serverAddress"] = serverAddress?.hostAddress ?: ""
+        config["serverPort"] = serverPort
+        return config
+    }
+    
+    override fun updateConfig(config: Map<String, Any>) {
+        Log.d("UdpConnectionStrategy", "更新配置: $config")
+        // 处理配置更新逻辑
+    }
+    
+    override fun registerStatusListener(listener: (Boolean) -> Unit) {
+        statusListeners.add(listener)
+    }
+    
+    override fun unregisterStatusListener(listener: (Boolean) -> Unit) {
+        statusListeners.remove(listener)
+    }
+    
+    override fun registerMessageListener(listener: (JSONObject) -> Unit) {
+        messageListeners.add(listener)
+    }
+    
+    override fun unregisterMessageListener(listener: (JSONObject) -> Unit) {
+        messageListeners.remove(listener)
+    }
+    
+    override suspend fun reset(): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                // 断开现有连接
+                disconnect()
+                
+                // 重新连接到之前的服务器（如果有）
+                if (serverAddress != null && serverPort != -1) {
+                    connect(serverAddress!!.hostAddress, serverPort)
+                } else {
+                    false
+                }
+            } catch (e: Exception) {
+                Log.e("UdpConnectionStrategy", "重置连接失败", e)
+                false
+            }
+        }
     }
 }

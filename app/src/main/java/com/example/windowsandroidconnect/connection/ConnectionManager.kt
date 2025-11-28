@@ -11,15 +11,14 @@ class ConnectionManager {
     
     private var currentStrategy: ConnectionStrategy? = null
     private val connectionStrategies = mutableMapOf<String, ConnectionStrategy>()
+    private val strategyFactories = mutableMapOf<String, () -> ConnectionStrategy>()
     
-    init {
-        // 注册默认策略
-        registerStrategy("tcp", TcpConnectionStrategy())
-        registerStrategy("kcp", KcpConnectionStrategy())
-        registerStrategy("udp", UdpConnectionStrategy())
-        registerStrategy("http", HttpConnectionStrategy())
-        registerStrategy("websocket", WebSocketConnectionStrategy())
-        registerStrategy("bluetooth", BluetoothConnectionStrategy())
+    /**
+     * 注册连接策略工厂
+     * 使用工厂模式延迟创建策略实例，提高性能和灵活性
+     */
+    fun registerStrategyFactory(type: String, factory: () -> ConnectionStrategy) {
+        strategyFactories[type.lowercase()] = factory
     }
     
     /**
@@ -33,7 +32,18 @@ class ConnectionManager {
      * 选择连接策略
      */
     fun selectStrategy(type: String): Boolean {
-        val strategy = connectionStrategies[type.lowercase()]
+        val lowerType = type.lowercase()
+        var strategy = connectionStrategies[lowerType]
+        
+        // 如果策略不存在，尝试使用工厂创建
+        if (strategy == null) {
+            val factory = strategyFactories[lowerType]
+            if (factory != null) {
+                strategy = factory()
+                connectionStrategies[lowerType] = strategy
+            }
+        }
+        
         return if (strategy != null) {
             // 如果当前有连接，先断开
             if (isConnected()) {
@@ -74,6 +84,17 @@ class ConnectionManager {
     }
     
     /**
+     * 发送命令
+     */
+    fun sendCommand(command: String, params: Map<String, Any> = emptyMap()) {
+        val message = JSONObject().apply {
+            put("type", command)
+            params.forEach { (key, value) -> put(key, value) }
+        }
+        sendMessage(message)
+    }
+    
+    /**
      * 检查连接状态
      */
     fun isConnected(): Boolean {
@@ -91,7 +112,7 @@ class ConnectionManager {
      * 获取所有支持的连接类型
      */
     fun getSupportedConnectionTypes(): List<String> {
-        return connectionStrategies.keys.toList()
+        return (strategyFactories.keys + connectionStrategies.keys).distinct().sorted()
     }
     
     /**
@@ -99,5 +120,15 @@ class ConnectionManager {
      */
     fun getCurrentStrategy(): ConnectionStrategy? {
         return currentStrategy
+    }
+    
+    /**
+     * 清理资源
+     */
+    fun cleanup() {
+        disconnect()
+        connectionStrategies.clear()
+        strategyFactories.clear()
+        Log.d("ConnectionManager", "连接管理器资源已清理")
     }
 }

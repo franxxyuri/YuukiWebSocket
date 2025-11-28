@@ -11,12 +11,12 @@ import configManager from './ConfigManager';
 class ConnectionManager {
   constructor() {
     this.strategy = null;
-    // 开发环境默认使用mock模式以获得更好的开发体验
+    // 开发环境默认使用websocket模式
     const isDev = process.env.NODE_ENV === 'development' || import.meta.env.DEV;
     this.config = {
-      connectionType: 'mock', // 开发环境默认使用mock模式
-      serverUrl: 'ws://localhost:3000',
-      useMock: isDev, // 开发环境默认使用模拟连接
+      connectionType: 'websocket', // 开发环境默认使用websocket模式
+      serverUrl: 'ws://localhost:8928',
+      useMock: false, // 开发环境默认不使用模拟连接
       maxReconnectAttempts: 3,
       showConnectionErrors: true // 控制是否显示连接错误
     };
@@ -171,6 +171,82 @@ class ConnectionManager {
         break;
     }
     
+    // 注册策略事件监听器，转发到外部
+    this.setupStrategyEventListeners();
+    
+    return this;
+  }
+  
+  /**
+   * 设置策略事件监听器
+   * @private
+   */
+  setupStrategyEventListeners() {
+    if (!this.strategy) return;
+    
+    // 监听策略的所有事件，并转发到外部
+    const eventNames = ['connect', 'disconnect', 'error', 'deviceDiscovered', 'deviceConnected', 'deviceDisconnected', 'fileTransferStarted', 'fileTransferProgress', 'fileTransferCompleted', 'fileTransferFailed', 'screenShareStarted', 'screenShareStopped', 'screenFrameReceived', 'remoteControlEnabled', 'remoteControlDisabled', 'remoteControlError', 'clipboardContentReceived'];
+    
+    eventNames.forEach(eventName => {
+      this.strategy.on(eventName, this.triggerEvent.bind(this));
+    });
+  }
+  
+  /**
+   * 触发事件
+   * @private
+   * @param {string} eventName - 事件名称
+   * @param {*} data - 事件数据
+   */
+  triggerEvent(eventName, data) {
+    // 这里可以添加事件日志
+    console.log(`ConnectionManager 触发事件: ${eventName}`, data);
+    
+    // 转发事件给外部监听器
+    const listeners = this.eventListeners.get(eventName) || [];
+    listeners.forEach(listener => {
+      try {
+        listener(data);
+      } catch (error) {
+        console.error(`事件监听器错误 [${eventName}]:`, error);
+      }
+    });
+  }
+  
+  /**
+   * 存储事件监听器
+   * @private
+   */
+  eventListeners = new Map();
+  
+  /**
+   * 注册事件监听器
+   * @param {string} eventName - 事件名称
+   * @param {function} handler - 事件处理器函数
+   * @returns {ConnectionManager} 连接管理器实例，支持链式调用
+   */
+  on(eventName, handler) {
+    if (!this.eventListeners.has(eventName)) {
+      this.eventListeners.set(eventName, []);
+    }
+    this.eventListeners.get(eventName).push(handler);
+    return this;
+  }
+  
+  /**
+   * 移除事件监听器
+   * @param {string} eventName - 事件名称
+   * @param {function} handler - 要移除的事件处理器
+   * @returns {ConnectionManager} 连接管理器实例，支持链式调用
+   */
+  off(eventName, handler) {
+    if (this.eventListeners.has(eventName)) {
+      const listeners = this.eventListeners.get(eventName);
+      const index = listeners.indexOf(handler);
+      if (index > -1) {
+        listeners.splice(index, 1);
+      }
+    }
     return this;
   }
 

@@ -156,21 +156,37 @@ class OptimizedScreenCaptureService : Service() {
             startActivity(intent)
         } else {
             Log.d(TAG, "已有MediaProjection权限，开始屏幕捕获")
-            // 创建ImageReader用于接收屏幕数据，增加缓冲区数量以提高性能
-            imageReader = ImageReader.newInstance(screenWidth, screenHeight, screenCaptureFormat, 3)
-            imageReader?.setOnImageAvailableListener(imageAvailableListener, null) // 使用主线程处理
+            try {
+                // 创建ImageReader用于接收屏幕数据，增加缓冲区数量以提高性能
+                imageReader = ImageReader.newInstance(screenWidth, screenHeight, screenCaptureFormat, 3)
+                imageReader?.setOnImageAvailableListener(imageAvailableListener, null) // 使用主线程处理
 
-            virtualDisplay = mediaProjection?.createVirtualDisplay(
-                "ScreenCapture",
-                screenWidth, screenHeight, screenDpi,
-                screenCaptureFlags,
-                imageReader?.surface,
-                null, null
-            )
+                // 捕获可能的SecurityException - 当用户拒绝权限时
+                virtualDisplay = mediaProjection?.createVirtualDisplay(
+                    "ScreenCapture",
+                    screenWidth, screenHeight, screenDpi,
+                    screenCaptureFlags,
+                    imageReader?.surface,
+                    null, null
+                )
 
-            startCaptureLoop()
-            isCapturing = true
-            Log.d(TAG, "屏幕捕获已开始")
+                if (virtualDisplay != null) {
+                    startCaptureLoop()
+                    isCapturing = true
+                    Log.d(TAG, "屏幕捕获已开始")
+                } else {
+                    Log.e(TAG, "创建虚拟显示器失败")
+                    stopSelf()
+                }
+            } catch (e: SecurityException) {
+                Log.e(TAG, "权限被拒绝：无法创建虚拟显示器", e)
+                // 处理权限被拒绝的情况
+                stopScreenCapture()
+                stopSelf()
+            } catch (e: Exception) {
+                Log.e(TAG, "开始屏幕捕获时发生异常", e)
+                stopScreenCapture()
+            }
         }
     }
     
@@ -197,23 +213,39 @@ class OptimizedScreenCaptureService : Service() {
             return
         }
         
-        // 注册MediaProjection回调
-        mediaProjection?.registerCallback(mediaProjectionCallback, null)
-        
-        imageReader = ImageReader.newInstance(screenWidth, screenHeight, screenCaptureFormat, 3)
-        imageReader?.setOnImageAvailableListener(imageAvailableListener, null) // 使用null表示在回调线程中执行
-        
-        virtualDisplay = mediaProjection?.createVirtualDisplay(
-            "ScreenCapture",
-            screenWidth, screenHeight, screenDpi,
-            screenCaptureFlags,
-            imageReader?.surface,
-            null, null
-        )
-        
-        startCaptureLoop()
-        isCapturing = true
-        Log.d(TAG, "屏幕捕获已开始")
+        try {
+            // 注册MediaProjection回调
+            mediaProjection?.registerCallback(mediaProjectionCallback, null)
+            
+            imageReader = ImageReader.newInstance(screenWidth, screenHeight, screenCaptureFormat, 3)
+            imageReader?.setOnImageAvailableListener(imageAvailableListener, null) // 使用null表示在回调线程中执行
+            
+            // 捕获可能的SecurityException - 当用户拒绝权限时
+            virtualDisplay = mediaProjection?.createVirtualDisplay(
+                "ScreenCapture",
+                screenWidth, screenHeight, screenDpi,
+                screenCaptureFlags,
+                imageReader?.surface,
+                null, null
+            )
+            
+            if (virtualDisplay != null) {
+                startCaptureLoop()
+                isCapturing = true
+                Log.d(TAG, "屏幕捕获已开始")
+            } else {
+                Log.e(TAG, "创建虚拟显示器失败")
+                stopSelf()
+            }
+        } catch (e: SecurityException) {
+            Log.e(TAG, "权限被拒绝：无法创建虚拟显示器", e)
+            // 处理权限被拒绝的情况
+            stopScreenCapture()
+            stopSelf()
+        } catch (e: Exception) {
+            Log.e(TAG, "设置MediaProjection时发生异常", e)
+            stopScreenCapture()
+        }
     }
     
     /**

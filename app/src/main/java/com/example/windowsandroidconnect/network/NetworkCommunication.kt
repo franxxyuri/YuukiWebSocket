@@ -5,6 +5,8 @@ import android.content.Intent
 import android.util.Log
 import com.example.windowsandroidconnect.MyApplication
 import com.example.windowsandroidconnect.config.ClientConfig
+import com.example.windowsandroidconnect.utils.AppEvent
+import com.example.windowsandroidconnect.utils.EventBus
 import kotlinx.coroutines.*
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
@@ -47,123 +49,68 @@ class NetworkCommunication {
     }
     
     /**
-
      * 连接到Windows端
-
      */
-
     suspend fun connect(ip: String, port: Int): Boolean {
-
         return withContext(Dispatchers.IO) {
-
             try {
-
                 val serverUrl = "ws://$ip:$port"
-
                 Log.d(TAG, "正在连接到: $serverUrl")
-
                 
-
                 val request = Request.Builder()
-
                     .url(serverUrl)
-
                     .build()
-
                 
-
                 // 创建一个CompletableDeferred来等待连接结果
-
                 val connectionResult = kotlinx.coroutines.CompletableDeferred<Boolean>()
-
                 
-
                 val listener = object : WebSocketListener() {
-
                     override fun onOpen(webSocket: WebSocket, response: Response) {
-
                         Log.d(TAG, "WebSocket连接已建立，响应码: ${response?.code}")
-
                         this@NetworkCommunication.webSocket = webSocket
-
                         isConnected = true
-
                         
-
                         // 发送设备信息
-
                         Log.d(TAG, "准备发送设备信息")
-
                         sendDeviceInfo()
-
                         
-
+                        // 发布连接状态变化事件
+                        EventBus.post(AppEvent.ConnectionStatusEvent(true, "websocket"))
+                        
                         // 连接成功
-
                         connectionResult.complete(true)
-
                     }
-
                     
-
                     override fun onMessage(webSocket: WebSocket, text: String) {
-
                         try {
-
                             Log.d(TAG, "收到文本消息，长度: ${text.length}")
-
                             val message = JSONObject(text.trim())
-
                             val messageType = message.optString("type")
-
                             Log.d(TAG, "收到消息: $messageType")
-
                             
-
                             if (messageType == "screen_frame_header") {
-
                                 // 如果是屏幕帧头消息，实际的帧数据会作为二进制消息发送
-
                                 // 这里处理普通JSON消息
-
                                 handleMessage(message)
-
                             } else {
-
                                 // 处理普通JSON消息
-
                                 handleMessage(message)
-
                             }
-
                         } catch (e: Exception) {
-
                             Log.e(TAG, "解析消息失败: $text", e)
-
                         }
-
                     }
-
                     
-
                     override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
-
                         // 处理二进制数据（如屏幕帧）
-
                         Log.d(TAG, "收到二进制数据: ${bytes.size} bytes")
-
                         // 这里可以处理二进制帧数据
-
                     }
-
                     
-
                     override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-
                         Log.e(TAG, "WebSocket连接失败", t)
-
                         Log.e(TAG, "连接失败详情 - 响应: $response")
-
+                        
                         // 提供详细的错误信息
                         val errorMessage = when (t) {
                             is java.net.UnknownHostException -> "无法解析主机名，请检查IP地址是否正确"
@@ -179,87 +126,63 @@ class NetworkCommunication {
                             is javax.net.ssl.SSLException -> "SSL连接错误: ${t.message}"
                             else -> "连接失败: ${t.message ?: "未知错误"}"
                         }
-
                         Log.e(TAG, "详细错误信息: $errorMessage")
-
-                        isConnected = false
-
-                        this@NetworkCommunication.webSocket = null
-
                         
-
-                        // 连接失败
-
-                        connectionResult.complete(false)
-
-                    }
-
-                    
-
-                    override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-
-                        Log.d(TAG, "WebSocket连接已关闭: $code - $reason")
-
                         isConnected = false
-
                         this@NetworkCommunication.webSocket = null
-
+                        
+                        // 发布连接状态变化事件
+                        EventBus.post(AppEvent.ConnectionStatusEvent(false, "websocket"))
+                        
+                        // 连接失败
+                        connectionResult.complete(false)
                     }
-
                     
-
+                    override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                        Log.d(TAG, "WebSocket连接已关闭: $code - $reason")
+                        isConnected = false
+                        this@NetworkCommunication.webSocket = null
+                        
+                        // 发布连接状态变化事件
+                        EventBus.post(AppEvent.ConnectionStatusEvent(false, "websocket"))
+                    }
+                    
                     override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-
                         Log.d(TAG, "WebSocket连接正在关闭: $code - $reason")
-
                     }
-
                 }
-
                 
-
                 Log.d(TAG, "创建WebSocket连接")
-
                 val result = client.newWebSocket(request, listener)
-
                 Log.d(TAG, "WebSocket创建完成")
-
-                // 等待连接建立（最多10秒）
-
-                Log.d(TAG, "等待连接完成...")
-
                 
-
+                // 等待连接建立（最多10秒）
+                Log.d(TAG, "等待连接完成...")
+                
                 // 等待连接结果，最多10秒超时
-
                 try {
-
                     withTimeout(10000) {
-
                         return@withTimeout connectionResult.await()
-
                     }
-
                 } catch (e: TimeoutCancellationException) {
-
                     Log.e(TAG, "连接超时")
-
+                    isConnected = false
+                    
+                    // 发布连接状态变化事件
+                    EventBus.post(AppEvent.ConnectionStatusEvent(false, "websocket"))
+                    
                     false
-
                 }
-
             } catch (e: Exception) {
-
                 Log.e(TAG, "连接Windows端失败", e)
-
                 isConnected = false
-
+                
+                // 发布连接状态变化事件
+                EventBus.post(AppEvent.ConnectionStatusEvent(false, "websocket"))
+                
                 false
-
             }
-
         }
-
     }
     
     /**
@@ -271,111 +194,75 @@ class NetworkCommunication {
             webSocket = null
             isConnected = false
             Log.d(TAG, "已断开连接")
+            
+            // 发布连接状态变化事件
+            EventBus.post(AppEvent.ConnectionStatusEvent(false, "websocket"))
         } catch (e: Exception) {
             Log.e(TAG, "关闭连接时出错", e)
         }
     }
     
     /**
-
      * 发送设备信息
-
      */
-
     private fun sendDeviceInfo() {
-
         try {
-
             Log.d(TAG, "准备构建设备信息")
+            
+            // 获取应用上下文
+            val context = android.content.ContextWrapper(android.view.ContextThemeWrapper(null, 0))
+            val deviceId = com.example.windowsandroidconnect.utils.DeviceIdManager.getDeviceId(context.applicationContext)
 
             val capabilitiesArray = org.json.JSONArray().apply {
-
                 put("file_transfer")
-
                 put("screen_mirror")
-
                 put("remote_control")
-
                 put("notification")
-
                 put("clipboard_sync")
-
             }
 
             val deviceInfo = JSONObject().apply {
-
                 put("type", "device_info")
-
                 put("deviceInfo", JSONObject().apply {
-
-                    put("deviceId", java.util.UUID.randomUUID().toString())
-
+                    put("deviceId", deviceId) // 使用持久化设备ID
                     put("deviceName", android.os.Build.MODEL)
-
                     put("platform", "android")
-
                     put("version", "1.0.0")
-
                     put("ip", getLocalIpAddress())
-
                     put("capabilities", capabilitiesArray)
-
                 })
-
             }
-
             
-
             Log.d(TAG, "设备信息构建完成: $deviceInfo")
-
             sendMessage(deviceInfo)
-
         } catch (e: Exception) {
-
             Log.e(TAG, "发送设备信息失败", e)
-
+            
             // 发送简化的设备信息作为备选方案
-
             try {
-
-                val fallbackDeviceInfo = JSONObject().apply {
-
-                    put("type", "device_info")
-
-                    put("deviceInfo", JSONObject().apply {
-
-                        put("deviceId", java.util.UUID.randomUUID().toString())
-
-                        put("deviceName", android.os.Build.MODEL)
-
-                        put("platform", "android")
-
-                        put("version", "1.0.0")
-
-                        put("ip", getLocalIpAddress())
-
-                        // 简化capabilities为字符串
-
-                        put("capabilities", "file_transfer,screen_mirror,remote_control,notification,clipboard_sync")
-
-                    })
-
-                }
-
+                // 获取应用上下文
+                val context = android.content.ContextWrapper(android.view.ContextThemeWrapper(null, 0))
+                val deviceId = com.example.windowsandroidconnect.utils.DeviceIdManager.getDeviceId(context.applicationContext)
                 
-
+                val fallbackDeviceInfo = JSONObject().apply {
+                    put("type", "device_info")
+                    put("deviceInfo", JSONObject().apply {
+                        put("deviceId", deviceId) // 使用持久化设备ID
+                        put("deviceName", android.os.Build.MODEL)
+                        put("platform", "android")
+                        put("version", "1.0.0")
+                        put("ip", getLocalIpAddress())
+                        // 简化capabilities为字符串
+                        put("capabilities", "file_transfer,screen_mirror,remote_control,notification,clipboard_sync")
+                    })
+                }
+                
                 Log.d(TAG, "发送备选设备信息: $fallbackDeviceInfo")
-
                 sendMessage(fallbackDeviceInfo)
-
             } catch (fallbackError: Exception) {
-
                 Log.e(TAG, "发送备选设备信息也失败", fallbackError)
-
             }
-
         }
-
     }
     
     /**
