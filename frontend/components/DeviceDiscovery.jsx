@@ -169,9 +169,9 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
     
     try {
       // 检查连接状态
-      const connectionStatus = apiService.getConnectionStatus ? apiService.getConnectionStatus() : { isConnected: connectionStatus };
+      const currentConnectionStatus = apiService.getConnectionStatus ? apiService.getConnectionStatus() : { isConnected: connectionStatus };
       
-      if (!connectionStatus.isConnected && !connectionStatus.isMockMode) {
+      if (!currentConnectionStatus.isConnected && !currentConnectionStatus.isMockMode) {
         // 未连接且非mock模式，显示提示
         message.warning('未连接到服务器，无法扫描设备');
         setError('未连接到服务器');
@@ -245,7 +245,7 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
 
     try {
       // 检查连接状态
-      const connectionStatus = apiService.getConnectionStatus ? apiService.getConnectionStatus() : { isConnected: connectionStatus };
+      const currentConnectionStatus = apiService.getConnectionStatus ? apiService.getConnectionStatus() : { isConnected: connectionStatus };
       
       // 断开现有连接
       if (connectedDevice) {
@@ -258,12 +258,9 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
         status: 'connecting'
       });
 
-      if (connectionStatus.isConnected) {
+      if (currentConnectionStatus.isConnected) {
         // 已连接到服务器，正常调用API服务连接设备
-        await apiService.connectDevice({
-          deviceId: device.id,
-          deviceName: device.name
-        });
+        await apiService.connectDevice(device.id);
 
         // 模拟连接延迟
         await new Promise(resolve => setTimeout(resolve, 1500));
@@ -286,7 +283,7 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
         }
         
         message.success(`已成功连接到 ${device.name}`);
-      } else if (connectionStatus.isMockMode) {
+      } else if (currentConnectionStatus.isMockMode) {
         // 在mock模式下，模拟连接成功
         setTimeout(() => {
           // 添加mock数据到设备信息
@@ -312,10 +309,35 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
         }, 1500);
         return; // 提前返回
       } else {
-        // 未连接且非mock模式
-        setError('未连接到服务器');
-        setConnectedDevice(null);
-        message.error('未连接到服务器，无法连接设备');
+        // 未连接到服务器，尝试直接连接到设备
+        try {
+          // 使用直接连接模式连接到设备
+          const result = await apiService.connectDirectlyToDevice(device);
+          
+          // 更新连接状态
+          const connectedDeviceData = {
+            ...device,
+            status: 'connected',
+            connectedTime: new Date().toISOString()
+          };
+          
+          setConnectedDevice(connectedDeviceData);
+          
+          // 更新连接历史
+          addToConnectionHistory(connectedDeviceData);
+          
+          // 通知父组件
+          if (onDeviceConnect) {
+            onDeviceConnect(connectedDeviceData);
+          }
+          
+          message.success(`已直接连接到 ${device.name}`);
+        } catch (directConnectError) {
+          // 直接连接失败，显示错误信息
+          setError(`直接连接设备失败: ${directConnectError.message}`);
+          setConnectedDevice(null);
+          message.error(`直接连接设备失败: ${directConnectError.message || '未知错误'}`);
+        }
       }
     } catch (err) {
       console.warn('连接设备失败:', err.message);

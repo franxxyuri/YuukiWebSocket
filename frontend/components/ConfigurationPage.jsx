@@ -116,11 +116,18 @@ const ConfigurationPage = () => {
   // 切换连接策略
   const handleStrategySwitch = async (strategyType) => {
     try {
-      addLog(`切换到${strategyType === 'websocket' ? 'WebSocket' : '模拟'}策略...`);
+      const strategyName = {
+        'websocket': 'WebSocket',
+        'tcp': 'TCP',
+        'kcp': 'KCP',
+        'mock': '模拟'
+      }[strategyType] || strategyType;
+      
+      addLog(`切换到${strategyName}策略...`);
       await connectionManager.switchStrategy(strategyType);
       setConnectionType(strategyType);
       form.setFieldValue('strategyType', strategyType);
-      message.success(`已切换到${strategyType === 'websocket' ? 'WebSocket' : '模拟'}策略`);
+      message.success(`已切换到${strategyName}策略`);
       
       // 更新配置
       const currentConfig = configManager.getConfig();
@@ -224,7 +231,15 @@ const ConfigurationPage = () => {
           <Statistic 
             title="连接类型" 
             value={connectionType || '未设置'}
-            formatter={(value) => value === 'websocket' ? 'WebSocket' : '模拟连接'}
+            formatter={(value) => {
+              const typeName = {
+                'websocket': 'WebSocket',
+                'tcp': 'TCP',
+                'kcp': 'KCP',
+                'mock': '模拟连接'
+              }[value] || value;
+              return typeName;
+            }}
           />
         </Col>
         <Col span={24}>
@@ -268,9 +283,27 @@ const ConfigurationPage = () => {
             WebSocket连接
           </Button>
           <Button 
+            type={connectionType === 'tcp' ? 'primary' : 'default'}
+            onClick={() => handleStrategySwitch('tcp')}
+            style={{ width: '48%', marginRight: '4%', marginTop: '16px' }}
+            size="large"
+            icon={<LinkOutlined />}
+          >
+            TCP连接
+          </Button>
+          <Button 
+            type={connectionType === 'kcp' ? 'primary' : 'default'}
+            onClick={() => handleStrategySwitch('kcp')}
+            style={{ width: '48%', marginTop: '16px' }}
+            size="large"
+            icon={<LinkOutlined />}
+          >
+            KCP连接
+          </Button>
+          <Button 
             type={connectionType === 'mock' ? 'primary' : 'default'}
             onClick={() => handleStrategySwitch('mock')}
-            style={{ width: '48%' }}
+            style={{ width: '100%', marginTop: '16px' }}
             size="large"
             icon={<SettingOutlined />}
           >
@@ -364,6 +397,18 @@ const ConfigurationPage = () => {
                         <div style={{ display: 'flex', alignItems: 'center' }}>
                           <LinkOutlined style={{ marginRight: 8 }} />
                           <span>WebSocket</span>
+                        </div>
+                      </Select.Option>
+                      <Select.Option value="tcp">
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          <LinkOutlined style={{ marginRight: 8 }} />
+                          <span>TCP</span>
+                        </div>
+                      </Select.Option>
+                      <Select.Option value="kcp">
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          <LinkOutlined style={{ marginRight: 8 }} />
+                          <span>KCP</span>
                         </div>
                       </Select.Option>
                       <Select.Option value="mock">
