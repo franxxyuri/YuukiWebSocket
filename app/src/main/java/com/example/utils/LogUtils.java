@@ -7,6 +7,8 @@ import androidx.annotation.Nullable;
 
 import timber.log.Timber;
 
+import java.util.Arrays;
+
 /**
  * 现代化日志工具类 - 基于 Timber 封装
  * 提供不同环境的日志策略、自定义格式和分类功能
@@ -60,7 +62,7 @@ public class LogUtils {
         // 这里需要根据您的项目配置来判断
         // 通常可以通过 BuildConfig.DEBUG 来判断
         try {
-            Class<?> buildConfigClass = Class.forName("com.example.BuildConfig");
+            Class<?> buildConfigClass = Class.forName("com.example.windowsandroidconnect.BuildConfig");
             return buildConfigClass.getField("DEBUG").getBoolean(null);
         } catch (Exception e) {
             // 如果无法获取 BuildConfig，则默认为 debug 模式
@@ -106,7 +108,14 @@ public class LogUtils {
          */
         private String createFullTag(String tag) {
             if (tag == null) {
-                return createStackElementTag(new Throwable().getStackTrace()[6]);
+                StackTraceElement[] stackTrace = new Throwable().getStackTrace();
+                if (stackTrace.length > 6) {
+                    return super.createStackElementTag(stackTrace[6]);
+                } else if (stackTrace.length > 0){
+                    return super.createStackElementTag(stackTrace[stackTrace.length - 1]);
+                } else {
+                    return "LogUtils";
+                }
             }
             return tag;
         }

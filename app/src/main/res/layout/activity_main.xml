@@ -118,4 +118,28 @@
         android:background="#FF5722"
         android:textColor="#ffffff" />
 
+    <!-- 模拟测试页面按钮 -->
+    <Button
+        android:id="@+id/mock_test_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="模拟测试页面"
+        android:textSize="16sp"
+        android:layout_marginTop="8dp"
+        android:padding="12dp"
+        android:background="#607D8B"
+        android:textColor="#ffffff" />
+
+    <!-- 快速功能验证测试页面按钮 -->
+    <Button
+        android:id="@+id/quick_test_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="快速功能验证测试"
+        android:textSize="16sp"
+        android:layout_marginTop="8dp"
+        android:padding="12dp"
+        android:background="#795548"
+        android:textColor="#ffffff" />
+
 </LinearLayout>

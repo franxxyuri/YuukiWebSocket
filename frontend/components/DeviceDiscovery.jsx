@@ -1,0 +1,638 @@
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { Card, Button, List, Avatar, Tag, Spin, message, Typography, Empty, Space, Divider } from 'antd';
+import { 
+  AndroidOutlined, 
+  WifiOutlined, 
+  DisconnectOutlined, 
+  RefreshOutlined, 
+  SearchOutlined, 
+  CheckCircleOutlined, 
+  LoadingOutlined,
+  StarOutlined,
+  StarFilled,
+  InfoCircleOutlined
+} from '@ant-design/icons';
+import websocketService from '../../src/services/websocket-service';
+
+const { Title, Text, Paragraph } = Typography;
+
+const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice: parentConnectedDevice }) => {
+  // 设备状态
+  const [discoveredDevices, setDiscoveredDevices] = useState([]);
+  const [connectedDevice, setConnectedDevice] = useState(parentConnectedDevice || null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+  const [favorites, setFavorites] = useState([]);
+  const [connectionHistory, setConnectionHistory] = useState([]);
+  
+  const scanIntervalRef = useRef(null);
+  const lastScanTimeRef = useRef(null);
+
+  // 监听父组件传递的连接设备变化
+  useEffect(() => {
+    if (parentConnectedDevice !== connectedDevice) {
+      setConnectedDevice(parentConnectedDevice);
+    }
+  }, [parentConnectedDevice]);
+
+  // 组件加载时尝试恢复收藏设备列表
+  useEffect(() => {
+    const savedFavorites = localStorage.getItem('favoriteDevices');
+    if (savedFavorites) {
+      try {
+        setFavorites(JSON.parse(savedFavorites));
+      } catch (e) {
+        console.error('Failed to load favorite devices', e);
+      }
+    }
+
+    // 初始化设备发现
+    initializeDeviceDiscovery();
+
+    // 清理函数
+    return () => {
+      handleStopScan();
+    };
+  }, []);
+
+  // 初始化设备发现
+  const initializeDeviceDiscovery = useCallback(async () => {
+    try {
+      // 启动设备发现
+      await websocketService.startDeviceDiscovery();
+      // 立即扫描一次
+      handleScanDevices();
+    } catch (err) {
+      setError(`初始化设备发现失败: ${err.message}`);
+      console.error('Failed to initialize device discovery:', err);
+    }
+  }, []);
+
+  // 扫描设备
+  const handleScanDevices = useCallback(async () => {
+    setIsScanning(true);
+    setError(null);
+    lastScanTimeRef.current = Date.now();
+    
+    try {
+      // 获取发现的设备列表
+      const devices = await websocketService.getDiscoveredDevices();
+      
+      // 如果Websocket服务返回空，使用模拟数据
+      let deviceList = devices || [
+        {
+          id: 'device-1',
+          name: 'Android Phone 1',
+          model: 'Google Pixel 7',
+          ip: '192.168.1.101',
+          battery: 78,
+          status: 'available',
+          lastSeen: new Date().toISOString()
+        },
+        {
+          id: 'device-2',
+          name: 'Android Tablet',
+          model: 'Samsung Galaxy Tab S7',
+          ip: '192.168.1.102',
+          battery: 45,
+          status: 'available',
+          lastSeen: new Date().toISOString()
+        },
+        {
+          id: 'device-3',
+          name: 'Android TV',
+          model: 'Xiaomi Mi Box S',
+          ip: '192.168.1.103',
+          battery: 100,
+          status: 'available',
+          lastSeen: new Date().toISOString()
+        }
+      ];
+      
+      // 过滤掉已连接的设备
+      if (connectedDevice) {
+        deviceList = deviceList.filter(device => device.id !== connectedDevice.id);
+      }
+      
+      setDiscoveredDevices(deviceList);
+      
+      // 更新连接历史
+      updateConnectionHistory(deviceList);
+      
+      // 启动定期扫描
+      handleStartAutoScan();
+    } catch (err) {
+      setError(`扫描设备失败: ${err.message}`);
+      console.error('Failed to scan devices:', err);
+    } finally {
+      setIsScanning(false);
+    }
+  }, [connectedDevice]);
+
+  // 开始自动扫描
+  const handleStartAutoScan = useCallback(() => {
+    // 清除现有的扫描定时器
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+    }
+    
+    // 设置新的扫描定时器（每30秒扫描一次）
+    scanIntervalRef.current = setInterval(() => {
+      if (!isScanning) {
+        handleRefreshDevices();
+      }
+    }, 30000);
+  }, [isScanning]);
+
+  // 停止扫描
+  const handleStopScan = useCallback(() => {
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+      scanIntervalRef.current = null;
+    }
+    setIsScanning(false);
+    // 在实际应用中，这里会调用websocketService.stopDeviceDiscovery()
+  }, []);
+
+  // 刷新设备列表
+  const handleRefreshDevices = useCallback(async () => {
+    if (isScanning || isRefreshing) return;
+    
+    setIsRefreshing(true);
+    
+    try {
+      await handleScanDevices();
+      message.success('设备列表已更新');
+    } catch (err) {
+      message.error('刷新设备列表失败');
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isScanning, isRefreshing, handleScanDevices]);
+
+  // 连接设备
+  const handleConnectDevice = useCallback(async (device) => {
+    if (isScanning) {
+      message.error('正在扫描设备，请等待扫描完成');
+      return;
+    }
+
+    try {
+      // 断开现有连接
+      if (connectedDevice) {
+        await handleDisconnectDevice();
+      }
+
+      // 设置为连接中状态
+      setConnectedDevice({
+        ...device,
+        status: 'connecting'
+      });
+
+      // 调用WebSocket服务连接设备
+      await websocketService.sendRequest('connect_device', {
+        deviceId: device.id,
+        deviceName: device.name
+      });
+
+      // 模拟连接延迟
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // 更新连接状态
+      const connectedDeviceData = {
+        ...device,
+        status: 'connected',
+        connectedTime: new Date().toISOString()
+      };
+      
+      setConnectedDevice(connectedDeviceData);
+      
+      // 更新连接历史
+      addToConnectionHistory(connectedDeviceData);
+      
+      // 通知父组件
+      if (onDeviceConnect) {
+        onDeviceConnect(connectedDeviceData);
+      }
+      
+      message.success(`已成功连接到 ${device.name}`);
+    } catch (err) {
+      setError(`连接设备失败: ${err.message}`);
+      setConnectedDevice(null);
+      message.error(`连接设备失败: ${err.message || '未知错误'}`);
+    }
+  }, [connectedDevice, isScanning, onDeviceConnect]);
+
+  // 断开设备连接
+  const handleDisconnectDevice = useCallback(async () => {
+    if (!connectedDevice) return;
+
+    try {
+      // 调用WebSocket服务断开连接
+      await websocketService.sendRequest('disconnect_device', {
+        deviceId: connectedDevice.id
+      });
+
+      // 通知父组件
+      if (onDeviceDisconnect) {
+        onDeviceDisconnect(connectedDevice);
+      }
+
+      message.success(`已断开与 ${connectedDevice.name} 的连接`);
+      
+      // 更新状态
+      setConnectedDevice(null);
+    } catch (err) {
+      message.error(`断开连接失败: ${err.message || '未知错误'}`);
+    }
+  }, [connectedDevice, onDeviceDisconnect]);
+
+  // 切换收藏设备
+  const toggleFavorite = useCallback((deviceId) => {
+    const isFavorite = favorites.some(fav => fav.id === deviceId);
+    let newFavorites;
+    
+    if (isFavorite) {
+      // 移除收藏
+      newFavorites = favorites.filter(fav => fav.id !== deviceId);
+      message.info('已取消收藏');
+    } else {
+      // 添加收藏
+      const device = discoveredDevices.find(d => d.id === deviceId) || 
+                   connectionHistory.find(d => d.id === deviceId);
+      
+      if (device) {
+        newFavorites = [...favorites, { id: device.id, name: device.name, model: device.model }];
+        message.success('已添加到收藏');
+      } else {
+        message.error('设备不存在');
+        return;
+      }
+    }
+    
+    setFavorites(newFavorites);
+    localStorage.setItem('favoriteDevices', JSON.stringify(newFavorites));
+  }, [favorites, discoveredDevices, connectionHistory]);
+
+  // 更新连接历史
+  const updateConnectionHistory = useCallback((devices) => {
+    // 这里可以从localStorage加载历史记录
+    // 为简化示例，我们只在内存中维护
+  }, []);
+
+  // 添加到连接历史
+  const addToConnectionHistory = useCallback((device) => {
+    const historyEntry = {
+      id: Date.now(),
+      deviceId: device.id,
+      deviceName: device.name,
+      deviceModel: device.model,
+      connectionTime: new Date().toISOString(),
+      status: 'connected'
+    };
+    
+    setConnectionHistory(prev => [historyEntry, ...prev.slice(0, 9)]); // 只保留最近10条记录
+    
+    // 保存到localStorage
+    const savedHistory = localStorage.getItem('connectionHistory');
+    let history = [];
+    if (savedHistory) {
+      try {
+        history = JSON.parse(savedHistory);
+      } catch (e) {
+        console.error('Failed to parse connection history', e);
+      }
+    }
+    
+    history.unshift(historyEntry);
+    history = history.slice(0, 20); // 最多保存20条记录
+    localStorage.setItem('connectionHistory', JSON.stringify(history));
+  }, []);
+
+  // 格式化时间显示
+  const formatTimeAgo = useCallback((dateTimeString) => {
+    const date = new Date(dateTimeString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+    
+    if (diffInSeconds < 60) return `${diffInSeconds}秒前`;
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}分钟前`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}小时前`;
+    return `${Math.floor(diffInSeconds / 86400)}天前`;
+  }, []);
+
+  // 格式化电池显示
+  const getBatteryStatus = useCallback((batteryLevel) => {
+    if (batteryLevel >= 70) return { status: 'good', color: 'green' };
+    if (batteryLevel >= 30) return { status: 'normal', color: 'orange' };
+    return { status: 'low', color: 'red' };
+  }, []);
+
+  // 渲染设备卡片
+  const renderDeviceCard = useCallback((device) => {
+    const isConnected = connectedDevice && connectedDevice.id === device.id;
+    const isConnecting = device.status === 'connecting';
+    const isFavorite = favorites.some(fav => fav.id === device.id);
+    const batteryStatus = getBatteryStatus(device.battery);
+    
+    return (
+      <Card
+        key={device.id}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Space size="middle" align="center">
+              <Avatar icon={<AndroidOutlined />} />
+              <div>
+                <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{device.name}</div>
+                <div style={{ fontSize: '14px', color: '#666' }}>{device.model}</div>
+              </div>
+            </Space>
+            <Button
+              type="text"
+              icon={isFavorite ? <StarFilled style={{ color: '#ffd700' }} /> : <StarOutlined />}
+              onClick={() => toggleFavorite(device.id)}
+              size="small"
+            />
+          </div>
+        }
+        extra={
+          <Space direction="vertical" align="end">
+            {isConnected ? (
+              <Tag color="success" icon={<CheckCircleOutlined />}>已连接</Tag>
+            ) : isConnecting ? (
+              <Tag icon={<LoadingOutlined spin />} color="processing">连接中...</Tag>
+            ) : (
+              <Tag color="blue">可用</Tag>
+            )}
+            <Text type="secondary">{device.ip}</Text>
+          </Space>
+        }
+        style={{ marginBottom: '16px' }}
+      >
+        <Space size="large" style={{ width: '100%' }}>
+          <div style={{ textAlign: 'center' }}>
+            <Text type="secondary">电池</Text>
+            <div style={{ marginTop: '4px' }}>
+              <Tag color={batteryStatus.color}>{device.battery}%</Tag>
+            </div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <Text type="secondary">上次在线</Text>
+            <div style={{ marginTop: '4px' }}>
+              <Text>{formatTimeAgo(device.lastSeen)}</Text>
+            </div>
+          </div>
+        </Space>
+        
+        <Divider />
+        
+        <div style={{ textAlign: 'right' }}>
+          {isConnected ? (
+            <Button
+              type="default"
+              danger
+              icon={<DisconnectOutlined />}
+              onClick={() => handleDisconnectDevice()}
+            >
+              断开连接
+            </Button>
+          ) : (
+            <Button
+              type="primary"
+              icon={<WifiOutlined />}
+              onClick={() => handleConnectDevice(device)}
+              disabled={isConnecting || isScanning}
+            >
+              {isConnecting ? (
+                <>
+                  <LoadingOutlined spin />
+                  <span>连接中...</span>
+                </>
+              ) : '连接设备'}
+            </Button>
+          )}
+        </div>
+      </Card>
+    );
+  }, [connectedDevice, favorites, isScanning, getBatteryStatus, formatTimeAgo, toggleFavorite, handleConnectDevice, handleDisconnectDevice]);
+
+  // 渲染已连接设备信息
+  const renderConnectedDeviceInfo = useCallback(() => {
+    if (!connectedDevice) return null;
+    
+    const batteryStatus = getBatteryStatus(connectedDevice.battery);
+    
+    return (
+      <Card
+        title="已连接设备"
+        extra={<Tag color="success" icon={<CheckCircleOutlined />}>已连接</Tag>}
+        style={{ marginBottom: '24px' }}
+      >
+        <Space size="large" align="center" style={{ width: '100%', justifyContent: 'space-between' }}>
+          <Space align="center">
+            <Avatar size={64} icon={<AndroidOutlined />} style={{ backgroundColor: '#1890ff' }} />
+            <div>
+              <Title level={4} style={{ margin: 0 }}>{connectedDevice.name}</Title>
+              <Text type="secondary">{connectedDevice.model}</Text>
+            </div>
+          </Space>
+          
+          <Space direction="vertical" align="end">
+            <Button
+              type="default"
+              danger
+              icon={<DisconnectOutlined />}
+              onClick={handleDisconnectDevice}
+              style={{ marginBottom: '8px' }}
+            >
+              断开连接
+            </Button>
+            <div>
+              <Tag color={batteryStatus.color}>电池: {connectedDevice.battery}%</Tag>
+            </div>
+          </Space>
+        </Space>
+      </Card>
+    );
+  }, [connectedDevice, getBatteryStatus, handleDisconnectDevice]);
+
+  // 渲染收藏设备
+  const renderFavoriteDevices = useCallback(() => {
+    if (favorites.length === 0) return null;
+    
+    // 获取收藏设备的详细信息
+    const favoriteDevicesList = favorites.map(fav => {
+      const device = discoveredDevices.find(d => d.id === fav.id) || 
+                    (connectedDevice && connectedDevice.id === fav.id ? connectedDevice : null);
+      return device || fav;
+    });
+    
+    return (
+      <div style={{ marginBottom: '24px' }}>
+        <Title level={4}>收藏设备</Title>
+        <List
+          dataSource={favoriteDevicesList}
+          renderItem={device => (
+            <List.Item
+              actions={[
+                <Button
+                  key="connect"
+                  type="link"
+                  icon={<WifiOutlined />}
+                  onClick={() => {
+                    const fullDevice = discoveredDevices.find(d => d.id === device.id);
+                    if (fullDevice) {
+                      handleConnectDevice(fullDevice);
+                    } else {
+                      message.error('设备当前不可用，请先扫描设备');
+                      handleScanDevices();
+                    }
+                  }}
+                >
+                  连接
+                </Button>
+              ]}
+            >
+              <List.Item.Meta
+                avatar={<Avatar icon={<AndroidOutlined />} />}
+                title={
+                  <Space size="middle" align="center">
+                    <span>{device.name}</span>
+                    {device.model && <Text type="secondary">{device.model}</Text>}
+                    <StarFilled style={{ color: '#ffd700' }} />
+                  </Space>
+                }
+                description={
+                  <Space size="middle">
+                    {device.ip && <Text type="secondary">{device.ip}</Text>}
+                    {connectedDevice && connectedDevice.id === device.id && (
+                      <Tag color="success">已连接</Tag>
+                    )}
+                  </Space>
+                }
+              />
+            </List.Item>
+          )}
+        />
+      </div>
+    );
+  }, [favorites, discoveredDevices, connectedDevice, handleConnectDevice, handleScanDevices]);
+
+  return (
+    <div>
+      <Title level={3}>设备发现</Title>
+      
+      {error && (
+        <div style={{ 
+          marginBottom: '20px', 
+          padding: '12px', 
+          backgroundColor: '#fff2f0', 
+          border: '1px solid #ffccc7', 
+          borderRadius: '4px',
+          color: '#ff4d4f',
+          display: 'flex',
+          alignItems: 'center'
+        }}>
+          <InfoCircleOutlined style={{ marginRight: '8px' }} />
+          <Text>{error}</Text>
+        </div>
+      )}
+      
+      {/* 已连接设备信息 */}
+      {renderConnectedDeviceInfo()}
+      
+      {/* 设备扫描控制 */}
+      <div style={{ marginBottom: '24px' }}>
+        <Card>
+          <Space size="large">
+            <Button
+              type="primary"
+              icon={isScanning ? <LoadingOutlined spin /> : <SearchOutlined />}
+              onClick={handleScanDevices}
+              loading={isScanning}
+              disabled={isScanning}
+              size="large"
+            >
+              {isScanning ? '扫描中...' : '扫描设备'}
+            </Button>
+            <Button
+              icon={<RefreshOutlined />}
+              onClick={handleRefreshDevices}
+              loading={isRefreshing}
+              disabled={isScanning || isRefreshing}
+              size="large"
+            >
+              刷新列表
+            </Button>
+            <Button
+              danger
+              icon={<DisconnectOutlined />}
+              onClick={handleStopScan}
+              disabled={!isScanning}
+              size="large"
+            >
+              停止扫描
+            </Button>
+          </Space>
+          
+          {lastScanTimeRef.current && (
+            <div style={{ marginTop: '12px', color: '#666' }}>
+              <Text type="secondary">上次扫描: {formatTimeAgo(lastScanTimeRef.current)}</Text>
+            </div>
+          )}
+        </Card>
+      </div>
+      
+      {/* 收藏设备 */}
+      {renderFavoriteDevices()}
+      
+      {/* 发现的设备列表 */}
+      <div>
+        <Title level={4}>发现的设备</Title>
+        
+        {isScanning ? (
+          <div style={{ textAlign: 'center', padding: '40px' }}>
+            <Spin size="large">
+              <p style={{ marginTop: '20px' }}>正在搜索附近的设备...</p>
+            </Spin>
+          </div>
+        ) : discoveredDevices.length === 0 ? (
+          <Empty
+            description="未发现可用设备"
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          >
+            <Button type="primary" icon={<RefreshOutlined />} onClick={handleScanDevices}>
+              重新扫描
+            </Button>
+            <Paragraph style={{ marginTop: '16px', color: '#666' }}>
+              请确保您的Android设备已启用WiFi并运行相关服务
+            </Paragraph>
+          </Empty>
+        ) : (
+          <List
+            dataSource={discoveredDevices}
+            renderItem={device => renderDeviceCard(device)}
+            pagination={{
+              pageSize: 3,
+              showSizeChanger: false,
+              showTotal: (total) => `共 ${total} 台设备`
+            }}
+          />
+        )}
+      </div>
+      
+      {/* 连接提示 */}
+      <Card style={{ marginTop: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <InfoCircleOutlined style={{ marginRight: '8px', color: '#1890ff', fontSize: '20px' }} />
+          <Text>
+            连接到Android设备后，您可以使用文件传输、屏幕共享等功能。
+          </Text>
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+export default DeviceDiscovery;

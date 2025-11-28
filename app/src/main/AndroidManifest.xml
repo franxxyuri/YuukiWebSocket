@@ -92,6 +92,16 @@
             android:theme="@style/Theme.MyApplication.NoActionBar">
         </activity>
 
+        <activity
+            android:name="com.example.windowsandroidconnect.QuickTestActivity"
+            android:exported="false"
+            android:label="快速功能验证测试" />
+
+        <activity
+            android:name="com.example.windowsandroidconnect.MockTestActivity"
+            android:exported="false"
+            android:label="模拟测试页面" />
+
         <!-- 屏幕捕获权限请求Activity -->
         <activity
             android:name="com.example.windowsandroidconnect.ScreenCaptureRequestActivity"

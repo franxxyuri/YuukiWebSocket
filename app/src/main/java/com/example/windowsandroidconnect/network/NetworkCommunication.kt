@@ -1,6 +1,7 @@
 package com.example.windowsandroidconnect.network
 
 import android.content.Context
+import android.content.Intent
 import android.util.Log
 import com.example.windowsandroidconnect.MyApplication
 import com.example.windowsandroidconnect.config.ClientConfig
@@ -30,6 +31,19 @@ class NetworkCommunication {
     
     companion object {
         private const val TAG = "NetworkCommunication"
+        
+        // 消息类型常量
+        const val MESSAGE_TYPE_DEVICE_INFO = "device_info"
+        const val MESSAGE_TYPE_DEVICE_DISCOVERED = "device_discovered"
+        const val MESSAGE_TYPE_SCREEN_FRAME = "screen_frame"
+        const val MESSAGE_TYPE_FILE_TRANSFER = "file_transfer"
+        const val MESSAGE_TYPE_CONTROL_COMMAND = "control_command"
+        const val MESSAGE_TYPE_CLIPBOARD = "clipboard"
+        const val MESSAGE_TYPE_NOTIFICATION = "notification"
+        const val MESSAGE_TYPE_HEARTBEAT = "heartbeat"
+        const val MESSAGE_TYPE_CONNECTION_STATUS = "connection_status"
+        const val MESSAGE_TYPE_AUTHENTICATION_SUCCESS = "authentication_success"
+        const val MESSAGE_TYPE_ERROR = "error"
     }
     
     /**
@@ -492,18 +506,52 @@ class NetworkCommunication {
         if (type.isNotEmpty()) {
             val handler = messageHandlers[type]
             if (handler != null) {
+                // 如果有注册的处理器，优先使用它
                 handler(message)
             } else {
-                Log.w(TAG, "未找到消息处理器: $type")
-                
-                // 处理一些通用消息类型
+                // 如果没有注册的处理器，根据类型进行默认处理
                 when (type) {
-                    "heartbeat" -> {
+                    MESSAGE_TYPE_HEARTBEAT -> {
                         // 回复心跳
                         sendHeartbeatResponse()
                     }
-                    "authentication_success" -> {
+                    MESSAGE_TYPE_AUTHENTICATION_SUCCESS -> {
                         Log.d(TAG, "认证成功")
+                    }
+                    MESSAGE_TYPE_DEVICE_INFO -> {
+                        // 处理设备信息
+                        handleDeviceInfo(message)
+                    }
+                    MESSAGE_TYPE_DEVICE_DISCOVERED -> {
+                        // 处理设备发现消息
+                        handleDeviceDiscovered(message)
+                    }
+                    MESSAGE_TYPE_SCREEN_FRAME -> {
+                        // 处理屏幕帧
+                        handleScreenFrame(message)
+                    }
+                    MESSAGE_TYPE_FILE_TRANSFER -> {
+                        // 处理文件传输
+                        handleFileTransfer(message)
+                    }
+                    MESSAGE_TYPE_CONTROL_COMMAND -> {
+                        // 处理控制命令
+                        handleControlCommand(message)
+                    }
+                    MESSAGE_TYPE_CLIPBOARD -> {
+                        // 处理剪贴板同步
+                        handleClipboard(message)
+                    }
+                    MESSAGE_TYPE_NOTIFICATION -> {
+                        // 处理通知
+                        handleNotification(message)
+                    }
+                    MESSAGE_TYPE_CONNECTION_STATUS -> {
+                        // 处理连接状态
+                        handleConnectionStatus(message)
+                    }
+                    else -> {
+                        Log.w(TAG, "未找到消息处理器，且无默认处理: $type")
                     }
                 }
             }
@@ -526,6 +574,195 @@ class NetworkCommunication {
     }
     
     /**
+     * 处理设备信息
+     */
+    private fun handleDeviceInfo(message: JSONObject) {
+        try {
+            val deviceInfo = message.optJSONObject("deviceInfo")
+            if (deviceInfo != null) {
+                Log.d(TAG, "收到设备信息: ${deviceInfo.optString("deviceName")} (${deviceInfo.optString("platform")})")
+                // 可以在这里处理接收到的设备信息
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "处理设备信息失败", e)
+        }
+    }
+    
+    /**
+     * 处理设备发现消息
+     */
+    private fun handleDeviceDiscovered(message: JSONObject) {
+        try {
+            val deviceInfo = message.optJSONObject("deviceInfo")
+            if (deviceInfo != null) {
+                Log.d(TAG, "发现新设备: ${deviceInfo.optString("deviceName")}")
+                // 通知注册的处理器
+                messageHandlers["device_discovered"]?.invoke(message)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "处理设备发现消息失败", e)
+        }
+    }
+    
+    /**
+     * 处理屏幕帧
+     */
+    private fun handleScreenFrame(message: JSONObject) {
+        try {
+            Log.d(TAG, "收到屏幕帧，时间戳: ${message.optLong("timestamp")}")
+            // 通知注册的处理器
+            messageHandlers["screen_frame"]?.invoke(message)
+        } catch (e: Exception) {
+            Log.e(TAG, "处理屏幕帧失败", e)
+        }
+    }
+    
+    /**
+     * 处理文件传输
+     */
+    private fun handleFileTransfer(message: JSONObject) {
+        try {
+            val action = message.optString("action")
+            Log.d(TAG, "收到文件传输消息，操作: $action")
+            // 通知注册的处理器
+            messageHandlers["file_transfer"]?.invoke(message)
+        } catch (e: Exception) {
+            Log.e(TAG, "处理文件传输失败", e)
+        }
+    }
+    
+    /**
+     * 处理控制命令
+     */
+    private fun handleControlCommand(message: JSONObject) {
+        try {
+            val commandType = message.optString("commandType")
+            Log.d(TAG, "收到控制命令: $commandType")
+            // 通知注册的处理器
+            messageHandlers["control_command"]?.invoke(message)
+        } catch (e: Exception) {
+            Log.e(TAG, "处理控制命令失败", e)
+        }
+    }
+    
+    /**
+     * 处理剪贴板同步
+     */
+    private fun handleClipboard(message: JSONObject) {
+        try {
+            val data = message.optString("data")
+            val source = message.optString("source", "unknown")
+            Log.d(TAG, "收到剪贴板数据 (来自: $source): ${data.take(50)}...")
+            
+            if (source == "windows") {
+                // 如果是来自Windows端的剪贴板数据，设置到Android剪贴板
+                setClipboardFromWindows(data)
+            }
+            
+            // 通知注册的处理器
+            messageHandlers["clipboard"]?.invoke(message)
+        } catch (e: Exception) {
+            Log.e(TAG, "处理剪贴板同步失败", e)
+        }
+    }
+    
+    /**
+     * 处理通知
+     */
+    private fun handleNotification(message: JSONObject) {
+        try {
+            val title = message.optString("title")
+            val action = message.optString("action", "")
+            Log.d(TAG, "收到通知相关消息: $title, 动作: $action")
+            
+            if (action.isNotEmpty()) {
+                // 如果有特定动作，这可能是来自Windows端的通知操作
+                handleNotificationAction(message)
+            } else {
+                // 否则是来自Windows端的通知数据，需要在Android端显示
+                handleNotificationFromWindows(message)
+            }
+            
+            // 通知注册的处理器
+            messageHandlers["notification"]?.invoke(message)
+        } catch (e: Exception) {
+            Log.e(TAG, "处理通知失败", e)
+        }
+    }
+    
+    /**
+     * 处理连接状态
+     */
+    private fun handleConnectionStatus(message: JSONObject) {
+        try {
+            val connected = message.optBoolean("connected", false)
+            Log.d(TAG, "连接状态更新: $connected")
+            // 通知注册的处理器
+            messageHandlers["connection_status"]?.invoke(message)
+        } catch (e: Exception) {
+            Log.e(TAG, "处理连接状态失败", e)
+        }
+    }
+    
+    /**
+     * 处理来自Windows端的通知操作
+     */
+    private fun handleNotificationAction(message: JSONObject) {
+        try {
+            val action = message.optString("action")
+            val packageName = message.optString("packageName", "")
+            val notificationId = message.optInt("id", -1)
+            
+            Log.d(TAG, "处理来自Windows的通知操作: $action, 包名: $packageName, ID: $notificationId")
+            
+            // 发送广播，让NotificationSyncService处理
+            val intent = Intent("com.example.windowsandroidconnect.NOTIFICATION_ACTION").apply {
+                putExtra("action", action)
+                putExtra("packageName", packageName)
+                putExtra("id", notificationId)
+            }
+            // 由于NetworkCommunication没有Context，需要通过其他方式传递
+            Log.d(TAG, "通知操作需要在有Context的组件中处理: $action for $packageName")
+        } catch (e: Exception) {
+            Log.e(TAG, "处理通知操作失败", e)
+        }
+    }
+    
+    /**
+     * 处理来自Windows端的通知数据
+     */
+    private fun handleNotificationFromWindows(message: JSONObject) {
+        try {
+            val title = message.optString("title", "通知")
+            val text = message.optString("text", "")
+            val packageName = message.optString("packageName", "Windows")
+            
+            Log.d(TAG, "收到Windows通知: $title - $text")
+            
+            // 发送广播，让有Context的组件显示通知
+            val intent = Intent("com.example.windowsandroidconnect.SHOW_WINDOWS_NOTIFICATION").apply {
+                putExtra("title", title)
+                putExtra("text", text)
+                putExtra("packageName", packageName)
+            }
+            // 由于NetworkCommunication没有Context，需要通过其他方式传递
+            Log.d(TAG, "Windows通知需要在有Context的组件中显示: $title")
+        } catch (e: Exception) {
+            Log.e(TAG, "处理来自Windows的通知失败", e)
+        }
+    }
+    
+    /**
+     * 从Windows端设置剪贴板内容
+     * 此功能由WebSocketConnectionService处理
+     */
+    private fun setClipboardFromWindows(data: String) {
+        // 此函数不再需要，已经在WebSocketConnectionService中处理
+        // 保持此函数以确保代码完整性
+        Log.d(TAG, "收到Windows剪贴板数据，已在WebSocketConnectionService中处理: ${data.take(30)}...")
+    }
+    
+    /**
      * 注册消息处理器
      */
     fun registerMessageHandler(type: String, handler: (JSONObject) -> Unit) {
@@ -543,6 +780,23 @@ class NetworkCommunication {
      * 检查连接状态
      */
     fun isConnected(): Boolean = isConnected
+    
+    /**
+     * 发送错误消息
+     */
+    fun sendErrorMessage(errorCode: String, errorMessage: String) {
+        try {
+            val message = JSONObject().apply {
+                put("type", MESSAGE_TYPE_ERROR)
+                put("errorCode", errorCode)
+                put("errorMessage", errorMessage)
+                put("timestamp", System.currentTimeMillis())
+            }
+            sendMessage(message)
+        } catch (e: Exception) {
+            Log.e(TAG, "发送错误消息失败", e)
+        }
+    }
     
     /**
      * 销毁通信模块

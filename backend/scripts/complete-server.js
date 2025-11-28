@@ -2,10 +2,16 @@ import express from 'express';
 import http from 'http';
 import { WebSocketServer } from 'ws';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { networkInterfaces, hostname } from 'os';
 import cors from 'cors';
 import dgram from 'dgram';
 import crypto from 'crypto';
+import fs from 'fs';
+
+// 解决 ES 模块中 __dirname 不可用的问题
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // 导入配置文件
 import config from '../config/config.mjs';
@@ -18,8 +24,11 @@ const server = http.createServer(app);
 app.use(cors());
 
 // 静态文件服务
-app.use(express.static('../../'));
 app.use('/frontend', express.static('../../frontend'));
+app.use('/src', express.static('../../src'));
+app.use('/public', express.static('../../public'));
+app.use('/assets', express.static('../../frontend/assets'));
+app.use(express.static('../../frontend'));
 
 // 创建WebSocket服务器
 const wss = new WebSocketServer({ server });
@@ -114,6 +123,30 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../../frontend/index.html'));
 });
 
+// 添加特定路由到 pages/index.html
+app.get('/pages/index.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '../../frontend/pages/index.html'));
+});
+
+// 添加用于 Vite 资源的 route，处理可能不存在的资源
+app.get('/vite.svg', (req, res) => {
+    // 如果文件存在则返回，否则返回 404 或自定义响应
+    const filePath = path.join(__dirname, '../../frontend/vite.svg');
+    res.sendFile(filePath, (err) => {
+        if (err) {
+            // 返回一个简单的 SVG 作为默认图标
+            res.type('image/svg+xml');
+            res.send('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="#60a5fa"/><text x="50" y="50" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="16">WAC</text></svg>');
+        }
+    });
+});
+
+app.get('/src/main.jsx', (req, res) => {
+    const filePath = path.join(__dirname, '../../src/main.jsx');
+    res.setHeader('Content-Type', 'application/javascript');
+    res.sendFile(filePath);
+});
+
 app.get('/api/devices', (req, res) => {
     const devices = [];
     for (const [clientId, client] of clients) {
@@ -125,6 +158,39 @@ app.get('/api/devices', (req, res) => {
         });
     }
     res.json(devices);
+});
+
+// 捕获所有其他路由并返回 index.html（支持 React Router 等客户端路由）
+// 页面路由 - 明确处理特定页面请求
+app.get(['/pages', '/pages/'], (req, res) => {
+    res.sendFile(path.join(__dirname, '../../frontend/pages/index.html'));
+});
+
+app.get('/pages/:page', (req, res) => {
+    const page = req.params.page;
+    // 防止路径遍历攻击
+    if (page.includes('..') || page.includes('')) {
+        res.status(403).send('Forbidden');
+        return;
+    }
+    const pagePath = path.join(__dirname, '../../frontend/pages', page);
+    res.sendFile(pagePath, (err) => {
+        if (err) {
+            res.status(404).send('Page not found');
+        }
+    });
+});
+
+// 通用路由 - 所有其他非API请求返回 index.html（SPA 路由回退）
+app.get(/^(?!\/api\/).*$/, (req, res) => {
+    // 检查是否为可能的静态资源请求（包含文件扩展名）
+    if (req.path.includes('.') && !req.path.startsWith('/pages/')) {
+        // 如果是静态资源请求但未被中间件处理，则返回404
+        res.status(404).send('File not found');
+        return;
+    }
+    // 其他所有路由都返回 index.html，让前端路由处理
+    res.sendFile(path.join(__dirname, '../../frontend/index.html'));
 });
 
 app.get('/api/status', (req, res) => {

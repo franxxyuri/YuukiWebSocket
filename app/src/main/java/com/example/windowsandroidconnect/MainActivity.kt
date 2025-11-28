@@ -22,6 +22,9 @@ import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 import com.example.windowsandroidconnect.service.DeviceDiscoveryService
 import com.example.windowsandroidconnect.network.NetworkCommunication
+import com.example.windowsandroidconnect.service.ClipboardSyncService
+import com.example.windowsandroidconnect.service.NotificationSyncService
+import com.example.windowsandroidconnect.service.ScreenProjectionService
 import org.json.JSONObject
 import com.example.windowsandroidconnect.service.WebSocketConnectionService
 
@@ -140,6 +143,20 @@ class MainActivity : Activity() {
             val intent = Intent(this, DebugTestActivity::class.java)
             startActivity(intent)
         }
+        
+        // 添加模拟测试页面导航按钮
+        val mockTestButton = findViewById<Button>(R.id.mock_test_button)
+        mockTestButton.setOnClickListener {
+            val intent = Intent(this, MockTestActivity::class.java)
+            startActivity(intent)
+        }
+        
+        // 添加快速测试页面导航按钮
+        val quickTestButton = findViewById<Button>(R.id.quick_test_button)
+        quickTestButton.setOnClickListener {
+            val intent = Intent(this, QuickTestActivity::class.java)
+            startActivity(intent)
+        }
     }
     
     /**
@@ -156,6 +173,7 @@ class MainActivity : Activity() {
                         platform = deviceInfoJson.optString("platform"),
                         version = deviceInfoJson.optString("version"),
                         ip = deviceInfoJson.optString("ip"),
+                        port = deviceInfoJson.optInt("port", 8928), // 新增端口信息
                         capabilities = if (deviceInfoJson.has("capabilities")) {
                             val capabilitiesArray = deviceInfoJson.getJSONArray("capabilities")
                             val capabilitiesList = mutableListOf<String>()
@@ -178,7 +196,7 @@ class MainActivity : Activity() {
                         discoveredDevices.add(device)
                     }
                     
-                    Log.d(TAG, "发现设备: ${device.deviceName} (${device.ip})")
+                    Log.d(TAG, "发现设备: ${device.deviceName} (${device.ip}:${device.port})")
                     statusText.text = "发现设备: ${device.deviceName}"
                     showToast("发现新设备: ${device.deviceName}")
                 } catch (e: Exception) {
@@ -199,6 +217,7 @@ class MainActivity : Activity() {
             platform = "android",
             version = "1.0.0",
             ip = getLocalIPAddress(),
+            port = 8928, // 添加端口信息
             capabilities = listOf(
                 "file_transfer",
                 "screen_mirror", 
@@ -327,6 +346,108 @@ class MainActivity : Activity() {
     }
     
     /**
+     * 启动屏幕投屏
+     */
+    private fun startScreenProjection() {
+        if (!isConnected || currentDevice == null) {
+            showToast("未连接到Windows设备")
+            return
+        }
+        
+        // 启动屏幕投屏服务
+        val intent = Intent(this, ScreenProjectionService::class.java).apply {
+            action = ScreenProjectionService.ACTION_START_PROJECTION
+            putExtra(ScreenProjectionService.EXTRA_TARGET_DEVICE_ID, currentDevice?.deviceId)
+        }
+        startService(intent)
+        
+        showToast("屏幕投屏已启动")
+    }
+    
+    /**
+     * 启动剪贴板同步
+     */
+    private fun startClipboardSync() {
+        if (!isConnected || currentDevice == null) {
+            showToast("未连接到Windows设备")
+            return
+        }
+        
+        // 启动剪贴板同步服务
+        val intent = Intent(this, ClipboardSyncService::class.java).apply {
+            action = ClipboardSyncService.ACTION_START_SYNC
+            putExtra(ClipboardSyncService.EXTRA_TARGET_DEVICE_ID, currentDevice?.deviceId)
+        }
+        startService(intent)
+        
+        showToast("剪贴板同步已启动")
+    }
+    
+    /**
+     * 停止剪贴板同步
+     */
+    private fun stopClipboardSync() {
+        // 停止剪贴板同步服务
+        val intent = Intent(this, ClipboardSyncService::class.java).apply {
+            action = ClipboardSyncService.ACTION_STOP_SYNC
+        }
+        startService(intent)
+        
+        showToast("剪贴板同步已停止")
+    }
+    
+    /**
+     * 检查并启动通知同步
+     */
+    private fun checkAndStartNotificationSync() {
+        if (!isConnected || currentDevice == null) {
+            showToast("未连接到Windows设备")
+            return
+        }
+        
+        // 检查是否已启用通知访问权限
+        if (!isNotificationServiceEnabled()) {
+            requestNotificationPermission()
+            return
+        }
+        
+        // 启动通知同步
+        startNotificationSync()
+    }
+    
+    /**
+     * 启动通知同步
+     */
+    private fun startNotificationSync() {
+        // 启动通知同步服务
+        val intent = Intent(this, NotificationSyncService::class.java)
+        startService(intent)
+        
+        showToast("通知同步已启动")
+    }
+    
+    /**
+     * 检查通知服务是否已启用
+     */
+    private fun isNotificationServiceEnabled(): Boolean {
+        val enabledServices = Settings.Secure.getString(
+            contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: return false
+        
+        return enabledServices.contains("com.example.windowsandroidconnect/.service.RemoteControlService")
+    }
+    
+    /**
+     * 请求通知访问权限
+     */
+    private fun requestNotificationPermission() {
+        showToast("请在系统设置中启用通知访问权限")
+        val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+        startActivity(intent)
+    }
+    
+    /**
      * 启动远程控制
      */
     private fun startRemoteControl() {
@@ -395,14 +516,18 @@ class MainActivity : Activity() {
      * 检查屏幕捕获权限
      */
     private fun checkScreenCapturePermission() {
-        // TODO: 检查和请求屏幕捕获权限
-        // 使用MediaProjection API
+        // 启动屏幕投屏服务，它会协调屏幕捕获权限请求和启动
+        val projectionIntent = Intent(this, ScreenProjectionService::class.java).apply {
+            action = ScreenProjectionService.ACTION_START_PROJECTION
+            putExtra(ScreenProjectionService.EXTRA_TARGET_DEVICE_ID, currentDevice?.deviceId)
+        }
+        startService(projectionIntent)
         
         // 启动屏幕捕获服务
-        val intent = Intent(this, ScreenCaptureService::class.java)
-        startForegroundService(intent)
+        val captureIntent = Intent(this, ScreenCaptureService::class.java)
+        startForegroundService(captureIntent)
         
-        showToast("正在启动屏幕共享...")
+        showToast("正在启动屏幕投屏...")
     }
     
     /**
@@ -431,7 +556,7 @@ class MainActivity : Activity() {
             val intent = Intent(this, WebSocketConnectionService::class.java).apply {
                 action = WebSocketConnectionService.ACTION_CONNECT
                 putExtra(WebSocketConnectionService.EXTRA_IP, device.ip)
-                putExtra(WebSocketConnectionService.EXTRA_PORT, 8928)
+                putExtra(WebSocketConnectionService.EXTRA_PORT, device.port) // 使用DeviceInfo中的端口
             }
             startService(intent)
             // 连接状态会通过广播通知更新
@@ -487,6 +612,7 @@ data class DeviceInfo(
     val platform: String,
     val version: String,
     val ip: String,
+    val port: Int = 8928, // 添加端口字段，默认值为8928
     val capabilities: List<String>,
     var lastSeen: Long = System.currentTimeMillis()
 ) : Parcelable

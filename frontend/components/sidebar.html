@@ -1,0 +1,212 @@
+<!-- 侧边栏导航组件 -->
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <div class="sidebar-logo">
+            <span class="nav-logo-icon">🔗</span>
+            <span class="nav-logo-text">Windows-Android Connect</span>
+        </div>
+        <button class="sidebar-close" id="sidebar-close">
+            <span>×</span>
+        </button>
+    </div>
+    <div class="sidebar-menu">
+        <a href="/frontend/index.html" class="sidebar-link" data-page="home">
+            <span class="sidebar-icon">🏠</span>
+            <span class="sidebar-text">首页</span>
+        </a>
+        <a href="/frontend/pages/app-index.html" class="sidebar-link" data-page="dashboard">
+            <span class="sidebar-icon">📊</span>
+            <span class="sidebar-text">仪表板</span>
+        </a>
+        <a href="/frontend/pages/device-manager.html" class="sidebar-link" data-page="devices">
+            <span class="sidebar-icon">📱</span>
+            <span class="sidebar-text">设备管理</span>
+        </a>
+        <a href="/frontend/pages/screen-stream.html" class="sidebar-link" data-page="screen">
+            <span class="sidebar-icon">📺</span>
+            <span class="sidebar-text">屏幕投屏</span>
+        </a>
+        <a href="/frontend/pages/react-index.html" class="sidebar-link" data-page="react">
+            <span class="sidebar-icon">⚛️</span>
+            <span class="sidebar-text">React应用</span>
+        </a>
+        <a href="/tests/test-ui.html" class="sidebar-link" data-page="tests">
+            <span class="sidebar-icon">🧪</span>
+            <span class="sidebar-text">测试工具</span>
+        </a>
+        <a href="/components/react-main.jsx" class="sidebar-link" data-page="development">
+            <span class="sidebar-icon">🛠️</span>
+            <span class="sidebar-text">开发工具</span>
+        </a>
+    </div>
+    <div class="sidebar-footer">
+        <div class="sidebar-version">v1.0.0</div>
+    </div>
+</div>
+
+<style>
+    .sidebar {
+        position: fixed;
+        left: -300px;
+        top: 0;
+        width: 280px;
+        height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        z-index: 999;
+        transition: left 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        color: white;
+    }
+    
+    .sidebar.active {
+        left: 0;
+    }
+    
+    .sidebar-header {
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .sidebar-logo {
+        display: flex;
+        align-items: center;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    
+    .nav-logo-icon {
+        font-size: 1.3rem;
+        margin-right: 8px;
+    }
+    
+    .sidebar-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+    }
+    
+    .sidebar-close:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    .sidebar-menu {
+        flex: 1;
+        padding: 20px 0;
+        overflow-y: auto;
+    }
+    
+    .sidebar-link {
+        display: flex;
+        align-items: center;
+        padding: 12px 20px;
+        text-decoration: none;
+        color: rgba(255, 255, 255, 0.85);
+        transition: all 0.2s ease;
+        font-weight: 500;
+    }
+    
+    .sidebar-link:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: white;
+        padding-left: 25px;
+    }
+    
+    .sidebar-link.active {
+        background-color: rgba(255, 255, 255, 0.2);
+        color: white;
+        border-left: 3px solid white;
+    }
+    
+    .sidebar-icon {
+        margin-right: 12px;
+        font-size: 1.2rem;
+        width: 24px;
+    }
+    
+    .sidebar-text {
+        font-size: 0.95rem;
+    }
+    
+    .sidebar-footer {
+        padding: 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        text-align: center;
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.7);
+    }
+    
+    .sidebar-version {
+        padding: 8px 12px;
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        display: inline-block;
+    }
+    
+    /* 在移动设备上，侧边栏覆盖主要内容 */
+    @media screen and (max-width: 768px) {
+        .sidebar {
+            width: 100%;
+        }
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 侧边栏功能
+        const sidebar = document.getElementById('sidebar');
+        const sidebarClose = document.getElementById('sidebar-close');
+        
+        // 从主页面的汉堡菜单打开侧边栏
+        const navToggle = document.getElementById('nav-toggle');
+        if (navToggle) {
+            navToggle.addEventListener('click', function() {
+                sidebar.classList.add('active');
+            });
+        }
+        
+        // 关闭侧边栏
+        sidebarClose.addEventListener('click', function() {
+            sidebar.classList.remove('active');
+        });
+        
+        // 点击侧边栏链接时更新活动状态
+        const sidebarLinks = document.querySelectorAll('.sidebar-link');
+        sidebarLinks.forEach(link => {
+            link.addEventListener('click', function() {
+                // 移除其他活动状态
+                sidebarLinks.forEach(l => l.classList.remove('active'));
+                // 添加当前活动状态
+                this.classList.add('active');
+                
+                // 在移动端点击导航项后关闭侧边栏
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.remove('active');
+                }
+            });
+        });
+        
+        // 根据当前页面设置侧边栏活动状态
+        function setSidebarActiveLink() {
+            const currentPath = window.location.pathname;
+            sidebarLinks.forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+        }
+        
+        setSidebarActiveLink();
+    });
+</script>
