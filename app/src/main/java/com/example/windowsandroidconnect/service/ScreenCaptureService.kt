@@ -258,7 +258,7 @@ class ScreenCaptureService : Service() {
      */
     private suspend fun sendFrameToWindows(data: ByteArray) {
         try {
-            if (networkCommunication != null && networkCommunication!!.isConnected()) {
+            if (networkCommunication?.isConnected() == true) {
                 val frameHeader = mapOf(
                     "type" to "screen_frame",
                     "timestamp" to System.currentTimeMillis(),
@@ -268,8 +268,8 @@ class ScreenCaptureService : Service() {
                 )
                 
                 // 先发送帧头信息
-                val headerMessage = org.json.JSONObject(frameHeader).toString()
-                networkCommunication?.sendMessage(org.json.JSONObject(headerMessage))
+                val headerMessage = org.json.JSONObject(frameHeader)
+                networkCommunication?.sendMessage(headerMessage)
                 
                 // 再发送实际的帧数据
                 networkCommunication?.sendScreenFrame(data)

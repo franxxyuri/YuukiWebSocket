@@ -1,21 +1,22 @@
 package com.example.windowsandroidconnect
 
 import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.net.wifi.WifiManager
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
+import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
-import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.LinearLayoutManager
-import android.content.Intent
-import android.net.wifi.WifiManager
-import android.content.Context
-import android.provider.Settings
-import java.net.InetAddress
-import kotlinx.coroutines.*
-import android.util.Log
+import androidx.recyclerview.widget.RecyclerView
 import com.example.windowsandroidconnect.service.RemoteControlService
+import kotlinx.coroutines.*
+import java.util.*
 
 /**
  * Windows-Android Connect Android客户端
@@ -271,7 +272,12 @@ class MainActivity : Activity() {
             putExtra(RemoteControlService.EXTRA_DEVICE_PORT, 8085)
         }
         
-        startService(intent)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
+        
         showToast("远程控制已启用")
         
         Log.d(TAG, "远程控制已启用")
@@ -339,7 +345,7 @@ class MainActivity : Activity() {
      * 生成设备ID
      */
     private fun generateDeviceId(): String {
-        return java.util.UUID.randomUUID().toString()
+        return UUID.randomUUID().toString()
     }
     
     /**
@@ -377,6 +383,23 @@ class MainActivity : Activity() {
     companion object {
         private const val TAG = "MainActivity"
     }
+    
+    /**
+     * 检查通知服务是否已启用
+     */
+    private fun isNotificationServiceEnabled(): Boolean {
+        val pkgName = packageName
+        val flat = Settings.Secure.getString(
+            contentResolver,
+            "enabled_notification_listeners"
+        )
+        return flat?.contains(pkgName) ?: false
+    }
+}
+}
+}
+}
+}
 }
 
 /**

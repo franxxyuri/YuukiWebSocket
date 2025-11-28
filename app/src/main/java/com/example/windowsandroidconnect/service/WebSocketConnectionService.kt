@@ -1,6 +1,8 @@
 package com.example.windowsandroidconnect.service
 
 import android.app.Service
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.os.IBinder
 import android.util.Log
@@ -20,8 +22,12 @@ class WebSocketConnectionService : Service() {
     private var isConnecting = false
     private var isConnected = false
     private var connectionRetryCount = 0
-    private val maxRetryAttempts = 5
+    private var heartbeatJob: Job? = null
+    private var lastHeartbeatResponse = System.currentTimeMillis()
+    private val maxRetryAttempts = 10
     private val retryDelay = 5000L // 5秒重试间隔
+    private val heartbeatInterval = 30000L // 30秒心跳间隔
+    private val heartbeatTimeout = 60000L // 60秒心跳超时
     
     companion object {
         private const val TAG = "WebSocketConnectionService"
@@ -91,10 +97,17 @@ class WebSocketConnectionService : Service() {
                         isConnecting = false
                         isConnected = true
                         connectionRetryCount = 0
+                        lastHeartbeatResponse = System.currentTimeMillis()
                         Log.d(TAG, "WebSocket连接成功")
                         
                         // 注册消息处理器
                         setupMessageHandlers()
+                        
+                        // 启动心跳机制
+                        startHeartbeat()
+                        
+                        // 发送连接状态广播
+                        sendConnectionStatusBroadcast(true)
                     } else {
                         isConnecting = false
                         Log.e(TAG, "WebSocket连接失败")
@@ -107,10 +120,86 @@ class WebSocketConnectionService : Service() {
                 Log.e(TAG, "连接过程中发生异常", e)
                 isConnecting = false
                 
+                // 发送连接失败广播
+                sendConnectionStatusBroadcast(false)
+                
                 // 尝试重连
                 retryConnection()
             }
         }
+    }
+    
+    /**
+     * 开始心跳机制
+     */
+    private fun startHeartbeat() {
+        stopHeartbeat()
+        
+        heartbeatJob = serviceScope.launch {
+            while (isConnected) {
+                delay(heartbeatInterval)
+                
+                if (isConnected) {
+                    // 检查上次心跳响应时间，判断是否超时
+                    if (System.currentTimeMillis() - lastHeartbeatResponse > heartbeatTimeout) {
+                        Log.e(TAG, "心跳超时，断开连接并尝试重连")
+                        withContext(Dispatchers.Main) {
+                            handleConnectionLost()
+                        }
+                        break
+                    }
+                    
+                    // 发送心跳
+                    sendHeartbeat()
+                }
+            }
+        }
+    }
+    
+    /**
+     * 停止心跳
+     */
+    private fun stopHeartbeat() {
+        heartbeatJob?.cancel()
+        heartbeatJob = null
+    }
+    
+    /**
+     * 发送心跳
+     */
+    private fun sendHeartbeat() {
+        try {
+            val heartbeatMessage = org.json.JSONObject().apply {
+                put("type", "heartbeat")
+                put("timestamp", System.currentTimeMillis())
+            }
+            
+            if (networkCommunication?.isConnected() == true) {
+                networkCommunication?.sendMessage(heartbeatMessage)
+                Log.d(TAG, "心跳已发送")
+            } else {
+                Log.e(TAG, "连接已断开，停止心跳")
+                handleConnectionLost()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "发送心跳失败", e)
+            handleConnectionLost()
+        }
+    }
+    
+    /**
+     * 处理连接丢失
+     */
+    private fun handleConnectionLost() {
+        isConnected = false
+        isConnecting = false
+        stopHeartbeat()
+        
+        // 发送连接断开广播
+        sendConnectionStatusBroadcast(false)
+        
+        // 尝试重连
+        retryConnection()
     }
     
     /**
@@ -137,10 +226,14 @@ class WebSocketConnectionService : Service() {
      */
     private fun disconnectFromServer() {
         try {
-            networkCommunication?.disconnect()
             isConnected = false
             isConnecting = false
+            stopHeartbeat()
+            networkCommunication?.disconnect()
             Log.d(TAG, "WebSocket连接已断开")
+            
+            // 发送连接断开广播
+            sendConnectionStatusBroadcast(false)
         } catch (e: Exception) {
             Log.e(TAG, "断开连接时发生异常", e)
         }
@@ -182,16 +275,46 @@ class WebSocketConnectionService : Service() {
         
         // 处理剪贴板同步
         networkCommunication?.registerMessageHandler("clipboard") { message ->
+            val clipboardData = message.optString("data", "")
+            val source = message.optString("source", "unknown")
+            
+            if (source == "windows") {
+                // 如果是来自Windows的剪贴板数据，设置到Android剪贴板
+                setClipboardFromWindows(clipboardData)
+            }
+            
             sendBroadcast(Intent("com.example.windowsandroidconnect.CLIPBOARD_RECEIVED").apply {
                 putExtra("message", message.toString())
+                putExtra("clipboard_data", clipboardData)
+                putExtra("source", source)
             })
         }
         
         // 处理通知同步
         networkCommunication?.registerMessageHandler("notification") { message ->
-            sendBroadcast(Intent("com.example.windowsandroidconnect.NOTIFICATION_RECEIVED").apply {
+            val title = message.optString("title", "")
+            val action = message.optString("action", "")
+            val packageName = message.optString("packageName", "")
+            
+            val notificationIntent = Intent("com.example.windowsandroidconnect.NOTIFICATION_RECEIVED").apply {
                 putExtra("message", message.toString())
-            })
+                putExtra("title", title)
+                putExtra("action", action)
+                putExtra("packageName", packageName)
+            }
+            
+            if (action.isNotEmpty()) {
+                // 如果是通知操作，可能需要特殊处理
+                Log.d(TAG, "处理通知操作: $action for $packageName")
+            }
+            
+            sendBroadcast(notificationIntent)
+        }
+        
+        // 处理心跳响应
+        networkCommunication?.registerMessageHandler("heartbeat") { message ->
+            lastHeartbeatResponse = System.currentTimeMillis()
+            Log.d(TAG, "收到心跳响应")
         }
         
         // 处理连接状态变化
@@ -219,7 +342,36 @@ class WebSocketConnectionService : Service() {
             Log.d(TAG, "消息已发送")
         } catch (e: Exception) {
             Log.e(TAG, "发送消息失败", e)
+            // 如果发送失败，可能连接已断开，检查连接状态
+            handleConnectionLost()
         }
+    }
+    
+    /**
+     * 从Windows端设置剪贴板内容
+     */
+    private fun setClipboardFromWindows(data: String) {
+        try {
+            val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            if (clipboardManager != null) {
+                val clip = android.content.ClipData.newPlainText("Shared from Windows", data)
+                clipboardManager.setPrimaryClip(clip)
+                Log.d(TAG, "已将Windows剪贴板内容设置到Android")
+            } else {
+                Log.w(TAG, "无法获取剪贴板服务")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "设置剪贴板内容失败", e)
+        }
+    }
+    
+    /**
+     * 发送连接状态广播
+     */
+    private fun sendConnectionStatusBroadcast(connected: Boolean) {
+        sendBroadcast(Intent("com.example.windowsandroidconnect.CONNECTION_STATUS_CHANGED").apply {
+            putExtra("connected", connected)
+        })
     }
     
     override fun onBind(intent: Intent?): IBinder? {
@@ -231,14 +383,20 @@ class WebSocketConnectionService : Service() {
         Log.d(TAG, "WebSocket连接服务已销毁")
         
         // 断开连接并清理资源
+        isConnected = false
+        isConnecting = false
+        stopHeartbeat()
         disconnectFromServer()
         serviceScope.cancel()
+        
+        // 注销所有消息处理器
         networkCommunication?.unregisterMessageHandler("device_discovered")
         networkCommunication?.unregisterMessageHandler("screen_frame")
         networkCommunication?.unregisterMessageHandler("file_transfer")
         networkCommunication?.unregisterMessageHandler("control_command")
         networkCommunication?.unregisterMessageHandler("clipboard")
         networkCommunication?.unregisterMessageHandler("notification")
+        networkCommunication?.unregisterMessageHandler("heartbeat")
         networkCommunication?.unregisterMessageHandler("connection_status")
     }
 }

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' ws: wss:;">
-    <title>Windows-Android Connect</title>
+    <title>Windows-Android Connect - 仪表板</title>
     <style>
         * {
             margin: 0;
@@ -16,9 +16,101 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
+            padding-top: 70px; /* 为固定导航栏留出空间 */
+        }
+
+        .modern-navbar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 0;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            height: 70px;
+        }
+
+        .nav-logo {
             display: flex;
             align-items: center;
-            justify-content: center;
+        }
+
+        .nav-logo a {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            color: white;
+            font-weight: 600;
+            font-size: 1.3rem;
+        }
+
+        .nav-logo-icon {
+            font-size: 1.5rem;
+            margin-right: 10px;
+        }
+
+        .nav-menu {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.85);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-link:hover {
+            color: white;
+            background-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .nav-link.active {
+            color: white;
+            background-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .nav-icon {
+            margin-right: 8px;
+            font-size: 1.1rem;
+        }
+
+        .nav-text {
+            font-size: 0.95rem;
+        }
+
+        .nav-toggle {
+            display: none;
+            flex-direction: column;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .bar {
+            width: 25px;
+            height: 3px;
+            background-color: white;
+            margin: 3px 0;
+            transition: 0.3s;
+            border-radius: 2px;
         }
 
         .container {
@@ -28,8 +120,8 @@
             padding: 40px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
             text-align: center;
-            max-width: 500px;
-            width: 90%;
+            max-width: 1000px;
+            margin: 40px auto;
             transform: translateY(0);
             transition: all 0.3s ease;
         }
@@ -150,9 +242,101 @@
             padding: 5px 10px;
             border-radius: 15px;
         }
+
+        @media screen and (max-width: 768px) {
+            .nav-menu {
+                position: fixed;
+                left: -100%;
+                top: 70px;
+                flex-direction: column;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                width: 100%;
+                text-align: center;
+                transition: 0.3s;
+                box-shadow: 0 10px 27px rgba(0, 0, 0, 0.05);
+                padding: 20px 0;
+            }
+
+            .nav-menu.active {
+                left: 0;
+            }
+
+            .nav-link {
+                padding: 15px;
+                margin: 5px 20px;
+                display: flex;
+                justify-content: center;
+            }
+
+            .nav-toggle {
+                display: flex;
+            }
+
+            .nav-toggle.active .bar:nth-child(2) {
+                opacity: 0;
+            }
+
+            .nav-toggle.active .bar:nth-child(1) {
+                transform: translateY(8px) rotate(45deg);
+            }
+
+            .nav-toggle.active .bar:nth-child(3) {
+                transform: translateY(-8px) rotate(-45deg);
+            }
+
+            .container {
+                margin: 20px;
+                padding: 30px;
+            }
+
+            .title {
+                font-size: 28px;
+            }
+        }
     </style>
 </head>
 <body>
+    <!-- 现代化导航栏 -->
+    <nav class="modern-navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="/frontend/index.html">
+                    <span class="nav-logo-icon">🔗</span>
+                    <span class="nav-logo-text">Windows-Android Connect</span>
+                </a>
+            </div>
+            
+            <div class="nav-menu" id="nav-menu">
+                <a href="/frontend/index.html" class="nav-link" data-page="home">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-text">首页</span>
+                </a>
+                <a href="/frontend/pages/app-index.html" class="nav-link active" data-page="dashboard">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">仪表板</span>
+                </a>
+                <a href="/frontend/pages/device-manager.html" class="nav-link" data-page="devices">
+                    <span class="nav-icon">📱</span>
+                    <span class="nav-text">设备管理</span>
+                </a>
+                <a href="/frontend/pages/screen-stream.html" class="nav-link" data-page="screen">
+                    <span class="nav-icon">📺</span>
+                    <span class="nav-text">屏幕投屏</span>
+                </a>
+                <a href="/frontend/pages/react-index.html" class="nav-link" data-page="react">
+                    <span class="nav-icon">⚛️</span>
+                    <span class="nav-text">React应用</span>
+                </a>
+            </div>
+            
+            <div class="nav-toggle" id="nav-toggle">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+        </div>
+    </nav>
+    
     <div class="container">
         <div class="logo">🔗</div>
         <h1 class="title">Windows-Android Connect</h1>
@@ -237,6 +421,49 @@
                 <div class="status-title">错误</div>
                 <div class="status-text">应用遇到错误，请检查控制台日志</div>
             `;
+        });
+        
+        // 现代化导航功能
+        document.addEventListener('DOMContentLoaded', function() {
+            const navToggle = document.getElementById('nav-toggle');
+            const navMenu = document.getElementById('nav-menu');
+            
+            // 切换移动端菜单
+            navToggle.addEventListener('click', function() {
+                navMenu.classList.toggle('active');
+                navToggle.classList.toggle('active');
+            });
+            
+            // 处理导航链接点击
+            const navLinks = document.querySelectorAll('.nav-link');
+            navLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    // 在移动端点击导航项后关闭菜单
+                    if (window.innerWidth <= 768) {
+                        navMenu.classList.remove('active');
+                        navToggle.classList.remove('active');
+                    }
+                    
+                    // 移除其他活动状态
+                    navLinks.forEach(l => l.classList.remove('active'));
+                    // 添加当前活动状态
+                    this.classList.add('active');
+                });
+            });
+            
+            // 根据当前页面设置活动状态
+            function setActiveNavLink() {
+                const currentPath = window.location.pathname;
+                navLinks.forEach(link => {
+                    if (link.getAttribute('href') === currentPath) {
+                        link.classList.add('active');
+                    } else {
+                        link.classList.remove('active');
+                    }
+                });
+            }
+            
+            setActiveNavLink();
         });
     </script>
 </body>

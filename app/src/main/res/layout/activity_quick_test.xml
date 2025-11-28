@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/title_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="快速功能验证测试页面"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/status_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="状态: 准备就绪进行测试"
+        android:textSize="16sp"
+        android:layout_marginBottom="16dp" />
+
+    <!-- 测试按钮区域 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="16dp">
+
+        <Button
+            android:id="@+id/test_all_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="运行所有测试"
+            android:layout_marginBottom="8dp"
+            android:background="#2196F3"
+            android:textColor="#ffffff" />
+
+        <Button
+            android:id="@+id/test_screen_capture_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="测试屏幕捕获功能"
+            android:layout_marginBottom="8dp"
+            android:background="#FF9800"
+            android:textColor="#ffffff" />
+
+        <Button
+            android:id="@+id/test_remote_control_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="测试远程控制功能"
+            android:layout_marginBottom="8dp"
+            android:background="#4CAF50"
+            android:textColor="#ffffff" />
+
+        <Button
+            android:id="@+id/test_file_transfer_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="测试文件传输功能"
+            android:layout_marginBottom="8dp"
+            android:background="#9C27B0"
+            android:textColor="#ffffff" />
+
+        <Button
+            android:id="@+id/test_clipboard_sync_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="测试剪贴板同步功能"
+            android:layout_marginBottom="8dp"
+            android:background="#FF5722"
+            android:textColor="#ffffff" />
+
+        <Button
+            android:id="@+id/test_notification_sync_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="测试通知同步功能"
+            android:layout_marginBottom="8dp"
+            android:background="#607D8B"
+            android:textColor="#ffffff" />
+
+        <Button
+            android:id="@+id/test_device_discovery_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="测试设备发现功能"
+            android:layout_marginBottom="8dp"
+            android:background="#3F51B5"
+            android:textColor="#ffffff" />
+
+    </LinearLayout>
+
+    <!-- 日志显示 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="测试日志:"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <ScrollView
+        android:id="@+id/scroll_view"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <TextView
+            android:id="@+id/log_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="快速测试日志将显示在这里\n"
+            android:textSize="12sp"
+            android:scrollbars="vertical" />
+
+    </ScrollView>
+
+    <!-- 底部按钮 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="16dp">
+
+        <Button
+            android:id="@+id/clear_log_button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="清空日志"
+            android:layout_marginEnd="4dp"
+            android:background="#757575"
+            android:textColor="#ffffff" />
+
+        <Button
+            android:id="@+id/back_button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="返回主界面"
+            android:layout_marginStart="4dp"
+            android:background="#2196F3"
+            android:textColor="#ffffff" />
+
+    </LinearLayout>
+
+</LinearLayout>

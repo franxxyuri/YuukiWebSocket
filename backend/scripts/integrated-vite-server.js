@@ -8,6 +8,7 @@ import cors from 'cors';
 import dgram from 'dgram';
 import { createServer } from 'vite';
 import react from '@vitejs/plugin-react';
+import fs from 'fs';
 
 // 导入配置文件
 import config from '../config/config.mjs';
@@ -23,6 +24,39 @@ const server = http.createServer(app);
 // 启用CORS
 app.use(cors());
 
+// 在静态文件服务前设置.jsx文件的MIME类型
+app.use((req, res, next) => {
+  // 检查URL是否以.jsx结尾
+  if (req.url.endsWith('.jsx')) {
+    console.log(`处理.jsx文件请求: ${req.url}`);
+    
+    // 尝试多个可能的文件路径
+    const srcPath = path.join(__dirname, '../../src', req.url.replace(/^\/src\//, ''));
+    const frontendPath = path.join(__dirname, '../../frontend', req.url);
+    
+    let filePath = null;
+    
+    // 优先检查src目录
+    if (fs.existsSync(srcPath)) {
+      filePath = srcPath;
+    } else if (fs.existsSync(frontendPath)) {
+      filePath = frontendPath;
+    }
+    
+    if (filePath) {
+      // 设置正确的MIME类型并发送文件
+      console.log(`找到文件并发送: ${filePath}`);
+      res.setHeader('Content-Type', 'application/javascript');
+      fs.createReadStream(filePath).pipe(res);
+    } else {
+      console.log(`未找到文件: ${req.url}`);
+      next(); // 让静态文件中间件处理
+    }
+  } else {
+    next();
+  }
+});
+
 // 静态文件服务 - 从配置文件读取路径
 app.use(express.static(path.join(__dirname, config.frontend.staticPaths.root)));
 app.use('/pages', express.static(path.join(__dirname, config.frontend.staticPaths.pages)));
@@ -30,6 +64,31 @@ app.use('/components', express.static(path.join(__dirname, config.frontend.stati
 app.use('/styles', express.static(path.join(__dirname, config.frontend.staticPaths.styles)));
 app.use('/utils', express.static(path.join(__dirname, config.frontend.staticPaths.utils)));
 app.use('/tests', express.static(path.join(__dirname, config.frontend.staticPaths.tests)));
+// 添加 src 目录的静态文件服务
+app.use('/src', express.static(path.join(__dirname, '../../src')));
+// 处理 favicon.ico 请求
+app.get('/favicon.ico', (req, res) => {
+  // 返回一个简单的2x2像素的透明PNG as favicon to avoid 404 errors
+  const favicon = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5AgQDA0qGUv3ZgAAAB1pVFh0Q29tbWVudAAAAAAAQ3JlYXRlZCB3aXRoIEdJTVBkLmUHAAAAFklEQVQI12NkYGD4z8DAwMDAAAYAGggRAQFJw2sAAAAASUVORK5CYII=', 'base64');
+  res.writeHead(200, {
+    'Content-Type': 'image/x-icon',
+    'Content-Length': favicon.length
+  });
+  res.end(favicon);
+});
+
+// 静态文件服务 - 从配置文件读取路径
+
+app.use(express.static(path.join(__dirname, config.frontend.staticPaths.root)));
+app.use('/pages', express.static(path.join(__dirname, config.frontend.staticPaths.pages)));
+app.use('/components', express.static(path.join(__dirname, config.frontend.staticPaths.components)));
+app.use('/styles', express.static(path.join(__dirname, config.frontend.staticPaths.styles)));
+app.use('/utils', express.static(path.join(__dirname, config.frontend.staticPaths.utils)));
+app.use('/tests', express.static(path.join(__dirname, config.frontend.staticPaths.tests)));
+// 添加 src 目录的静态文件服务
+app.use('/src', express.static(path.join(__dirname, '../../src')));
+// 提供 vite.svg 文件
+app.use('/vite.svg', express.static(path.join(__dirname, '../../frontend/vite.svg')));
 
 // 确保根路径指向正确的index.html文件
 app.get('/', (req, res) => {

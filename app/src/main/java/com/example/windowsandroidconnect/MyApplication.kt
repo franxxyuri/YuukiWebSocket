@@ -1,6 +1,7 @@
 package com.example.windowsandroidconnect
 
 import android.app.Application
+import com.example.utils.LogUtils
 import com.example.windowsandroidconnect.network.NetworkCommunication
 
 /**
@@ -14,6 +15,9 @@ class MyApplication : Application() {
     
     override fun onCreate() {
         super.onCreate()
+        
+        // 初始化日志工具
+        LogUtils.init()
         
         // 初始化网络通信模块
         networkCommunication = NetworkCommunication()

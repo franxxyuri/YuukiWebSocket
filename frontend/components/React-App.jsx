@@ -1,82 +1,64 @@
-import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Button, Card, List, Space, Tag, Typography, Statistic, message } from 'antd';
-import { 
-  WifiOutlined, 
-  PhoneOutlined, 
-  DesktopOutlined, 
-  UploadOutlined, 
-  DownloadOutlined,
-  EyeOutlined,
-  ControlOutlined,
-  NotificationOutlined,
-  CopyOutlined,
-  SettingOutlined,
-  PlayCircleOutlined,
-  StopOutlined
-} from '@ant-design/icons';
-
-const { Header, Content, Sider } = Layout;
-const { Title, Text } = Typography;
-
-const App = () => {
-  const [selectedMenu, setSelectedMenu] = useState('devices');
-  const [isDiscovering, setIsDiscovering] = useState(false);
-  const [devices, setDevices] = useState([]);
-  const [connectedDevice, setConnectedDevice] = useState(null);
-  const [screenSharing, setScreenSharing] = useState(false);
-
-  // 模拟设备数据
-  const mockDevices = [
-    {
-      id: 'device_1',
-      name: '我的Android手机',
-      type: 'android',
-      ip: '192.168.1.100',
-      status: 'online',
-      capabilities: ['file_transfer', 'screen_mirror', 'remote_control', 'notification']
-    },
-    {
-      id: 'device_2',
-      name: '测试平板',
-      type: 'android',
-      ip: '192.168.1.101',
-      status: 'online',
-      capabilities: ['file_transfer', 'screen_mirror']
-    }
-  ];
-
-  useEffect(() => {
-    if (isDiscovering) {
-      // 开始设备发现
-      handleStartDiscovery();
-    } else {
-      setDevices([]);
-    }
-  }, [isDiscovering]);
-
-  const handleStartDiscovery = async () => {
-    // 开发模式模拟
-    setIsDiscovering(true);
-    setTimeout(() => {
-      setDevices(mockDevices);
-      message.success(`发现 ${mockDevices.length} 台设备（模拟）`);
-    }, 2000);
-  };
-
-  const handleStopDiscovery = async () => {
-    setIsDiscovering(false);
-  };
-
-  const handleConnectDevice = async (device) => {
-    // 开发模式模拟
-    setConnectedDevice(device);
-    message.success(`已连接到 ${device.name}（模拟）`);
-  };
-
-  const handleScreenShare = async () => {
-    setScreenSharing(!screenSharing);
-    message.success(screenSharing ? '停止屏幕投屏' : '开始屏幕投屏');
-  };
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Layout, Menu, Typography, Statistic, message, Spin, List, Button, Space } from 'antd';
+import {
+  WifiOutlined,
+  FileTextOutlined,
+  DesktopOutlined,
+  ControlOutlined,
+  BellOutlined,
+  CopyOutlined,
+  SettingOutlined
+} from '@ant-design/icons';
+// 导入样式文件
+import '../../src/styles/global.css';
+import '../../src/styles/animations.css';
+import '../../src/styles/responsive.css';
+import websocketService from '../../src/services/websocket-service';
+import DeviceDiscovery from './DeviceDiscovery';
+import FileTransfer from './FileTransfer';
+import ScreenShare from './ScreenShare';
+import RemoteControl from './RemoteControl';
+
+const { Header, Content, Sider } = Layout;
+const { Title, Text } = Typography;
+
+// DeviceCard组件已移除，使用DeviceDiscovery组件代替
+
+const App = () => {
+  const [selectedMenu, setSelectedMenu] = useState('devices');
+  const [connectedDevice, setConnectedDevice] = useState(null);
+
+  // 初始化WebSocket连接
+  useEffect(() => {
+    const initWebSocket = async () => {
+      try {
+        await websocketService.connect();
+        message.success('WebSocket连接已建立');
+        
+        // 监听连接状态变化
+        websocketService.on('connection_status', (status) => {
+          if (status === 'disconnected') {
+            setConnectedDevice(null);
+            message.warning('连接已断开');
+          }
+        });
+      } catch (error) {
+        console.error('WebSocket连接失败:', error);
+        message.error('无法连接到服务器');
+      }
+    };
+
+    initWebSocket();
+    
+    // 清理连接
+    return () => {
+      websocketService.disconnect();
+    };
+  }, []);
+
+  const handleConnectDevice = useCallback((device) => {
+    setConnectedDevice(device);
+  }, []);
 
   const menuItems = [
     {
@@ -116,162 +98,88 @@ const App = () => {
     }
   ];
 
-  const DeviceCard = ({ device }) => (
-    <Card 
-      hoverable
-      className="device-card"
-      actions={[
-        connectedDevice?.id === device.id ? (
-          <Button type="primary" icon={<StopOutlined />} danger>
-            断开连接
-          </Button>
-        ) : (
-          <Button 
-            type="primary" 
-            icon={<PlayCircleOutlined />}
-            onClick={() => handleConnectDevice(device)}
-          >
-            连接
-          </Button>
-        )
-      ]}
-    >
-      <Card.Meta
-        avatar={<PhoneOutlined style={{ fontSize: '24px', color: '#1890ff' }} />}
-        title={device.name}
-        description={
-          <div>
-            <div>IP地址: {device.ip}</div>
-            <div>状态: <Tag color={device.status === 'online' ? 'green' : 'red'}>{device.status}</Tag></div>
-            <div>
-              能力:
-              <div style={{ marginTop: '5px' }}>
-                {device.capabilities.map(cap => (
-                  <Tag key={cap} color="blue" style={{ marginBottom: '2px' }}>
-                    {cap}
-                  </Tag>
-                ))}
-              </div>
-            </div>
-          </div>
-        }
-      />
-    </Card>
-  );
-
   const renderContent = () => {
     switch (selectedMenu) {
       case 'devices':
-        return (
-          <div>
-            <div style={{ marginBottom: '20px' }}>
-              <Space>
-                <Button 
-                  type="primary" 
-                  icon={<WifiOutlined />}
-                  onClick={handleStartDiscovery}
-                  disabled={isDiscovering}
-                >
-                  开始发现
-                </Button>
-                <Button 
-                  icon={<StopOutlined />}
-                  onClick={handleStopDiscovery}
-                  disabled={!isDiscovering}
-                >
-                  停止发现
-                </Button>
-              </Space>
-            </div>
-            
-            {devices.length > 0 ? (
-              <List
-                grid={{ gutter: 16, column: 2 }}
-                dataSource={devices}
-                renderItem={device => (
-                  <List.Item>
-                    <DeviceCard device={device} />
-                  </List.Item>
-                )}
-              />
-            ) : (
-              <div style={{ textAlign: 'center', padding: '50px', color: '#666' }}>
-                <WifiOutlined style={{ fontSize: '48px', marginBottom: '20px' }} />
-                <div>点击"开始发现"搜索附近设备</div>
-              </div>
-            )}
-          </div>
-        );
+        return <DeviceDiscovery connectedDevice={connectedDevice} onConnect={handleConnectDevice} />;
       
       case 'screen':
-        return (
-          <div style={{ textAlign: 'center', padding: '50px' }}>
-            <Title level={3}>屏幕投屏</Title>
-            {connectedDevice ? (
-              <div>
-                <div style={{ marginBottom: '20px' }}>
-                  <Text>已连接设备: {connectedDevice.name}</Text>
-                </div>
-                <Button
-                  type="primary"
-                  size="large"
-                  icon={screenSharing ? <StopOutlined /> : <EyeOutlined />}
-                  onClick={handleScreenShare}
-                >
-                  {screenSharing ? '停止投屏' : '开始投屏'}
-                </Button>
-                {screenSharing && (
-                  <div style={{ marginTop: '20px', padding: '20px', background: '#000', color: '#fff' }}>
-                    <div>屏幕投屏窗口</div>
-                    <div style={{ fontSize: '12px', opacity: 0.7 }}>(这是演示界面)</div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div style={{ color: '#666' }}>
-                请先连接设备
-              </div>
-            )}
-          </div>
-        );
+        return <ScreenShare connectedDevice={connectedDevice} />;
 
       case 'files':
-        return (
-          <div style={{ textAlign: 'center', padding: '50px' }}>
-            <Title level={3}>文件传输</Title>
-            <div style={{ color: '#666' }}>
-              {connectedDevice ? `已连接 ${connectedDevice.name}` : '请先连接设备'}
-            </div>
-          </div>
-        );
+        return <FileTransfer connectedDevice={connectedDevice} />;
 
       case 'control':
-        return (
-          <div style={{ textAlign: 'center', padding: '50px' }}>
-            <Title level={3}>远程控制</Title>
-            <div style={{ color: '#666' }}>
-              {connectedDevice ? `已连接 ${connectedDevice.name}` : '请先连接设备'}
-            </div>
-          </div>
-        );
+        return <RemoteControl connectedDevice={connectedDevice} />;
+
 
       case 'notifications':
         return (
-          <div style={{ textAlign: 'center', padding: '50px' }}>
+          <div style={{ padding: '20px' }}>
             <Title level={3}>通知同步</Title>
-            <div style={{ color: '#666' }}>
+            <div style={{ color: '#666', marginBottom: '20px' }}>
               {connectedDevice ? `已连接 ${connectedDevice.name}` : '请先连接设备'}
             </div>
+            {connectedDevice && (
+              <List
+                itemLayout="horizontal"
+                dataSource={[
+                  { id: 1, title: '新消息', content: '您有一条新微信消息', time: '2分钟前' },
+                  { id: 2, title: '应用更新', content: '微信有可用更新', time: '5分钟前' },
+                  { id: 3, title: '系统提醒', content: '电池电量低，请充电', time: '10分钟前' }
+                ]}
+                renderItem={item => (
+                  <List.Item>
+                    <List.Item.Meta
+                      title={item.title}
+                      description={
+                        <div>
+                          <div>{item.content}</div>
+                          <Text type="secondary" style={{ fontSize: '12px' }}>{item.time}</Text>
+                        </div>
+                      }
+                    />
+                    <Button size="small">查看</Button>
+                  </List.Item>
+                )}
+              />
+            )}
           </div>
         );
 
       case 'clipboard':
         return (
-          <div style={{ textAlign: 'center', padding: '50px' }}>
+          <div style={{ padding: '20px' }}>
             <Title level={3}>剪贴板同步</Title>
-            <div style={{ color: '#666' }}>
+            <div style={{ color: '#666', marginBottom: '20px' }}>
               {connectedDevice ? `已连接 ${connectedDevice.name}` : '请先连接设备'}
             </div>
+            {connectedDevice && (
+              <div style={{ 
+                border: '1px solid #d9d9d9', 
+                borderRadius: '8px', 
+                padding: '20px', 
+                background: '#fafafa'
+              }}>
+                <Title level={4} style={{ marginBottom: '12px' }}>同步剪贴板内容</Title>
+                <div style={{ 
+                  minHeight: '100px', 
+                  border: '1px solid #d9d9d9', 
+                  borderRadius: '4px', 
+                  padding: '10px', 
+                  background: '#fff',
+                  fontFamily: 'monospace',
+                  whiteSpace: 'pre-wrap',
+                  marginBottom: '12px'
+                }}>
+                  {window.navigator.clipboard ? '点击同步按钮以同步剪贴板内容' : '浏览器不支持剪贴板API'}
+                </div>
+                <Space>
+                  <Button type="primary" icon={<CopyOutlined />}>同步到设备</Button>
+                  <Button icon={<CopyOutlined />}>从设备同步</Button>
+                </Space>
+              </div>
+            )}
           </div>
         );
 
@@ -280,7 +188,32 @@ const App = () => {
           <div style={{ padding: '20px' }}>
             <Title level={3}>应用设置</Title>
             <div style={{ color: '#666' }}>
-              设置功能开发中...
+              <div style={{ marginBottom: '24px' }}>
+                <Title level={5} style={{ marginBottom: '12px' }}>连接设置</Title>
+                <Space direction="vertical" size="middle">
+                  <div>
+                    <Text strong>自动重连: </Text>
+                    <span>开启</span>
+                  </div>
+                  <div>
+                    <Text strong>超时时间: </Text>
+                    <span>30秒</span>
+                  </div>
+                </Space>
+              </div>
+              <div>
+                <Title level={5} style={{ marginBottom: '12px' }}>界面设置</Title>
+                <Space direction="vertical" size="middle">
+                  <div>
+                    <Text strong>主题: </Text>
+                    <span>亮色</span>
+                  </div>
+                  <div>
+                    <Text strong>语言: </Text>
+                    <span>简体中文</span>
+                  </div>
+                </Space>
+              </div>
             </div>
           </div>
         );
@@ -292,7 +225,7 @@ const App = () => {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider width={250} style={{ background: '#fff' }}>
+      <Sider width={250} style={{ background: '#fff', position: 'fixed', height: '100vh', left: 0, top: 0, zIndex: 100 }}>
         <div style={{ padding: '20px', textAlign: 'center', borderBottom: '1px solid #f0f0f0' }}>
           <Title level={4} style={{ margin: 0, color: '#1890ff' }}>
             🔗 Windows-Android Connect
@@ -303,13 +236,13 @@ const App = () => {
           selectedKeys={[selectedMenu]}
           items={menuItems}
           onSelect={({ key }) => setSelectedMenu(key)}
-          style={{ height: '100%', borderRight: 0 }}
+          style={{ height: 'calc(100% - 80px)', borderRight: 0 }}
         />
       </Sider>
       
-      <Layout>
-        <Header style={{ background: '#fff', padding: '0 20px', borderBottom: '1px solid #f0f0f0' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Layout style={{ marginLeft: 250 }}>
+        <Header style={{ background: '#fff', padding: '0 20px', borderBottom: '1px solid #f0f0f0', position: 'fixed', width: `calc(100% - 250px)`, zIndex: 10, right: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%' }}>
             <div>
               <Title level={5} style={{ margin: 0 }}>
                 {menuItems.find(item => item.key === selectedMenu)?.label}
@@ -321,7 +254,7 @@ const App = () => {
                   <Statistic 
                     value="已连接" 
                     prefix={<WifiOutlined style={{ color: '#52c41a' }} />} 
-                    valueStyle={{ color: '#52c41a', fontSize: '16px' }}
+                    valueStyle={{ color: '#52c41a', fontSize: '14px' }}
                   />
                 )}
               </Space>
@@ -329,7 +262,7 @@ const App = () => {
           </div>
         </Header>
         
-        <Content style={{ margin: '20px', background: '#fff', padding: '20px', borderRadius: '6px' }}>
+        <Content style={{ marginTop: 64, margin: '20px', background: '#fff', padding: '20px', borderRadius: '6px' }}>
           {renderContent()}
         </Content>
       </Layout>

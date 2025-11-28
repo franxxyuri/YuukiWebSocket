@@ -2,36 +2,37 @@ package com.example.windowsandroidconnect
 
 import android.app.Activity
 import android.content.Intent
-import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import android.util.Log
 
 /**
  * 屏幕捕获权限请求Activity
- * 用于请求用户授权屏幕捕获功能
+ * 
+ * 这是一个透明的Activity，用于请求屏幕捕获权限
  */
 class ScreenCaptureRequestActivity : Activity() {
     
-    private lateinit var mediaProjectionManager: MediaProjectionManager
+    companion object {
+        private const val TAG = "ScreenCaptureRequest"
+        private const val REQUEST_CODE_SCREEN_CAPTURE = 1001
+        
+        // 广播动作和额外数据的常量
+        const val ACTION_CAPTURE_PERMISSION_GRANTED = "com.example.windowsandroidconnect.CAPTURE_PERMISSION_GRANTED"
+        const val EXTRA_RESULT_CODE = "extra_result_code"
+        const val EXTRA_RESULT_DATA = "extra_result_data"
+    }
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        mediaProjectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        // 从Intent获取捕获Intent
+        val captureIntent = intent.getParcelableExtra<Intent>("capture_intent")
         
-        // 请求屏幕捕获权限
-        requestScreenCapturePermission()
-    }
-    
-    /**
-     * 请求屏幕捕获权限
-     */
-    private fun requestScreenCapturePermission() {
-        try {
-            val intent = mediaProjectionManager.createScreenCaptureIntent()
-            startActivityForResult(intent, REQUEST_CODE_CAPTURE)
-        } catch (e: Exception) {
-            Log.e(TAG, "请求屏幕捕获权限失败", e)
+        if (captureIntent != null) {
+            // 启动屏幕捕获权限请求
+            startActivityForResult(captureIntent, REQUEST_CODE_SCREEN_CAPTURE)
+        } else {
+            Log.e(TAG, "未提供捕获Intent")
             finish()
         }
     }
@@ -39,32 +40,30 @@ class ScreenCaptureRequestActivity : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         
-        if (requestCode == REQUEST_CODE_CAPTURE) {
+        if (requestCode == REQUEST_CODE_SCREEN_CAPTURE) {
             if (resultCode == RESULT_OK && data != null) {
-                // 权限已授予，保存结果以便ScreenCaptureService使用
-                // 这里可以通过单例模式或全局变量传递结果给Service
-                Log.d(TAG, "屏幕捕获权限已授予")
+                // 发送广播告知权限已授予
+                val broadcastIntent = Intent(ACTION_CAPTURE_PERMISSION_GRANTED)
+                broadcastIntent.putExtra(EXTRA_RESULT_CODE, resultCode)
+                broadcastIntent.putExtra(EXTRA_RESULT_DATA, data)
+                sendBroadcast(broadcastIntent)
                 
-                // 通知ScreenCaptureService开始捕获
-                val resultIntent = Intent(ACTION_CAPTURE_PERMISSION_GRANTED).apply {
-                    putExtra(EXTRA_RESULT_CODE, resultCode)
-                    putExtra(EXTRA_RESULT_DATA, data)
+                // 同时启动ScreenCaptureService
+                val serviceIntent = Intent(this, ScreenCaptureService::class.java).apply {
+                    action = ScreenCaptureService.ACTION_START_CAPTURE
+                    putExtra("resultCode", resultCode)
+                    putExtra("data", data)
                 }
-                sendBroadcast(resultIntent)
+                startService(serviceIntent)
+                
+                Log.d(TAG, "屏幕捕获权限已获取，启动服务")
             } else {
-                Log.d(TAG, "屏幕捕获权限被拒绝")
+                Log.e(TAG, "屏幕捕获权限被拒绝")
+                // 可以显示错误消息或重试
             }
         }
         
-        // 关闭此Activity
+        // 关闭Activity
         finish()
-    }
-    
-    companion object {
-        private const val TAG = "ScreenCaptureRequestActivity"
-        private const val REQUEST_CODE_CAPTURE = 1001
-        const val ACTION_CAPTURE_PERMISSION_GRANTED = "capture_permission_granted"
-        const val EXTRA_RESULT_CODE = "result_code"
-        const val EXTRA_RESULT_DATA = "result_data"
     }
 }
