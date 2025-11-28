@@ -607,3 +607,6 @@ if (typeof module !== 'undefined' && module.exports) {
 } else if (typeof window !== 'undefined') {
   window.ScreenDisplayManager = ScreenDisplayManager;
 }
+
+// ES模块导出，兼容现代构建工具
+export default ScreenDisplayManager;

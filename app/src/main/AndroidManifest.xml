@@ -62,31 +62,7 @@
 
         </activity>
 
-        <activity
-
-            android:name="com.example.windowsandroidconnect.DeviceDiscoveryTestActivity"
-
-            android:exported="true"
-
-            android:label="设备发现测试"
-
-            android:theme="@style/Theme.MyApplication.NoActionBar">
-
-        </activity>
-
         
-
-        <activity
-
-            android:name="com.example.windowsandroidconnect.DebugTestActivity"
-
-            android:exported="true"
-
-            android:label="调试测试页面"
-
-            android:theme="@style/Theme.MyApplication.NoActionBar">
-
-        </activity>
 
         <activity
             android:name="com.example.windowsandroidconnect.SimpleConnectionTestActivity"
@@ -100,10 +76,7 @@
             android:exported="false"
             android:label="快速功能验证测试" />
 
-        <activity
-            android:name="com.example.windowsandroidconnect.MockTestActivity"
-            android:exported="false"
-            android:label="模拟测试页面" />
+        
 
         <!-- 屏幕捕获权限请求Activity -->
         <activity
@@ -122,6 +95,13 @@
         <!-- 屏幕捕获服务 -->
         <service
             android:name="com.example.windowsandroidconnect.service.ScreenCaptureService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
+            
+        <!-- 优化的屏幕捕获服务 -->
+        <service
+            android:name="com.example.windowsandroidconnect.service.OptimizedScreenCaptureService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />

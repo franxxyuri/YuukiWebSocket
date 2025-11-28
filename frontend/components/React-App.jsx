@@ -7,13 +7,15 @@ import {
   ControlOutlined,
   BellOutlined,
   CopyOutlined,
-  SettingOutlined
+  SettingOutlined,
+  EyeOutlined,
+  NotificationOutlined
 } from '@ant-design/icons';
 // 导入样式文件
-import '../../src/styles/global.css';
-import '../../src/styles/animations.css';
-import '../../src/styles/responsive.css';
-import websocketService from '../../src/services/websocket-service';
+import '../src/styles/global.css';
+import '../src/styles/animations.css';
+import '../src/styles/responsive.css';
+import apiService from '../src/services/api-service';
 import DeviceDiscovery from './DeviceDiscovery';
 import FileTransfer from './FileTransfer';
 import ScreenShare from './ScreenShare';
@@ -27,32 +29,55 @@ const { Title, Text } = Typography;
 const App = () => {
   const [selectedMenu, setSelectedMenu] = useState('devices');
   const [connectedDevice, setConnectedDevice] = useState(null);
+  const [connectionStatus, setConnectionStatus] = useState({ isConnected: false, isMockMode: false });
+  const [connectionError, setConnectionError] = useState(null);
 
-  // 初始化WebSocket连接
+  // 初始化API服务连接
   useEffect(() => {
-    const initWebSocket = async () => {
+    const initConnection = async () => {
       try {
-        await websocketService.connect();
-        message.success('WebSocket连接已建立');
+        await apiService.connect();
+        
+        // 获取连接状态
+        const status = apiService.getConnectionStatus ? apiService.getConnectionStatus() : { isConnected: true, isMockMode: false };
+        setConnectionStatus(status);
+        setConnectionError(null);
+        
+        if (status.isMockMode) {
+          message.info('当前运行在模拟模式下，使用演示数据');
+        } else {
+          message.success('连接已建立');
+        }
         
         // 监听连接状态变化
-        websocketService.on('connection_status', (status) => {
-          if (status === 'disconnected') {
-            setConnectedDevice(null);
-            message.warning('连接已断开');
-          }
+        apiService.on('connection_established', () => {
+          setConnectionStatus(prev => ({ ...prev, isConnected: true }));
+          message.success('连接已建立');
+        });
+        
+        apiService.on('connection_lost', () => {
+          setConnectedDevice(null);
+          setConnectionStatus(prev => ({ ...prev, isConnected: false }));
+          message.warning('连接已断开');
         });
       } catch (error) {
-        console.error('WebSocket连接失败:', error);
-        message.error('无法连接到服务器');
+        console.warn('连接失败，尝试使用模拟模式:', error.message);
+        setConnectionError(error.message);
+        
+        // 尝试切换到模拟模式
+        if (apiService.setConnectionType) {
+          apiService.setConnectionType('mock');
+          setConnectionStatus({ isConnected: true, isMockMode: true });
+          message.warning('无法连接到后端服务，已切换到模拟演示模式');
+        }
       }
     };
 
-    initWebSocket();
+    initConnection();
     
     // 清理连接
     return () => {
-      websocketService.disconnect();
+      apiService.disconnect();
     };
   }, []);
 
@@ -190,29 +215,29 @@ const App = () => {
             <div style={{ color: '#666' }}>
               <div style={{ marginBottom: '24px' }}>
                 <Title level={5} style={{ marginBottom: '12px' }}>连接设置</Title>
-                <Space direction="vertical" size="middle">
-                  <div>
-                    <Text strong>自动重连: </Text>
-                    <span>开启</span>
-                  </div>
-                  <div>
-                    <Text strong>超时时间: </Text>
-                    <span>30秒</span>
-                  </div>
-                </Space>
+                <Space orientation="vertical" size="middle">
+              <div>
+                <Text strong>自动重连: </Text>
+                <span>开启</span>
+              </div>
+              <div>
+                <Text strong>超时时间: </Text>
+                <span>30秒</span>
+              </div>
+            </Space>
               </div>
               <div>
                 <Title level={5} style={{ marginBottom: '12px' }}>界面设置</Title>
-                <Space direction="vertical" size="middle">
-                  <div>
-                    <Text strong>主题: </Text>
-                    <span>亮色</span>
-                  </div>
-                  <div>
-                    <Text strong>语言: </Text>
-                    <span>简体中文</span>
-                  </div>
-                </Space>
+                <Space orientation="vertical" size="middle">
+              <div>
+                <Text strong>主题: </Text>
+                <span>亮色</span>
+              </div>
+              <div>
+                <Text strong>语言: </Text>
+                <span>简体中文</span>
+              </div>
+            </Space>
               </div>
             </div>
           </div>
@@ -249,16 +274,21 @@ const App = () => {
               </Title>
             </div>
             <div>
-              <Space>
-                {connectedDevice && (
+                <Space>
                   <Statistic 
-                    value="已连接" 
-                    prefix={<WifiOutlined style={{ color: '#52c41a' }} />} 
-                    valueStyle={{ color: '#52c41a', fontSize: '14px' }}
+                    value={connectionStatus.isConnected ? "已连接" : connectionStatus.isMockMode ? "模拟模式" : "未连接"} 
+                    prefix={<WifiOutlined style={{ 
+                      color: connectionStatus.isConnected ? '#52c41a' : 
+                             connectionStatus.isMockMode ? '#faad14' : '#ff4d4f' 
+                    }} />} 
+                    valueStyle={{ 
+                      color: connectionStatus.isConnected ? '#52c41a' : 
+                             connectionStatus.isMockMode ? '#faad14' : '#ff4d4f', 
+                      fontSize: '14px' 
+                    }}
                   />
-                )}
-              </Space>
-            </div>
+                </Space>
+              </div>
           </div>
         </Header>
         

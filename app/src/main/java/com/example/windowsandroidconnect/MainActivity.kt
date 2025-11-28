@@ -125,33 +125,7 @@ class MainActivity : Activity() {
             }
         }
         
-        // 添加测试页面导航按钮
-        val testPageButton = findViewById<Button>(R.id.test_page_button)
-        testPageButton.setOnClickListener {
-            val intent = Intent(this, DeviceDiscoveryTestActivity::class.java)
-            startActivity(intent)
-        }
-        
-        val configButton = findViewById<Button>(R.id.config_button)
-        configButton.setOnClickListener {
-            val intent = Intent(this, ClientConfigActivity::class.java)
-            startActivity(intent)
-        }
-        
-        val debugTestButton = findViewById<Button>(R.id.debug_test_button)
-        debugTestButton.setOnClickListener {
-            val intent = Intent(this, DebugTestActivity::class.java)
-            startActivity(intent)
-        }
-        
-        // 添加模拟测试页面导航按钮
-        val mockTestButton = findViewById<Button>(R.id.mock_test_button)
-        mockTestButton.setOnClickListener {
-            val intent = Intent(this, MockTestActivity::class.java)
-            startActivity(intent)
-        }
-        
-        // 添加快速测试页面导航按钮
+        // 添加快速测试页面导航按钮 - 保留此功能以访问完整的测试功能
         val quickTestButton = findViewById<Button>(R.id.quick_test_button)
         quickTestButton.setOnClickListener {
             val intent = Intent(this, QuickTestActivity::class.java)

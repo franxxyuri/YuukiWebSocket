@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Card, Button, Spin, message, Typography, Space, Slider, Select, Modal, notification, Tag, Switch } from 'antd';
-import { VideoCameraOutlined, VideoCameraAddOutlined, PauseCircleOutlined, PlayCircleOutlined, ZoomInOutlined, ZoomOutOutlined, MaximizeOutlined, MinimizeOutlined, LoadingOutlined, FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons';
-import websocketService from '../../src/services/websocket-service';
+import { VideoCameraOutlined, VideoCameraAddOutlined, PauseCircleOutlined, PlayCircleOutlined, ZoomInOutlined, ZoomOutOutlined, ExpandOutlined, CompressOutlined, LoadingOutlined, FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons';
+import apiService from '../src/services/api-service';
+import ScreenDisplayManager from '../utils/screen-display';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -26,6 +27,8 @@ const ScreenShare = ({ connectedDevice }) => {
   const [connectionModalVisible, setConnectionModalVisible] = useState(false);
   
   const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const displayManagerRef = useRef(null);
   const streamIntervalRef = useRef(null);
   const statsIntervalRef = useRef(null);
 
@@ -44,6 +47,31 @@ const ScreenShare = ({ connectedDevice }) => {
     };
   }, []);
 
+  // 初始化屏幕显示管理器
+  const initializeDisplayManager = useCallback(() => {
+    if (!displayManagerRef.current && canvasRef.current) {
+      displayManagerRef.current = new ScreenDisplayManager(canvasRef.current, {
+        maxFPS: 30,
+        maxBufferSize: 50,
+        enableStats: true,
+        onStatsUpdate: (newStats) => {
+          setStats(prev => ({
+            ...prev,
+            fps: newStats.fps,
+            latency: Math.round(newStats.latency),
+            bitrate: `${(newStats.bitrate / (1024 * 1024)).toFixed(1)} Mbps`
+          }));
+        },
+        onError: (err) => {
+          console.error('ScreenDisplayManager error:', err);
+          setError(`屏幕显示错误: ${err.message || '未知错误'}`);
+          handleStopStream();
+        }
+      });
+    }
+    return displayManagerRef.current;
+  }, []);
+
   // 开始屏幕共享
   const handleStartStream = useCallback(async () => {
     if (!connectedDevice) {
@@ -55,16 +83,54 @@ const ScreenShare = ({ connectedDevice }) => {
     setError(null);
     
     try {
-      // 调用WebSocket服务开始屏幕流
-      await websocketService.startScreenStreaming(connectedDevice.id, {
+      // 初始化显示管理器
+      const displayManager = initializeDisplayManager();
+      if (!displayManager) {
+        throw new Error('无法初始化屏幕显示管理器');
+      }
+
+      // 设置显示参数
+      displayManager.setQuality(screenQuality);
+      displayManager.setPaused(false);
+      
+      // 调用API服务开始屏幕流
+      await apiService.startScreenStreaming(connectedDevice.id, {
         quality: screenQuality,
         fps: 30
       });
 
+      // 注册API消息处理器
+      apiService.on('screen_frame', (data) => {
+        if (isStreaming && !isPaused && displayManager) {
+          try {
+            // 处理屏幕帧数据
+            const frameData = {
+              data: data.frame || data.data,
+              timestamp: data.timestamp || Date.now(),
+              width: data.width,
+              height: data.height
+            };
+            displayManager.addFrame(frameData);
+          } catch (frameError) {
+            console.error('Error processing frame:', frameError);
+          }
+        }
+      });
+
+      // 注册状态更新事件
+      apiService.on('stream_status', (status) => {
+        if (status && status.resolution) {
+          setStats(prev => ({
+            ...prev,
+            resolution: status.resolution
+          }));
+        }
+      });
+
       setIsStreaming(true);
       
-      // 模拟屏幕流数据
-      simulateStream();
+      // 开始渲染循环
+      displayManager.start();
       
       // 开始更新统计信息
       startStatsUpdate();
@@ -76,30 +142,39 @@ const ScreenShare = ({ connectedDevice }) => {
         icon: <VideoCameraOutlined style={{ color: '#1890ff' }} />,
       });
     } catch (err) {
-      setError(`启动屏幕共享失败: ${err.message || '未知错误'}`);
-      message.error(`启动屏幕共享失败: ${err.message || '未知错误'}`);
+      const errorMessage = `启动屏幕共享失败: ${err.message || '未知错误'}`;
+      setError(errorMessage);
+      message.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
-  }, [connectedDevice, screenQuality]);
+  }, [connectedDevice, screenQuality, initializeDisplayManager]);
 
   // 停止屏幕共享
   const handleStopStream = useCallback(async () => {
     if (!isStreaming) return;
 
     try {
-      // 调用WebSocket服务停止屏幕流
+      // 停止显示管理器
+      if (displayManagerRef.current) {
+        displayManagerRef.current.stop();
+      }
+
+      // 取消注册API事件
+      apiService.off('screen_frame');
+      apiService.off('stream_status');
+      
+      // 调用API服务停止屏幕流
       if (connectedDevice) {
-        await websocketService.stopScreenStreaming(connectedDevice.id);
+        await apiService.stopScreenStreaming(connectedDevice.id);
       }
       
-      // 清理模拟流
+      // 清理定时器
       if (streamIntervalRef.current) {
         clearInterval(streamIntervalRef.current);
         streamIntervalRef.current = null;
       }
       
-      // 清理统计信息更新
       if (statsIntervalRef.current) {
         clearInterval(statsIntervalRef.current);
         statsIntervalRef.current = null;
@@ -109,24 +184,41 @@ const ScreenShare = ({ connectedDevice }) => {
       setIsPaused(false);
       message.success('屏幕共享已停止');
     } catch (err) {
+      console.error('Error stopping stream:', err);
       message.error(`停止屏幕共享失败: ${err.message || '未知错误'}`);
     }
   }, [isStreaming, connectedDevice]);
 
   // 暂停/恢复屏幕共享
   const handlePauseResume = useCallback(() => {
-    setIsPaused(!isPaused);
-    message.info(isPaused ? '屏幕共享已恢复' : '屏幕共享已暂停');
-  }, [isPaused]);
+    const newPausedState = !isPaused;
+    setIsPaused(newPausedState);
+    
+    // 更新显示管理器状态
+    if (displayManagerRef.current) {
+      displayManagerRef.current.setPaused(newPausedState);
+    }
+    
+    // 发送暂停/恢复命令到设备
+      if (connectedDevice && isStreaming) {
+        apiService.sendRequest('stream_control', {
+          action: newPausedState ? 'pause' : 'resume',
+          deviceId: connectedDevice.id
+        });
+      }
+    
+    message.info(newPausedState ? '屏幕共享已暂停' : '屏幕共享已恢复');
+  }, [isPaused, connectedDevice, isStreaming]);
 
   // 切换全屏
   const handleFullscreenToggle = useCallback(() => {
-    const container = videoRef.current?.parentElement;
+    const container = videoRef.current?.parentElement || canvasRef.current?.parentElement;
     if (!container) return;
 
     if (!document.fullscreenElement) {
       container.requestFullscreen().catch(err => {
         console.error(`Error attempting to enable fullscreen: ${err.message}`);
+        message.error('无法切换到全屏模式');
       });
       setIsFullscreen(true);
     } else {
@@ -151,18 +243,38 @@ const ScreenShare = ({ connectedDevice }) => {
 
   // 调整缩放级别
   const handleZoomIn = useCallback(() => {
-    setZoomLevel(prev => Math.min(prev + 10, 200));
-  }, []);
+    const newZoom = Math.min(zoomLevel + 10, 200);
+    setZoomLevel(newZoom);
+    
+    if (canvasRef.current) {
+      canvasRef.current.style.transform = `scale(${newZoom / 100})`;
+    }
+  }, [zoomLevel]);
 
   const handleZoomOut = useCallback(() => {
-    setZoomLevel(prev => Math.max(prev - 10, 50));
-  }, []);
+    const newZoom = Math.max(zoomLevel - 10, 50);
+    setZoomLevel(newZoom);
+    
+    if (canvasRef.current) {
+      canvasRef.current.style.transform = `scale(${newZoom / 100})`;
+    }
+  }, [zoomLevel]);
 
   // 切换静音
   const handleMuteToggle = useCallback(() => {
-    setIsMuted(!isMuted);
-    message.info(isMuted ? '已开启声音' : '已静音');
-  }, [isMuted]);
+    const newMuteState = !isMuted;
+    setIsMuted(newMuteState);
+    
+    // 发送静音/取消静音命令到设备
+      if (connectedDevice && isStreaming) {
+        apiService.sendRequest('audio_control', {
+          action: newMuteState ? 'mute' : 'unmute',
+          deviceId: connectedDevice.id
+        });
+      }
+    
+    message.info(newMuteState ? '已开启声音' : '已静音');
+  }, [isMuted, connectedDevice, isStreaming]);
 
   // 切换统计信息显示
   const toggleStats = useCallback(() => {
@@ -172,12 +284,17 @@ const ScreenShare = ({ connectedDevice }) => {
   // 选择分辨率
   const handleQualityChange = useCallback((value) => {
     setScreenQuality(value);
-    if (isStreaming) {
+    if (isStreaming && !isPaused && connectedDevice) {
       message.info(`分辨率已切换至 ${value}p`);
-      // 在实际应用中，这里会调用服务更新分辨率
+      // 发送分辨率变更请求
+      apiService.sendRequest('stream_settings', {
+        deviceId: connectedDevice.id,
+        quality: value,
+        action: 'change_quality'
+      });
       updateResolution(value);
     }
-  }, [isStreaming]);
+  }, [isStreaming, isPaused, connectedDevice]);
 
   // 更新分辨率
   const updateResolution = useCallback((quality) => {
@@ -192,52 +309,28 @@ const ScreenShare = ({ connectedDevice }) => {
     }));
   }, []);
 
-  // 模拟屏幕流
-  const simulateStream = useCallback(() => {
-    // 这里模拟屏幕流数据，实际应用中会从WebSocket接收真实的屏幕帧
-    if (videoRef.current) {
-      // 使用一个简单的占位符来表示视频帧
-      videoRef.current.style.background = `linear-gradient(45deg, #667eea 0%, #764ba2 100%)`;
-      videoRef.current.style.display = 'flex';
-      videoRef.current.style.alignItems = 'center';
-      videoRef.current.style.justifyContent = 'center';
-      videoRef.current.style.color = 'white';
-      videoRef.current.style.fontSize = '24px';
-      videoRef.current.innerHTML = `
-        <div style="text-align: center;">
-          <VideoCameraOutlined style="fontSize: 64px; margin-bottom: 16px;" />
-          <div>${connectedDevice.name} 屏幕</div>
-          <div style="marginTop: 8px; font-size: 14px;">${isPaused ? '已暂停' : '正在播放'}</div>
-          <div style="marginTop: 4px; font-size: 12px;">分辨率: ${stats.resolution}</div>
-        </div>
-      `;
-    }
-
-    // 模拟流更新
-    streamIntervalRef.current = setInterval(() => {
-      if (videoRef.current && !isPaused) {
-        // 在实际应用中，这里会更新真实的视频帧
-        // 为了演示效果，我们定期改变背景色
-        const hue = Math.floor(Math.random() * 360);
-        videoRef.current.style.background = `hsl(${hue}, 70%, 60%)`;
-      }
-    }, 1000);
-  }, [connectedDevice.name, isPaused, stats.resolution]);
-
   // 开始更新统计信息
   const startStatsUpdate = useCallback(() => {
-    // 模拟统计信息更新
+    // 清除现有定时器
+    if (statsIntervalRef.current) {
+      clearInterval(statsIntervalRef.current);
+    }
+    
+    // 定期更新统计信息
     statsIntervalRef.current = setInterval(() => {
-      const newFps = Math.floor(Math.random() * 10) + 25; // 模拟25-35fps
-      const newLatency = Math.floor(Math.random() * 50) + 20; // 模拟20-70ms延迟
-      const newBitrate = (Math.random() * 5 + 2).toFixed(1); // 模拟2-7Mbps
-      
-      setStats(prev => ({
-        ...prev,
-        fps: newFps,
-        latency: newLatency,
-        bitrate: `${newBitrate} Mbps`
-      }));
+      if (displayManagerRef.current) {
+        const currentStats = displayManagerRef.current.getStats();
+        if (currentStats) {
+          setStats(prev => ({
+            ...prev,
+            fps: Math.round(currentStats.fps || 0),
+            latency: Math.round(currentStats.latency || 0),
+            bitrate: currentStats.bitrate ? 
+              `${(currentStats.bitrate / (1024 * 1024)).toFixed(1)} Mbps` : 
+              prev.bitrate
+          }));
+        }
+      }
     }, 2000);
   }, []);
 
@@ -251,16 +344,21 @@ const ScreenShare = ({ connectedDevice }) => {
         borderRadius: '8px',
         overflow: 'hidden',
         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        minHeight: '400px'
+        minHeight: '400px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
       }}>
-        <div 
-          ref={videoRef}
-          style={{ 
-            width: '100%', 
-            height: '400px', 
+        {/* 使用canvas替代div作为显示容器 */}
+        <canvas
+          ref={canvasRef}
+          style={{
+            width: '100%',
+            height: '100%',
             transform: `scale(${zoomLevel / 100})`,
             transition: 'transform 0.3s ease',
-            backgroundColor: '#111'
+            backgroundColor: '#111',
+            objectFit: 'contain'
           }}
         />
         
@@ -281,12 +379,14 @@ const ScreenShare = ({ connectedDevice }) => {
               icon={isPaused ? <PlayCircleOutlined /> : <PauseCircleOutlined />} 
               size="small"
               onClick={handlePauseResume}
+              disabled={!isStreaming}
               style={{ color: 'white', backgroundColor: 'transparent', border: 'none' }}
             />
             <Button 
               icon={isMuted ? <span style={{ fontSize: '16px' }}>🔇</span> : <span style={{ fontSize: '16px' }}>🔊</span>} 
               size="small"
               onClick={handleMuteToggle}
+              disabled={!isStreaming}
               style={{ color: 'white', backgroundColor: 'transparent', border: 'none' }}
             />
           </div>
@@ -325,7 +425,8 @@ const ScreenShare = ({ connectedDevice }) => {
             padding: '8px 12px',
             borderRadius: '4px',
             fontSize: '12px',
-            lineHeight: '1.4'
+            lineHeight: '1.4',
+            zIndex: 10
           }}>
             <div>FPS: {stats.fps}</div>
             <div>分辨率: {stats.resolution}</div>
@@ -333,9 +434,45 @@ const ScreenShare = ({ connectedDevice }) => {
             <div>比特率: {stats.bitrate}</div>
           </div>
         )}
+        
+        {/* 状态指示器 */}
+        {isPaused && (
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            color: 'white',
+            padding: '12px 24px',
+            borderRadius: '4px',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            zIndex: 5
+          }}>
+            已暂停
+          </div>
+        )}
       </div>
     );
   };
+
+  // 监听设备连接断开
+  useEffect(() => {
+    const handleDeviceDisconnect = () => {
+      if (isStreaming) {
+        handleStopStream();
+        setError('设备连接已断开');
+      }
+    };
+    
+    // 监听API断开事件
+    apiService.on('connection_lost', handleDeviceDisconnect);
+    
+    return () => {
+      apiService.off('connection_lost', handleDeviceDisconnect);
+    };
+  }, [isStreaming, handleStopStream]);
 
   return (
     <div>
