@@ -16,7 +16,10 @@ class ConnectionManager {
         // 注册默认策略
         registerStrategy("tcp", TcpConnectionStrategy())
         registerStrategy("kcp", KcpConnectionStrategy())
-        // 将来可以注册UDP等其他策略
+        registerStrategy("udp", UdpConnectionStrategy())
+        registerStrategy("http", HttpConnectionStrategy())
+        registerStrategy("websocket", WebSocketConnectionStrategy())
+        registerStrategy("bluetooth", BluetoothConnectionStrategy())
     }
     
     /**

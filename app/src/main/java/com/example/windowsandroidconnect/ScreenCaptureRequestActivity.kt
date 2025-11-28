@@ -5,6 +5,7 @@ import android.content.Intent
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import android.util.Log
+import com.example.windowsandroidconnect.service.OptimizedScreenCaptureService
 
 /**
  * 屏幕捕获权限请求Activity
@@ -74,8 +75,8 @@ class ScreenCaptureRequestActivity : Activity() {
                 sendBroadcast(broadcastIntent)
                 
                 // 同时启动优化的ScreenCaptureService
-                val serviceIntent = Intent(this, com.example.windowsandroidconnect.service.OptimizedScreenCaptureService::class.java).apply {
-                    action = com.example.windowsandroidconnect.service.OptimizedScreenCaptureService.ACTION_START_CAPTURE
+                val serviceIntent = Intent(this, OptimizedScreenCaptureService::class.java).apply {
+                    action = OptimizedScreenCaptureService.ACTION_START_CAPTURE
                     putExtra("resultCode", resultCode)
                     putExtra("data", data)
                 }

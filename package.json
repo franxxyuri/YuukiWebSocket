@@ -36,8 +36,16 @@
     "vite"
   ],
   "dependencies": {
+    "@ant-design/icons": "^6.1.0",
+    "antd": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.7.0",
@@ -51,15 +59,5 @@
   "bugs": {
     "url": "https://github.com/your-username/windows-android-connect/issues"
   },
-  "homepage": "https://github.com/your-username/windows-android-connect#readme",
-  "dependencies": {
-    "@ant-design/icons": "^6.1.0",
-    "antd": "^6.0.0",
-    "cors": "^2.8.5",
-    "dotenv": "^17.2.3",
-    "express": "^5.1.0",
-    "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.1",
-    "ws": "^8.18.0"
-  }
+  "homepage": "https://github.com/your-username/windows-android-connect#readme"
 }
