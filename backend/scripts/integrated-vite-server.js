@@ -24,48 +24,6 @@ const server = http.createServer(app);
 // 启用CORS
 app.use(cors());
 
-// 在静态文件服务前设置.jsx文件的MIME类型
-app.use((req, res, next) => {
-  // 检查URL是否以.jsx结尾
-  if (req.url.endsWith('.jsx')) {
-    console.log(`处理.jsx文件请求: ${req.url}`);
-    
-    // 尝试多个可能的文件路径
-    const srcPath = path.join(__dirname, '../../src', req.url.replace(/^\/src\//, ''));
-    const frontendPath = path.join(__dirname, '../../frontend', req.url);
-    
-    let filePath = null;
-    
-    // 优先检查src目录
-    if (fs.existsSync(srcPath)) {
-      filePath = srcPath;
-    } else if (fs.existsSync(frontendPath)) {
-      filePath = frontendPath;
-    }
-    
-    if (filePath) {
-      // 设置正确的MIME类型并发送文件
-      console.log(`找到文件并发送: ${filePath}`);
-      res.setHeader('Content-Type', 'application/javascript');
-      fs.createReadStream(filePath).pipe(res);
-    } else {
-      console.log(`未找到文件: ${req.url}`);
-      next(); // 让静态文件中间件处理
-    }
-  } else {
-    next();
-  }
-});
-
-// 静态文件服务 - 从配置文件读取路径
-app.use(express.static(path.join(__dirname, config.frontend.staticPaths.root)));
-app.use('/pages', express.static(path.join(__dirname, config.frontend.staticPaths.pages)));
-app.use('/components', express.static(path.join(__dirname, config.frontend.staticPaths.components)));
-app.use('/styles', express.static(path.join(__dirname, config.frontend.staticPaths.styles)));
-app.use('/utils', express.static(path.join(__dirname, config.frontend.staticPaths.utils)));
-app.use('/tests', express.static(path.join(__dirname, config.frontend.staticPaths.tests)));
-// 添加 src 目录的静态文件服务
-app.use('/src', express.static(path.join(__dirname, '../../src')));
 // 处理 favicon.ico 请求
 app.get('/favicon.ico', (req, res) => {
   // 返回一个简单的2x2像素的透明PNG as favicon to avoid 404 errors
@@ -77,47 +35,13 @@ app.get('/favicon.ico', (req, res) => {
   res.end(favicon);
 });
 
-// 静态文件服务 - 从配置文件读取路径
-
-app.use(express.static(path.join(__dirname, config.frontend.staticPaths.root)));
-app.use('/pages', express.static(path.join(__dirname, config.frontend.staticPaths.pages)));
-app.use('/components', express.static(path.join(__dirname, config.frontend.staticPaths.components)));
-app.use('/styles', express.static(path.join(__dirname, config.frontend.staticPaths.styles)));
-app.use('/utils', express.static(path.join(__dirname, config.frontend.staticPaths.utils)));
-app.use('/tests', express.static(path.join(__dirname, config.frontend.staticPaths.tests)));
-// 添加 src 目录的静态文件服务
-app.use('/src', express.static(path.join(__dirname, '../../src')));
-// 提供 vite.svg 文件
-app.use('/vite.svg', express.static(path.join(__dirname, '../../frontend/vite.svg')));
-
 // 确保根路径指向正确的index.html文件
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, config.frontend.htmlEntries.main));
 });
 
-// 添加其他页面路由以处理前端路由
-// 注意：由于path-to-regexp版本问题，暂时禁用通配符路由
-// app.all('/pages/*', (req, res) => {
-//     const requestedPage = req.path.substring(7); // 移除 '/pages/' 前缀
-//     const filePath = path.join(__dirname, `../../frontend/pages/${requestedPage}`);
-//     res.sendFile(filePath, (err) => {
-//         if (err) {
-//             // 如果文件不存在，返回index.html用于前端路由处理
-//             res.sendFile(path.join(__dirname, '../../frontend/index.html'));
-//         }
-//     });
-// });
-// 
-// app.all('/tests/*', (req, res) => {
-//     const requestedPage = req.path.substring(7); // 移除 '/tests/' 前缀
-//     const filePath = path.join(__dirname, `../../frontend/tests/${requestedPage}`);
-//     res.sendFile(filePath, (err) => {
-//         if (err) {
-//             // 如果文件不存在，返回index.html用于前端路由处理
-//             res.sendFile(path.join(__dirname, '../../frontend/index.html'));
-//         }
-//     });
-// });
+// 移除具体的页面路由，让Vite中间件处理所有请求
+// Vite会自动处理HTML文件和.jsx文件
 
 // 创建WebSocket服务器 (8928端口)
 const wss = new WebSocketServer({ server });
@@ -200,9 +124,7 @@ function getLocalIP() {
 }
 
 // 路由
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../../frontend/index.html'));
-});
+// 移除重复的根路径路由，保留第一个根路径路由
 
 app.get('/api/devices', (req, res) => {
     const devices = [];
@@ -773,7 +695,12 @@ function broadcastToAllClients(message, excludeClientId = null) {
 // 启动Vite开发服务器
 async function startViteServer() {
     const vite = await createServer({
-        plugins: [react()],
+        plugins: [react({
+            // 添加额外的React插件配置
+            jsxRuntime: 'automatic',
+            include: /\.(jsx|tsx)$/,
+            exclude: /node_modules/
+        })],
         server: {
             port: config.vite.port,
             host: config.vite.host,
@@ -797,10 +724,10 @@ async function startViteServer() {
                 }
             }
         },
-        root: config.frontend.rootDir,
-        publicDir: config.frontend.staticPaths.public,
+        root: path.resolve(__dirname, '../../frontend'), // 设置为frontend目录
+        publicDir: path.resolve(__dirname, '../../frontend/public'),
         build: {
-            outDir: config.frontend.staticPaths.dist,
+            outDir: path.resolve(__dirname, '../../dist'),
             rollupOptions: {
                 input: {
                     main: path.resolve(__dirname, config.frontend.htmlEntries.main),
@@ -811,7 +738,8 @@ async function startViteServer() {
                     'test-ui': path.resolve(__dirname, config.frontend.htmlEntries.testUi),
                     'test-connection': path.resolve(__dirname, config.frontend.htmlEntries.testConnection),
                     'test-server-functions': path.resolve(__dirname, config.frontend.htmlEntries.testServerFunctions),
-                    'test-android-client': path.resolve(__dirname, config.frontend.htmlEntries.testAndroidClient)
+                    'test-android-client': path.resolve(__dirname, config.frontend.htmlEntries.testAndroidClient),
+                    'mock-test': path.resolve(__dirname, '../../frontend/tests/mock-test.html')
                 }
             }
         },
@@ -824,7 +752,12 @@ async function startViteServer() {
                 '@hooks': path.resolve(__dirname, config.frontend.aliases['@hooks']),
                 '@services': path.resolve(__dirname, config.frontend.aliases['@services']),
                 '@store': path.resolve(__dirname, config.frontend.aliases['@store']),
-                '@types': path.resolve(__dirname, config.frontend.aliases['@types'])
+                '@types': path.resolve(__dirname, config.frontend.aliases['@types']),
+                // 添加React相关依赖的别名，确保能正确解析
+                'react': path.resolve(__dirname, '../../node_modules/react'),
+                'react-dom': path.resolve(__dirname, '../../node_modules/react-dom'),
+                'react/jsx-runtime': path.resolve(__dirname, '../../node_modules/react/jsx-runtime'),
+                'react/jsx-dev-runtime': path.resolve(__dirname, '../../node_modules/react/jsx-dev-runtime')
             }
         }
     });

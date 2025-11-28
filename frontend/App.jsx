@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Layout, Menu, Typography, Spin, ConfigProvider, theme, Badge, message, notification } from 'antd';
-import { LaptopOutlined, FileTextOutlined, VideoCameraOutlined, AppstoreOutlined, SettingOutlined, BellOutlined, DisconnectOutlined } from '@ant-design/icons';
+import { LaptopOutlined, FileTextOutlined, VideoCameraOutlined, AppstoreOutlined, SettingOutlined, BellOutlined, DisconnectOutlined, BugOutlined } from '@ant-design/icons';
 import DeviceDiscovery from './components/DeviceDiscovery';
 import FileTransfer from './components/FileTransfer';
 import ScreenShare from './components/ScreenShare';
 import RemoteControl from './components/RemoteControl';
 import ConfigurationPage from './components/ConfigurationPage';
+import DebugPage from './components/DebugPage';
 import apiService from './src/services/api-service';
 import configManager from './src/services/ConfigManager';
 
@@ -37,7 +38,7 @@ class App extends React.Component {
         // 设置默认配置
         const defaultConfig = {
           connection: {
-            url: 'ws://localhost:8080',
+            url: 'ws://localhost:8928',
             autoReconnect: true,
             maxReconnectAttempts: 5,
             reconnectDelay: 1000,
@@ -210,6 +211,8 @@ class App extends React.Component {
         return <RemoteControl />;
       case 'configuration':
         return <ConfigurationPage />;
+      case 'debug':
+        return <DebugPage />;
       default:
         return <DeviceDiscovery />;
     }
@@ -290,6 +293,9 @@ class App extends React.Component {
                 </Menu.Item>
                 <Menu.Item key="configuration" icon={<SettingOutlined />}>
                   配置管理
+                </Menu.Item>
+                <Menu.Item key="debug" icon={<BugOutlined />}>
+                  调试中心
                 </Menu.Item>
               </Menu>
             </Sider>

@@ -1,5 +1,7 @@
 // DeviceDiscoveryService.js
-// 模拟设备发现服务，用于前端调试和测试
+// 真实设备发现服务，使用API服务进行设备发现
+
+import apiService from '../src/services/api-service';
 
 class DeviceDiscoveryService {
   constructor() {
@@ -7,47 +9,190 @@ class DeviceDiscoveryService {
     this.listeners = new Map();
     this.isScanning = false;
     this.scanInterval = null;
-    this.scanDelay = 1000; // 模拟扫描延迟
+    this.scanDelay = 1000; // 扫描延迟
     this.lastScanTime = null;
     
-    // 预设的模拟设备模板
-    this.deviceTemplates = [
-      {
-        type: 'Android',
-        manufacturers: ['Google', 'Samsung', 'Xiaomi', 'OPPO', 'vivo', 'OnePlus'],
-        models: ['Pixel 7', 'Galaxy S23', 'Mi 13', 'Find X6', 'X90 Pro', '11 Pro'],
-        icon: 'smartphone',
-        color: '#3f8600'
+    // 初始化API服务的事件监听
+    this.initApiListeners();
+  }
+
+  /**
+   * 初始化API服务的事件监听
+   * @private
+   */
+  initApiListeners() {
+    // 监听设备发现事件
+    apiService.on('deviceDiscovered', (device) => {
+      this.handleDeviceDiscovered(device);
+    });
+    
+    // 监听设备连接事件
+    apiService.on('deviceConnected', (device) => {
+      this.handleDeviceConnected(device);
+    });
+    
+    // 监听设备断开事件
+    apiService.on('deviceDisconnected', (device) => {
+      this.handleDeviceDisconnected(device);
+    });
+  }
+
+  /**
+   * 处理设备发现事件
+   * @private
+   * @param {Object} device - 发现的设备对象
+   */
+  handleDeviceDiscovered(device) {
+    // 检查设备是否已存在
+    const existingIndex = this.devices.findIndex(d => d.deviceId === device.deviceId || d.ip === device.ip);
+    
+    if (existingIndex === -1) {
+      // 添加新设备
+      const newDevice = this.normalizeDeviceData(device);
+      this.devices.push(newDevice);
+      this.emit('deviceFound', newDevice);
+      this.emit('scanCompleted', {
+        timestamp: Date.now(),
+        totalDevices: this.devices.length,
+        newDevices: 1,
+        devices: [...this.devices]
+      });
+    } else {
+      // 更新现有设备
+      const existingDevice = this.devices[existingIndex];
+      const updatedDevice = {
+        ...existingDevice,
+        ...this.normalizeDeviceData(device),
+        lastSeen: Date.now()
+      };
+      this.devices[existingIndex] = updatedDevice;
+      this.emit('deviceStatusChanged', {
+        device: updatedDevice,
+        oldStatus: existingDevice.status,
+        newStatus: updatedDevice.status,
+        timestamp: Date.now()
+      });
+    }
+  }
+
+  /**
+   * 处理设备连接事件
+   * @private
+   * @param {Object} device - 连接的设备对象
+   */
+  handleDeviceConnected(device) {
+    const existingIndex = this.devices.findIndex(d => d.deviceId === device.deviceId);
+    if (existingIndex !== -1) {
+      const existingDevice = this.devices[existingIndex];
+      const updatedDevice = {
+        ...existingDevice,
+        status: 'connected',
+        lastStatusChange: Date.now()
+      };
+      this.devices[existingIndex] = updatedDevice;
+      this.emit('deviceStatusChanged', {
+        device: updatedDevice,
+        oldStatus: existingDevice.status,
+        newStatus: 'connected',
+        timestamp: Date.now()
+      });
+    }
+  }
+
+  /**
+   * 处理设备断开事件
+   * @private
+   * @param {Object} device - 断开的设备对象
+   */
+  handleDeviceDisconnected(device) {
+    const existingIndex = this.devices.findIndex(d => d.deviceId === device.deviceId);
+    if (existingIndex !== -1) {
+      const existingDevice = this.devices[existingIndex];
+      const updatedDevice = {
+        ...existingDevice,
+        status: 'disconnected',
+        lastStatusChange: Date.now()
+      };
+      this.devices[existingIndex] = updatedDevice;
+      this.emit('deviceStatusChanged', {
+        device: updatedDevice,
+        oldStatus: existingDevice.status,
+        newStatus: 'disconnected',
+        timestamp: Date.now()
+      });
+    }
+  }
+
+  /**
+   * 标准化设备数据格式
+   * @private
+   * @param {Object} device - 原始设备数据
+   * @returns {Object} 标准化后的设备数据
+   */
+  normalizeDeviceData(device) {
+    // 确保设备数据包含所有必要字段，与协议规范一致
+    return {
+      // 核心设备标识
+      id: device.deviceId || device.id || `device-${Date.now()}`,
+      deviceId: device.deviceId || device.id || `device-${Date.now()}`,
+      
+      // 设备基本信息
+      name: device.deviceName || device.name || '未知设备',
+      model: device.model || 'Unknown',
+      platform: device.platform || 'android',
+      type: device.platform || device.type || 'Android',
+      manufacturer: device.manufacturer || 'Unknown',
+      
+      // 网络信息
+      ip: device.ip,
+      port: device.port || 8781,
+      mac: device.mac || 'Unknown',
+      
+      // 设备状态
+      status: device.status || 'available',
+      lastSeen: device.lastSeen || Date.now(),
+      lastStatusChange: Date.now(),
+      firstSeen: device.firstSeen || Date.now(),
+      
+      // 设备能力
+      capabilities: device.capabilities || ['file_transfer', 'screen_mirror', 'remote_control'],
+      
+      // UI相关字段
+      icon: device.icon || 'smartphone',
+      color: device.color || '#1890ff',
+      
+      // 电池信息（组件直接使用device.battery）
+      battery: device.battery || device.metadata?.batteryLevel || 100,
+      
+      // 设备元数据
+      metadata: device.metadata || {
+        osVersion: device.version || 'Unknown',
+        appVersion: '1.0.0',
+        batteryLevel: device.battery || 100,
+        storageTotal: 128,
+        storageUsed: 0,
+        screenResolution: '1920x1080'
       },
-      {
-        type: 'Windows',
-        manufacturers: ['Microsoft', 'Dell', 'HP', 'Lenovo', 'ASUS', 'Acer'],
-        models: ['Surface Pro 9', 'XPS 15', 'Spectre x360', 'ThinkPad X1', 'ROG Zephyrus', 'Swift 5'],
-        icon: 'desktop',
-        color: '#1890ff'
+      
+      // 性能指标
+      performance: device.performance || {
+        cpuUsage: 0,
+        memoryUsage: 0,
+        temperature: 30,
+        fanspeed: 1000,
+        networkIn: 0,
+        networkOut: 0
       },
-      {
-        type: 'iOS',
-        manufacturers: ['Apple'],
-        models: ['iPhone 14 Pro', 'iPhone 14', 'iPhone 13', 'iPhone SE'],
-        icon: 'smartphone',
-        color: '#fa8c16'
-      },
-      {
-        type: 'macOS',
-        manufacturers: ['Apple'],
-        models: ['MacBook Pro 16', 'MacBook Air M2', 'iMac 24', 'Mac Studio'],
-        icon: 'laptop',
-        color: '#1890ff'
-      },
-      {
-        type: 'Linux',
-        manufacturers: ['Ubuntu', 'Fedora', 'Debian', 'Arch', 'Manjaro'],
-        models: ['Desktop', 'Laptop', 'Server', 'Development VM'],
-        icon: 'desktop',
-        color: '#52c41a'
+      
+      // 连接信息
+      connection: device.connection || {
+        signalStrength: 5,
+        latency: 20,
+        bandwidth: 50,
+        uptime: 0,
+        protocol: 'WebSocket'
       }
-    ];
+    };
   }
 
   /**
@@ -55,20 +200,28 @@ class DeviceDiscoveryService {
    * @param {boolean} continuous - 是否连续扫描
    * @param {number} interval - 连续扫描间隔（毫秒），默认为5000ms
    */
-  startScan(continuous = false, interval = 5000) {
+  async startScan(continuous = false, interval = 5000) {
     if (this.isScanning) return;
     
     this.isScanning = true;
     this.emit('scanStarted', { timestamp: Date.now() });
     
-    // 执行单次扫描
-    this.scan();
-    
-    // 如果需要连续扫描，设置定时器
-    if (continuous) {
-      this.scanInterval = setInterval(() => {
-        this.scan();
-      }, interval);
+    try {
+      // 使用API服务开始设备发现
+      await apiService.startDeviceDiscovery();
+      // 执行单次扫描
+      await this.scan();
+      
+      // 如果需要连续扫描，设置定时器
+      if (continuous) {
+        this.scanInterval = setInterval(async () => {
+          await this.scan();
+        }, interval);
+      }
+    } catch (error) {
+      console.error('开始设备发现失败:', error);
+      this.emit('scanError', { error: error.message, timestamp: Date.now() });
+      this.isScanning = false;
     }
     
     return this;
@@ -77,7 +230,7 @@ class DeviceDiscoveryService {
   /**
    * 停止扫描
    */
-  stopScan() {
+  async stopScan() {
     if (!this.isScanning) return;
     
     this.isScanning = false;
@@ -85,6 +238,13 @@ class DeviceDiscoveryService {
     if (this.scanInterval) {
       clearInterval(this.scanInterval);
       this.scanInterval = null;
+    }
+    
+    try {
+      // 使用API服务停止设备发现
+      await apiService.stopDeviceDiscovery();
+    } catch (error) {
+      console.error('停止设备发现失败:', error);
     }
     
     this.emit('scanStopped', { timestamp: Date.now() });
@@ -95,62 +255,38 @@ class DeviceDiscoveryService {
    * 扫描设备
    * @private
    */
-  scan() {
+  async scan() {
     console.log('[DeviceDiscoveryService] 开始扫描设备...');
     
-    // 模拟扫描延迟
-    setTimeout(() => {
-      // 随机添加0-3个新设备
-      const newDeviceCount = Math.floor(Math.random() * 4);
+    try {
+      // 使用API服务获取已发现的设备
+      const discoveredDevices = await apiService.getDiscoveredDevices();
+      
+      // 更新设备列表
       const newDevices = [];
+      const updatedDevices = [];
       
-      for (let i = 0; i < newDeviceCount; i++) {
-        const newDevice = this.createRandomDevice();
+      // 处理每个发现的设备
+      for (const device of discoveredDevices) {
+        const normalizedDevice = this.normalizeDeviceData(device);
+        const existingIndex = this.devices.findIndex(d => d.deviceId === normalizedDevice.deviceId || d.ip === normalizedDevice.ip);
         
-        // 检查设备是否已存在
-        const exists = this.devices.some(device => device.id === newDevice.id || device.ip === newDevice.ip);
-        if (!exists) {
-          this.devices.push(newDevice);
-          newDevices.push(newDevice);
-          this.emit('deviceFound', newDevice);
+        if (existingIndex === -1) {
+          // 添加新设备
+          this.devices.push(normalizedDevice);
+          newDevices.push(normalizedDevice);
+          this.emit('deviceFound', normalizedDevice);
+        } else {
+          // 更新现有设备
+          const existingDevice = this.devices[existingIndex];
+          const updatedDevice = {
+            ...existingDevice,
+            ...normalizedDevice,
+            lastSeen: Date.now()
+          };
+          this.devices[existingIndex] = updatedDevice;
+          updatedDevices.push(updatedDevice);
         }
-      }
-      
-      // 随机改变1-2个现有设备的状态
-      const deviceCount = this.devices.length;
-      if (deviceCount > 0) {
-        const statusChangeCount = Math.min(Math.floor(Math.random() * 3), deviceCount);
-        
-        for (let i = 0; i < statusChangeCount; i++) {
-          const randomIndex = Math.floor(Math.random() * deviceCount);
-          const device = this.devices[randomIndex];
-          
-          // 切换设备状态
-          const oldStatus = device.status;
-          const newStatus = oldStatus === 'connected' ? 'disconnected' : 'connected';
-          
-          device.status = newStatus;
-          device.lastStatusChange = Date.now();
-          
-          this.emit('deviceStatusChanged', {
-            device,
-            oldStatus,
-            newStatus,
-            timestamp: Date.now()
-          });
-        }
-      }
-      
-      // 随机移除0-1个设备（下线）
-      if (deviceCount > newDeviceCount && Math.random() > 0.5) {
-        const removeIndex = Math.floor(Math.random() * deviceCount);
-        const removedDevice = this.devices.splice(removeIndex, 1)[0];
-        
-        this.emit('deviceRemoved', {
-          device: removedDevice,
-          reason: 'offline',
-          timestamp: Date.now()
-        });
       }
       
       this.lastScanTime = Date.now();
@@ -162,149 +298,11 @@ class DeviceDiscoveryService {
         devices: [...this.devices]
       });
       
-      console.log(`[DeviceDiscoveryService] 扫描完成，发现 ${newDevices.length} 个新设备，当前共 ${this.devices.length} 个设备`);
-    }, this.scanDelay);
-  }
-
-  /**
-   * 创建随机设备
-   * @private
-   * @returns {Object} 随机生成的设备对象
-   */
-  createRandomDevice() {
-    // 随机选择设备类型
-    const templateIndex = Math.floor(Math.random() * this.deviceTemplates.length);
-    const template = this.deviceTemplates[templateIndex];
-    
-    // 随机选择制造商和型号
-    const manufacturer = template.manufacturers[Math.floor(Math.random() * template.manufacturers.length)];
-    const model = template.models[Math.floor(Math.random() * template.models.length)];
-    
-    // 生成随机IP地址（192.168.1.x网段）
-    const ip = `192.168.1.${Math.floor(Math.random() * 254) + 1}`;
-    
-    // 生成随机ID
-    const id = `${template.type.toLowerCase()}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    
-    // 随机生成MAC地址
-    const mac = this.generateRandomMacAddress();
-    
-    // 随机设备状态（80%概率已连接）
-    const status = Math.random() > 0.2 ? 'connected' : 'disconnected';
-    
-    // 生成设备名称
-    const name = `${manufacturer} ${model}`;
-    
-    return {
-      id,
-      name,
-      type: template.type,
-      manufacturer,
-      model,
-      ip,
-      mac,
-      status,
-      lastSeen: Date.now(),
-      lastStatusChange: Date.now(),
-      firstSeen: Date.now(),
-      icon: template.icon,
-      color: template.color,
-      // 生成随机的设备元数据
-      metadata: this.generateDeviceMetadata(template.type),
-      // 生成随机的性能指标
-      performance: this.generateDevicePerformance(),
-      // 生成随机的连接信息
-      connection: {
-        signalStrength: Math.floor(Math.random() * 4) + 1, // 1-5格信号
-        latency: Math.floor(Math.random() * 100) + 5, // 5-105ms延迟
-        bandwidth: Math.floor(Math.random() * 100) + 10, // 10-110Mbps带宽
-        uptime: Math.floor(Math.random() * 86400000), // 0-24小时在线时间
-        protocol: Math.random() > 0.5 ? 'WebSocket' : 'MQTT'
-      }
-    };
-  }
-
-  /**
-   * 生成随机MAC地址
-   * @private
-   * @returns {string} MAC地址
-   */
-  generateRandomMacAddress() {
-    const hexDigits = '0123456789ABCDEF';
-    let mac = '';
-    
-    for (let i = 0; i < 6; i++) {
-      if (i > 0) mac += ':';
-      mac += hexDigits.charAt(Math.floor(Math.random() * 16));
-      mac += hexDigits.charAt(Math.floor(Math.random() * 16));
+      console.log(`[DeviceDiscoveryService] 扫描完成，发现 ${newDevices.length} 个新设备，更新 ${updatedDevices.length} 个设备，当前共 ${this.devices.length} 个设备`);
+    } catch (error) {
+      console.error('扫描设备失败:', error);
+      this.emit('scanError', { error: error.message, timestamp: Date.now() });
     }
-    
-    return mac;
-  }
-
-  /**
-   * 生成设备元数据
-   * @private
-   * @param {string} deviceType - 设备类型
-   * @returns {Object} 设备元数据
-   */
-  generateDeviceMetadata(deviceType) {
-    const metadata = {
-      osVersion: this.generateRandomOsVersion(deviceType),
-      appVersion: `1.${Math.floor(Math.random() * 10)}.${Math.floor(Math.random() * 100)}`,
-      batteryLevel: deviceType === 'Windows' || deviceType === 'macOS' ? null : Math.floor(Math.random() * 100) + 1,
-      storageTotal: Math.floor(Math.random() * 1024) + 128, // 128-1152 GB
-      storageUsed: Math.floor(Math.random() * 512) + 10, // 10-522 GB
-      screenResolution: deviceType === 'Windows' || deviceType === 'macOS' 
-        ? ['1920x1080', '2560x1440', '3840x2160'][Math.floor(Math.random() * 3)]
-        : ['1080x2400', '1200x2778', '1344x2992'][Math.floor(Math.random() * 3)]
-    };
-    
-    // 添加设备类型特定的元数据
-    if (deviceType === 'Android') {
-      metadata.androidVersion = ['11', '12', '13', '14'][Math.floor(Math.random() * 4)];
-      metadata.sdkVersion = Math.floor(Math.random() * 10) + 30; // API 30-39
-    } else if (deviceType === 'iOS') {
-      metadata.iosVersion = ['15.7', '16.5', '17.0', '17.2'][Math.floor(Math.random() * 4)];
-      metadata.deviceIdiom = ['phone', 'pad'][Math.floor(Math.random() * 2)];
-    }
-    
-    return metadata;
-  }
-
-  /**
-   * 生成随机操作系统版本
-   * @private
-   * @param {string} deviceType - 设备类型
-   * @returns {string} 操作系统版本
-   */
-  generateRandomOsVersion(deviceType) {
-    const versions = {
-      Windows: ['Windows 10', 'Windows 11', 'Windows Server 2019', 'Windows Server 2022'],
-      macOS: ['macOS Monterey', 'macOS Ventura', 'macOS Sonoma'],
-      Linux: ['Ubuntu 22.04', 'Fedora 38', 'Debian 12', 'Arch Linux', 'Manjaro 22.1'],
-      Android: ['Android 11', 'Android 12', 'Android 13', 'Android 14'],
-      iOS: ['iOS 15', 'iOS 16', 'iOS 17']
-    };
-    
-    const typeVersions = versions[deviceType] || ['Unknown'];
-    return typeVersions[Math.floor(Math.random() * typeVersions.length)];
-  }
-
-  /**
-   * 生成设备性能指标
-   * @private
-   * @returns {Object} 设备性能指标
-   */
-  generateDevicePerformance() {
-    return {
-      cpuUsage: Math.floor(Math.random() * 100), // 0-100%
-      memoryUsage: Math.floor(Math.random() * 100), // 0-100%
-      temperature: Math.floor(Math.random() * 40) + 30, // 30-70°C
-      fanspeed: Math.floor(Math.random() * 3000) + 1000, // 1000-4000 RPM
-      networkIn: Math.floor(Math.random() * 100), // 0-100 Mbps
-      networkOut: Math.floor(Math.random() * 50) // 0-50 Mbps
-    };
   }
 
   /**

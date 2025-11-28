@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mock模式测试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .log {
+            background-color: #f0f0f0;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .status {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.connected {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .status.disconnected {
+            background-color: #f44336;
+            color: white;
+        }
+        .device-list {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+        .device-item {
+            padding: 5px;
+            margin: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Mock模式测试页面</h1>
+        
+        <div class="test-section">
+            <h2>连接状态</h2>
+            <div id="connection-status" class="status disconnected">未连接</div>
+            <button onclick="connect()">连接到Mock服务器</button>
+            <button onclick="disconnect()">断开连接</button>
+            <button onclick="switchToMock()">切换到Mock模式</button>
+            <button onclick="switchToWebSocket()">切换到WebSocket模式</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>设备发现</h2>
+            <button onclick="startDeviceDiscovery()">开始设备发现</button>
+            <button onclick="stopDeviceDiscovery()">停止设备发现</button>
+            <button onclick="getDiscoveredDevices()">获取已发现设备</button>
+            <div class="device-list" id="device-list">暂无设备</div>
+        </div>
+        
+        <div class="test-section">
+            <h2>屏幕共享</h2>
+            <button onclick="startScreenShare()">开始屏幕共享</button>
+            <button onclick="stopScreenShare()">停止屏幕共享</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>日志输出</h2>
+            <div class="log" id="log"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // 导入所需的服务
+        import apiService from '../src/services/api-service.js';
+        import connectionManager from '../src/services/ConnectionManager.js';
+        
+        // 日志输出函数
+        function log(message) {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] ${message}<br>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        // 更新连接状态
+        function updateConnectionStatus() {
+            const statusElement = document.getElementById('connection-status');
+            const isConnected = apiService.isConnected();
+            statusElement.className = `status ${isConnected ? 'connected' : 'disconnected'}`;
+            statusElement.textContent = isConnected ? '已连接' : '未连接';
+            log(`连接状态: ${isConnected ? '已连接' : '未连接'}`);
+        }
+        
+        // 连接到服务器
+        async function connect() {
+            log('正在连接到服务器...');
+            try {
+                await apiService.connect();
+                log('连接成功');
+                updateConnectionStatus();
+            } catch (error) {
+                log(`连接失败: ${error.message}`);
+                updateConnectionStatus();
+            }
+        }
+        
+        // 断开连接
+        async function disconnect() {
+            log('正在断开连接...');
+            try {
+                await apiService.disconnect();
+                log('断开成功');
+                updateConnectionStatus();
+            } catch (error) {
+                log(`断开失败: ${error.message}`);
+                updateConnectionStatus();
+            }
+        }
+        
+        // 切换到Mock模式
+        function switchToMock() {
+            log('切换到Mock模式...');
+            const success = apiService.switchConnectionStrategy('mock');
+            log(`切换${success ? '成功' : '失败'}`);
+        }
+        
+        // 切换到WebSocket模式
+        function switchToWebSocket() {
+            log('切换到WebSocket模式...');
+            const success = apiService.switchConnectionStrategy('websocket');
+            log(`切换${success ? '成功' : '失败'}`);
+        }
+        
+        // 开始设备发现
+        async function startDeviceDiscovery() {
+            log('开始设备发现...');
+            try {
+                const devices = await apiService.startDeviceDiscovery();
+                log(`发现${devices.length}个设备`);
+                updateDeviceList(devices);
+            } catch (error) {
+                log(`设备发现失败: ${error.message}`);
+            }
+        }
+        
+        // 停止设备发现
+        async function stopDeviceDiscovery() {
+            log('停止设备发现...');
+            try {
+                await apiService.stopDeviceDiscovery();
+                log('设备发现已停止');
+            } catch (error) {
+                log(`停止设备发现失败: ${error.message}`);
+            }
+        }
+        
+        // 获取已发现设备
+        async function getDiscoveredDevices() {
+            log('获取已发现设备...');
+            try {
+                const devices = await apiService.getDiscoveredDevices();
+                log(`已发现${devices.length}个设备`);
+                updateDeviceList(devices);
+            } catch (error) {
+                log(`获取设备失败: ${error.message}`);
+            }
+        }
+        
+        // 更新设备列表
+        function updateDeviceList(devices) {
+            const deviceListElement = document.getElementById('device-list');
+            if (devices.length === 0) {
+                deviceListElement.innerHTML = '暂无设备';
+                return;
+            }
+            
+            deviceListElement.innerHTML = '';
+            devices.forEach(device => {
+                const deviceItem = document.createElement('div');
+                deviceItem.className = 'device-item';
+                deviceItem.innerHTML = `
+                    <strong>${device.name}</strong> (${device.model})<br>
+                    ID: ${device.id}<br>
+                    IP: ${device.ip}<br>
+                    状态: ${device.status}
+                `;
+                deviceListElement.appendChild(deviceItem);
+            });
+        }
+        
+        // 开始屏幕共享
+        async function startScreenShare() {
+            log('开始屏幕共享...');
+            try {
+                const deviceId = 'mock-device-1'; // 使用第一个模拟设备
+                await apiService.startScreenShare(deviceId);
+                log('屏幕共享已开始');
+            } catch (error) {
+                log(`屏幕共享失败: ${error.message}`);
+            }
+        }
+        
+        // 停止屏幕共享
+        async function stopScreenShare() {
+            log('停止屏幕共享...');
+            try {
+                const deviceId = 'mock-device-1';
+                await apiService.stopScreenShare(deviceId);
+                log('屏幕共享已停止');
+            } catch (error) {
+                log(`停止屏幕共享失败: ${error.message}`);
+            }
+        }
+        
+        // 注册事件监听器
+        apiService.on('deviceDiscovered', (device) => {
+            log(`发现新设备: ${device.name}`);
+        });
+        
+        apiService.on('deviceConnected', (deviceInfo) => {
+            log(`设备已连接: ${deviceInfo.deviceName}`);
+        });
+        
+        apiService.on('deviceDisconnected', () => {
+            log('设备已断开连接');
+        });
+        
+        apiService.on('screenShareStarted', () => {
+            log('屏幕共享已启动');
+        });
+        
+        apiService.on('screenShareStopped', () => {
+            log('屏幕共享已停止');
+        });
+        
+        apiService.on('screenFrameReceived', (frame) => {
+            // 每10帧记录一次，避免日志过多
+            if (frame.timestamp % 10 === 0) {
+                log(`收到屏幕帧: ${frame.timestamp}`);
+            }
+        });
+        
+        // 初始化
+        log('Mock模式测试页面已加载');
+        log('当前连接策略: ' + apiService.getCurrentConnectionStrategy());
+        updateConnectionStatus();
+    </script>
+</body>
+</html>

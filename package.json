@@ -12,7 +12,7 @@
     "dev:integrated": "node backend/scripts/integrated-vite-server.js",
     "dev:config": "node -r dotenv/config backend/scripts/complete-server.js",
     "start:config": "node -r dotenv/config backend/scripts/complete-server.js",
-    "build": "vite build",
+    "build": "vite build --config backend/config/vite-config.js",
     "preview": "vite preview",
     "server": "node backend/scripts/complete-server.js",
     "server:ports": "SERVER_PORT=${SERVER_PORT:-8928} VITE_PORT=${VITE_PORT:-8781} DISCOVERY_PORT=${DISCOVERY_PORT:-8190} NETWORK_COMM_PORT=${NETWORK_COMM_PORT:-8826} node backend/scripts/complete-server.js",

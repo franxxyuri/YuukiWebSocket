@@ -13,6 +13,7 @@ import {
   InfoCircleOutlined
 } from '@ant-design/icons';
 import apiService from '../src/services/api-service';
+import deviceDiscoveryService from '../services/DeviceDiscoveryService';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -99,173 +100,97 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
   // 初始化设备发现
   const initializeDeviceDiscovery = useCallback(async () => {
     try {
-      // 启动设备发现
-      await apiService.startDeviceDiscovery();
-      // 立即扫描一次
-      handleScanDevices();
+      // 注册设备发现事件监听器
+      deviceDiscoveryService.on('deviceFound', (device) => {
+        setDiscoveredDevices(prevDevices => {
+          // 检查设备是否已存在
+          const existingIndex = prevDevices.findIndex(d => d.id === device.id || d.ip === device.ip);
+          if (existingIndex === -1) {
+            // 添加新设备，过滤掉已连接的设备
+            if (connectedDevice && connectedDevice.id === device.id) {
+              return prevDevices;
+            }
+            return [...prevDevices, device];
+          } else {
+            // 更新现有设备
+            const updatedDevices = [...prevDevices];
+            updatedDevices[existingIndex] = device;
+            return updatedDevices;
+          }
+        });
+      });
+
+      deviceDiscoveryService.on('deviceStatusChanged', (data) => {
+        setDiscoveredDevices(prevDevices => {
+          return prevDevices.map(device => {
+            if (device.id === data.device.id) {
+              return data.device;
+            }
+            return device;
+          });
+        });
+      });
+
+      deviceDiscoveryService.on('deviceRemoved', (data) => {
+        setDiscoveredDevices(prevDevices => {
+          return prevDevices.filter(device => device.id !== data.device.id);
+        });
+      });
+
+      deviceDiscoveryService.on('scanCompleted', (data) => {
+        setDiscoveredDevices(prevDevices => {
+          // 过滤掉已连接的设备
+          const filteredDevices = data.devices.filter(device => !connectedDevice || device.id !== connectedDevice.id);
+          return filteredDevices;
+        });
+        setIsScanning(false);
+        message.success('设备扫描完成');
+      });
+
+      deviceDiscoveryService.on('scanError', (data) => {
+        setError(`扫描设备失败: ${data.error}`);
+        setIsScanning(false);
+        message.error(`扫描设备失败: ${data.error}`);
+      });
+
+      // 启动设备发现服务
+      await deviceDiscoveryService.startScan(true, 30000); // 连续扫描，每30秒一次
     } catch (err) {
       setError(`初始化设备发现失败: ${err.message}`);
       console.error('Failed to initialize device discovery:', err);
     }
-  }, []);
+  }, [connectedDevice]);
 
   // 扫描设备
   const handleScanDevices = useCallback(async () => {
     setIsScanning(true);
     setError(null);
     lastScanTimeRef.current = Date.now();
-    let deviceList = [];
     
     try {
       // 检查连接状态
       const connectionStatus = apiService.getConnectionStatus ? apiService.getConnectionStatus() : { isConnected: connectionStatus };
       
-      if (connectionStatus.isConnected) {
-        // 已连接到服务器，正常获取设备列表
-        const devices = await apiService.startDeviceDiscovery();
-        
-        // 如果API服务返回空，使用模拟数据
-        deviceList = devices || [
-          {
-            id: 'device-1',
-            name: 'Android Phone 1',
-            model: 'Google Pixel 7',
-            ip: '192.168.1.101',
-            battery: 78,
-            status: 'available',
-            lastSeen: new Date().toISOString()
-          },
-          {
-            id: 'device-2',
-            name: 'Android Tablet',
-            model: 'Samsung Galaxy Tab S7',
-            ip: '192.168.1.102',
-            battery: 45,
-            status: 'available',
-            lastSeen: new Date().toISOString()
-          },
-          {
-            id: 'device-3',
-            name: 'Android TV',
-            model: 'Xiaomi Mi Box S',
-            ip: '192.168.1.103',
-            battery: 100,
-            status: 'available',
-            lastSeen: new Date().toISOString()
-          }
-        ];
-        
-        // 过滤掉已连接的设备
-        if (connectedDevice) {
-          deviceList = deviceList.filter(device => device.id !== connectedDevice.id);
-        }
-        
-        setDiscoveredDevices(deviceList);
-      } else if (connectionStatus.isMockMode) {
-        // 在mock模式下，直接使用模拟数据
-        setTimeout(() => {
-          const mockDevices = apiService.getMockData('deviceList') || [
-            {
-              id: 'device-1',
-              name: 'Android Phone 1',
-              model: 'Google Pixel 7',
-              ip: '192.168.1.101',
-              battery: 78,
-              status: 'available',
-              lastSeen: new Date().toISOString()
-            },
-            {
-              id: 'device-2',
-              name: 'Android Tablet',
-              model: 'Samsung Galaxy Tab S7',
-              ip: '192.168.1.102',
-              battery: 45,
-              status: 'available',
-              lastSeen: new Date().toISOString()
-            },
-            {
-              id: 'device-3',
-              name: 'Android TV',
-              model: 'Xiaomi Mi Box S',
-              ip: '192.168.1.103',
-              battery: 100,
-              status: 'available',
-              lastSeen: new Date().toISOString()
-            }
-          ];
-          
-          if (connectedDevice) {
-            deviceList = mockDevices.filter(device => device.id !== connectedDevice.id);
-          } else {
-            deviceList = mockDevices;
-          }
-          
-          setDiscoveredDevices(deviceList);
-          setIsScanning(false);
-          message.info('在模拟模式下扫描到设备');
-        }, 1000);
-        return; // 提前返回
-      } else {
+      if (!connectionStatus.isConnected && !connectionStatus.isMockMode) {
         // 未连接且非mock模式，显示提示
         message.warning('未连接到服务器，无法扫描设备');
         setError('未连接到服务器');
         setIsScanning(false);
-        return; // 提前返回
+        return;
       }
       
-      // 更新连接历史
-      updateConnectionHistory(deviceList);
+      // 使用设备发现服务扫描设备
+      await deviceDiscoveryService.scan();
       
       // 启动定期扫描
       handleStartAutoScan();
     } catch (err) {
       console.warn('扫描设备失败:', err.message);
       setError(`扫描设备失败: ${err.message}`);
-      setIsScanning(false);
-      
-      // 在失败时尝试使用模拟数据
-      const mockDevices = apiService.getMockData ? apiService.getMockData('deviceList') : null || [
-        {
-          id: 'device-1',
-          name: 'Android Phone 1',
-          model: 'Google Pixel 7',
-          ip: '192.168.1.101',
-          battery: 78,
-          status: 'available',
-          lastSeen: new Date().toISOString()
-        },
-        {
-          id: 'device-2',
-          name: 'Android Tablet',
-          model: 'Samsung Galaxy Tab S7',
-          ip: '192.168.1.102',
-          battery: 45,
-          status: 'available',
-          lastSeen: new Date().toISOString()
-        },
-        {
-          id: 'device-3',
-          name: 'Android TV',
-          model: 'Xiaomi Mi Box S',
-          ip: '192.168.1.103',
-          battery: 100,
-          status: 'available',
-          lastSeen: new Date().toISOString()
-        }
-      ];
-      
-      if (connectedDevice) {
-        deviceList = mockDevices.filter(device => device.id !== connectedDevice.id);
-      } else {
-        deviceList = mockDevices;
-      }
-      
-      setDiscoveredDevices(deviceList);
-      message.warning('使用模拟数据进行演示');
-    } finally {
+      message.error(`扫描设备失败: ${err.message}`);
       setIsScanning(false);
     }
-  }, [connectedDevice, connectionStatus]);
+  }, [connectionStatus]);
 
   // 开始自动扫描
   const handleStartAutoScan = useCallback(() => {
@@ -288,8 +213,11 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
       clearInterval(scanIntervalRef.current);
       scanIntervalRef.current = null;
     }
+    
+    // 停止设备发现服务
+    deviceDiscoveryService.stopScan();
+    
     setIsScanning(false);
-    // 在实际应用中，这里会调用websocketService.stopDeviceDiscovery()
   }, []);
 
   // 刷新设备列表
@@ -299,14 +227,14 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
     setIsRefreshing(true);
     
     try {
-      await handleScanDevices();
+      await deviceDiscoveryService.scan();
       message.success('设备列表已更新');
     } catch (err) {
       message.error('刷新设备列表失败');
     } finally {
       setIsRefreshing(false);
     }
-  }, [isScanning, isRefreshing, handleScanDevices]);
+  }, [isScanning, isRefreshing]);
 
   // 连接设备
   const handleConnectDevice = useCallback(async (device) => {
