@@ -11,9 +11,8 @@ import {
   LeftOutlined, 
   PlayCircleOutlined, 
   PauseCircleOutlined, 
-  VolumeUpOutlined,
-  VolumeDownOutlined,
-  VolumeMuteOutlined,
+  SoundOutlined,
+  AudioMutedOutlined,
   RotateLeftOutlined,
   RotateRightOutlined,
   ZoomInOutlined,
@@ -23,9 +22,9 @@ import {
   AlertOutlined,
   LockOutlined,
   UnlockOutlined,
-  RefreshOutlined
+  ReloadOutlined
 } from '@ant-design/icons';
-import websocketService from '../../src/services/websocket-service';
+import websocketService from '../src/services/websocket-service';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -283,12 +282,12 @@ const RemoteControl = ({ connectedDevice }) => {
 
   // 缩放屏幕
   const handleZoom = useCallback((action) => {
-    if (action === 'in') {
-      setZoomLevel(prev => Math.min(prev + 10, 200));
-    } else {
-      setZoomLevel(prev => Math.max(prev - 10, 50));
-    }
-    sendControlEvent('zoom', { action, level: zoomLevel });
+    const newZoomLevel = action === 'in' 
+      ? Math.min(zoomLevel + 10, 200)
+      : Math.max(zoomLevel - 10, 50);
+      
+    setZoomLevel(newZoomLevel);
+    sendControlEvent('zoom', { action, level: newZoomLevel });
   }, [zoomLevel, sendControlEvent]);
 
   // 锁定/解锁设备
@@ -458,7 +457,7 @@ const RemoteControl = ({ connectedDevice }) => {
           </Col>
           <Col span={6}>
             <Button 
-              icon={<VolumeUpOutlined />} 
+              icon={<SoundOutlined />} 
               onClick={() => handleFunctionKey('volume_up')}
               size="large"
               block
@@ -469,7 +468,7 @@ const RemoteControl = ({ connectedDevice }) => {
           </Col>
           <Col span={6}>
             <Button 
-              icon={<VolumeDownOutlined />} 
+              icon={<AudioMutedOutlined />} 
               onClick={() => handleFunctionKey('volume_down')}
               size="large"
               block
@@ -671,7 +670,7 @@ const RemoteControl = ({ connectedDevice }) => {
           <Col span={24}>
             <Button 
               type="primary" 
-              icon={<RefreshOutlined />} 
+              icon={<ReloadOutlined />} 
               onClick={handleRefreshScreen}
               size="large"
               block

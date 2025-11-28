@@ -4,7 +4,7 @@ import {
   AndroidOutlined, 
   WifiOutlined, 
   DisconnectOutlined, 
-  RefreshOutlined, 
+  ReloadOutlined, 
   SearchOutlined, 
   CheckCircleOutlined, 
   LoadingOutlined,
@@ -12,7 +12,7 @@ import {
   StarFilled,
   InfoCircleOutlined
 } from '@ant-design/icons';
-import websocketService from '../../src/services/websocket-service';
+import apiService from '../src/services/api-service';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -23,8 +23,11 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
   const [isScanning, setIsScanning] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [connectionError, setConnectionError] = useState(null);
   const [favorites, setFavorites] = useState([]);
   const [connectionHistory, setConnectionHistory] = useState([]);
+  const [connectionStatus, setConnectionStatus] = useState(false);
+  const [connectionMode, setConnectionMode] = useState('normal'); // normal, mock
   
   const scanIntervalRef = useRef(null);
   const lastScanTimeRef = useRef(null);
@@ -47,12 +50,49 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
       }
     }
 
+    // 连接到服务器
+    const connectToServer = async () => {
+      try {
+        await apiService.connect();
+        setConnectionStatus(true);
+        setConnectionError(null);
+      } catch (err) {
+        console.warn('连接失败，尝试使用模拟数据:', err.message);
+        setConnectionStatus(false);
+        setConnectionError(err.message);
+        
+        // 在无后端服务时使用mock数据
+        const mockDevices = apiService.getMockData('deviceList') || [];
+        if (mockDevices.length > 0) {
+          setDiscoveredDevices(mockDevices);
+          message.warning('后端服务未连接，使用模拟数据进行演示');
+        } else {
+          message.error('无法连接到服务器，请确保后端服务正在运行');
+        }
+      }
+    };
+
+    connectToServer();
+
+    // 监听连接状态变化
+    const handleConnectionStateChanged = (data) => {
+      setConnectionStatus(data.isConnected);
+      if (data.isConnected) {
+        message.success('已连接到服务器');
+      } else {
+        message.warning('已断开与服务器的连接');
+      }
+    };
+
+    apiService.on('connectionStateChanged', handleConnectionStateChanged);
+
     // 初始化设备发现
     initializeDeviceDiscovery();
 
     // 清理函数
     return () => {
       handleStopScan();
+      apiService.off('connectionStateChanged', handleConnectionStateChanged);
     };
   }, []);
 
@@ -60,7 +100,7 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
   const initializeDeviceDiscovery = useCallback(async () => {
     try {
       // 启动设备发现
-      await websocketService.startDeviceDiscovery();
+      await apiService.startDeviceDiscovery();
       // 立即扫描一次
       handleScanDevices();
     } catch (err) {
@@ -74,13 +114,117 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
     setIsScanning(true);
     setError(null);
     lastScanTimeRef.current = Date.now();
+    let deviceList = [];
     
     try {
-      // 获取发现的设备列表
-      const devices = await websocketService.getDiscoveredDevices();
+      // 检查连接状态
+      const connectionStatus = apiService.getConnectionStatus ? apiService.getConnectionStatus() : { isConnected: connectionStatus };
       
-      // 如果Websocket服务返回空，使用模拟数据
-      let deviceList = devices || [
+      if (connectionStatus.isConnected) {
+        // 已连接到服务器，正常获取设备列表
+        const devices = await apiService.startDeviceDiscovery();
+        
+        // 如果API服务返回空，使用模拟数据
+        deviceList = devices || [
+          {
+            id: 'device-1',
+            name: 'Android Phone 1',
+            model: 'Google Pixel 7',
+            ip: '192.168.1.101',
+            battery: 78,
+            status: 'available',
+            lastSeen: new Date().toISOString()
+          },
+          {
+            id: 'device-2',
+            name: 'Android Tablet',
+            model: 'Samsung Galaxy Tab S7',
+            ip: '192.168.1.102',
+            battery: 45,
+            status: 'available',
+            lastSeen: new Date().toISOString()
+          },
+          {
+            id: 'device-3',
+            name: 'Android TV',
+            model: 'Xiaomi Mi Box S',
+            ip: '192.168.1.103',
+            battery: 100,
+            status: 'available',
+            lastSeen: new Date().toISOString()
+          }
+        ];
+        
+        // 过滤掉已连接的设备
+        if (connectedDevice) {
+          deviceList = deviceList.filter(device => device.id !== connectedDevice.id);
+        }
+        
+        setDiscoveredDevices(deviceList);
+      } else if (connectionStatus.isMockMode) {
+        // 在mock模式下，直接使用模拟数据
+        setTimeout(() => {
+          const mockDevices = apiService.getMockData('deviceList') || [
+            {
+              id: 'device-1',
+              name: 'Android Phone 1',
+              model: 'Google Pixel 7',
+              ip: '192.168.1.101',
+              battery: 78,
+              status: 'available',
+              lastSeen: new Date().toISOString()
+            },
+            {
+              id: 'device-2',
+              name: 'Android Tablet',
+              model: 'Samsung Galaxy Tab S7',
+              ip: '192.168.1.102',
+              battery: 45,
+              status: 'available',
+              lastSeen: new Date().toISOString()
+            },
+            {
+              id: 'device-3',
+              name: 'Android TV',
+              model: 'Xiaomi Mi Box S',
+              ip: '192.168.1.103',
+              battery: 100,
+              status: 'available',
+              lastSeen: new Date().toISOString()
+            }
+          ];
+          
+          if (connectedDevice) {
+            deviceList = mockDevices.filter(device => device.id !== connectedDevice.id);
+          } else {
+            deviceList = mockDevices;
+          }
+          
+          setDiscoveredDevices(deviceList);
+          setIsScanning(false);
+          message.info('在模拟模式下扫描到设备');
+        }, 1000);
+        return; // 提前返回
+      } else {
+        // 未连接且非mock模式，显示提示
+        message.warning('未连接到服务器，无法扫描设备');
+        setError('未连接到服务器');
+        setIsScanning(false);
+        return; // 提前返回
+      }
+      
+      // 更新连接历史
+      updateConnectionHistory(deviceList);
+      
+      // 启动定期扫描
+      handleStartAutoScan();
+    } catch (err) {
+      console.warn('扫描设备失败:', err.message);
+      setError(`扫描设备失败: ${err.message}`);
+      setIsScanning(false);
+      
+      // 在失败时尝试使用模拟数据
+      const mockDevices = apiService.getMockData ? apiService.getMockData('deviceList') : null || [
         {
           id: 'device-1',
           name: 'Android Phone 1',
@@ -110,25 +254,18 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
         }
       ];
       
-      // 过滤掉已连接的设备
       if (connectedDevice) {
-        deviceList = deviceList.filter(device => device.id !== connectedDevice.id);
+        deviceList = mockDevices.filter(device => device.id !== connectedDevice.id);
+      } else {
+        deviceList = mockDevices;
       }
       
       setDiscoveredDevices(deviceList);
-      
-      // 更新连接历史
-      updateConnectionHistory(deviceList);
-      
-      // 启动定期扫描
-      handleStartAutoScan();
-    } catch (err) {
-      setError(`扫描设备失败: ${err.message}`);
-      console.error('Failed to scan devices:', err);
+      message.warning('使用模拟数据进行演示');
     } finally {
       setIsScanning(false);
     }
-  }, [connectedDevice]);
+  }, [connectedDevice, connectionStatus]);
 
   // 开始自动扫描
   const handleStartAutoScan = useCallback(() => {
@@ -179,6 +316,9 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
     }
 
     try {
+      // 检查连接状态
+      const connectionStatus = apiService.getConnectionStatus ? apiService.getConnectionStatus() : { isConnected: connectionStatus };
+      
       // 断开现有连接
       if (connectedDevice) {
         await handleDisconnectDevice();
@@ -190,47 +330,80 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
         status: 'connecting'
       });
 
-      // 调用WebSocket服务连接设备
-      await websocketService.sendRequest('connect_device', {
-        deviceId: device.id,
-        deviceName: device.name
-      });
+      if (connectionStatus.isConnected) {
+        // 已连接到服务器，正常调用API服务连接设备
+        await apiService.connectDevice({
+          deviceId: device.id,
+          deviceName: device.name
+        });
 
-      // 模拟连接延迟
-      await new Promise(resolve => setTimeout(resolve, 1500));
+        // 模拟连接延迟
+        await new Promise(resolve => setTimeout(resolve, 1500));
 
-      // 更新连接状态
-      const connectedDeviceData = {
-        ...device,
-        status: 'connected',
-        connectedTime: new Date().toISOString()
-      };
-      
-      setConnectedDevice(connectedDeviceData);
-      
-      // 更新连接历史
-      addToConnectionHistory(connectedDeviceData);
-      
-      // 通知父组件
-      if (onDeviceConnect) {
-        onDeviceConnect(connectedDeviceData);
+        // 更新连接状态
+        const connectedDeviceData = {
+          ...device,
+          status: 'connected',
+          connectedTime: new Date().toISOString()
+        };
+        
+        setConnectedDevice(connectedDeviceData);
+        
+        // 更新连接历史
+        addToConnectionHistory(connectedDeviceData);
+        
+        // 通知父组件
+        if (onDeviceConnect) {
+          onDeviceConnect(connectedDeviceData);
+        }
+        
+        message.success(`已成功连接到 ${device.name}`);
+      } else if (connectionStatus.isMockMode) {
+        // 在mock模式下，模拟连接成功
+        setTimeout(() => {
+          // 添加mock数据到设备信息
+          const mockDevice = {
+            ...device,
+            battery: device.battery || 85,
+            status: 'connected',
+            model: device.model || 'Mock-Model',
+            connectedTime: new Date().toISOString()
+          };
+          
+          setConnectedDevice(mockDevice);
+          
+          // 更新连接历史
+          addToConnectionHistory(mockDevice);
+          
+          // 通知父组件
+          if (onDeviceConnect) {
+            onDeviceConnect(mockDevice);
+          }
+          
+          message.success(`已成功连接到 ${device.name}`);
+        }, 1500);
+        return; // 提前返回
+      } else {
+        // 未连接且非mock模式
+        setError('未连接到服务器');
+        setConnectedDevice(null);
+        message.error('未连接到服务器，无法连接设备');
       }
-      
-      message.success(`已成功连接到 ${device.name}`);
     } catch (err) {
+      console.warn('连接设备失败:', err.message);
       setError(`连接设备失败: ${err.message}`);
       setConnectedDevice(null);
       message.error(`连接设备失败: ${err.message || '未知错误'}`);
     }
-  }, [connectedDevice, isScanning, onDeviceConnect]);
+  }, [connectedDevice, isScanning, onDeviceConnect, connectionStatus]);
 
   // 断开设备连接
   const handleDisconnectDevice = useCallback(async () => {
     if (!connectedDevice) return;
 
     try {
-      // 调用WebSocket服务断开连接
-      await websocketService.sendRequest('disconnect_device', {
+      // 调用API服务断开连接
+      await apiService.disconnectDevice({
         deviceId: connectedDevice.id
       });
 
@@ -357,7 +530,7 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
           </div>
         }
         extra={
-          <Space direction="vertical" align="end">
+          <Space orientation="vertical" align="end">
             {isConnected ? (
               <Tag color="success" icon={<CheckCircleOutlined />}>已连接</Tag>
             ) : isConnecting ? (
@@ -438,7 +611,7 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
             </div>
           </Space>
           
-          <Space direction="vertical" align="end">
+          <Space orientation="vertical" align="end">
             <Button
               type="default"
               danger
@@ -471,13 +644,31 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
     return (
       <div style={{ marginBottom: '24px' }}>
         <Title level={4}>收藏设备</Title>
-        <List
-          dataSource={favoriteDevicesList}
-          renderItem={device => (
-            <List.Item
-              actions={[
+        <div className="favorite-devices-list">
+          {favoriteDevicesList.map(device => (
+            <Card 
+              key={device.id} 
+              style={{ marginBottom: '12px' }}
+              bodyStyle={{ padding: '12px' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <Avatar icon={<AndroidOutlined />} style={{ marginRight: '12px' }} />
+                  <div>
+                    <Space size="middle" align="center">
+                      <span>{device.name}</span>
+                      {device.model && <Text type="secondary">{device.model}</Text>}
+                      <StarFilled style={{ color: '#ffd700' }} />
+                    </Space>
+                    <Space size="middle" style={{ marginTop: '4px', display: 'block' }}>
+                      {device.ip && <Text type="secondary">{device.ip}</Text>}
+                      {connectedDevice && connectedDevice.id === device.id && (
+                        <Tag color="success">已连接</Tag>
+                      )}
+                    </Space>
+                  </div>
+                </div>
                 <Button
-                  key="connect"
                   type="link"
                   icon={<WifiOutlined />}
                   onClick={() => {
@@ -492,36 +683,32 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
                 >
                   连接
                 </Button>
-              ]}
-            >
-              <List.Item.Meta
-                avatar={<Avatar icon={<AndroidOutlined />} />}
-                title={
-                  <Space size="middle" align="center">
-                    <span>{device.name}</span>
-                    {device.model && <Text type="secondary">{device.model}</Text>}
-                    <StarFilled style={{ color: '#ffd700' }} />
-                  </Space>
-                }
-                description={
-                  <Space size="middle">
-                    {device.ip && <Text type="secondary">{device.ip}</Text>}
-                    {connectedDevice && connectedDevice.id === device.id && (
-                      <Tag color="success">已连接</Tag>
-                    )}
-                  </Space>
-                }
-              />
-            </List.Item>
-          )}
-        />
+              </div>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }, [favorites, discoveredDevices, connectedDevice, handleConnectDevice, handleScanDevices]);
 
   return (
     <div>
-      <Title level={3}>设备发现</Title>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Title level={3}>设备发现</Title>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <span style={{ 
+            width: 8, 
+            height: 8, 
+            borderRadius: '50%', 
+            backgroundColor: connectionStatus ? '#52c41a' : '#d9d9d9',
+            marginRight: 8,
+            display: 'inline-block'
+          }} />
+          <Text type="secondary">
+            {connectionStatus ? '已连接' : '未连接'}
+          </Text>
+        </div>
+      </div>
       
       {error && (
         <div style={{ 
@@ -557,7 +744,7 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
               {isScanning ? '扫描中...' : '扫描设备'}
             </Button>
             <Button
-              icon={<RefreshOutlined />}
+              icon={<ReloadOutlined />}
               onClick={handleRefreshDevices}
               loading={isRefreshing}
               disabled={isScanning || isRefreshing}
@@ -602,7 +789,7 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
             description="未发现可用设备"
             image={Empty.PRESENTED_IMAGE_SIMPLE}
           >
-            <Button type="primary" icon={<RefreshOutlined />} onClick={handleScanDevices}>
+            <Button type="primary" icon={<ReloadOutlined />} onClick={handleScanDevices}>
               重新扫描
             </Button>
             <Paragraph style={{ marginTop: '16px', color: '#666' }}>

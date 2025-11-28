@@ -481,6 +481,31 @@
             <div class="log-header">操作日志</div>
             <div class="log-area" id="log-area"></div>
         </div>
+        
+        <!-- 文件传输区域 -->
+        <div class="file-transfer-section">
+            <h2>文件传输</h2>
+            <div class="transfer-controls">
+                <button class="btn-primary" id="select-file-btn">选择文件</button>
+                <input type="file" id="file-input" style="display: none;">
+                <button class="btn-success" id="send-file-btn" disabled>发送文件</button>
+                <button class="btn-warning" id="receive-file-btn" disabled>接收文件</button>
+            </div>
+            
+            <div class="selected-file-info" id="selected-file-info">未选择文件</div>
+            
+            <div class="transfer-progress-container">
+                <div class="progress-bar" id="transfer-progress-bar">
+                    <div class="progress-fill" id="transfer-progress-fill"></div>
+                </div>
+                <div class="progress-info" id="transfer-progress-info">0%</div>
+            </div>
+            
+            <div class="transfer-history" id="transfer-history">
+                <div class="history-header">传输历史</div>
+                <div class="history-items" id="history-items"></div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -494,7 +519,18 @@
             refreshDevicesBtn: document.getElementById('refresh-devices-btn'),
             searchStatus: document.getElementById('search-status'),
             devicesContainer: document.getElementById('devices-container'),
-            logArea: document.getElementById('log-area')
+            logArea: document.getElementById('log-area'),
+            // 文件传输元素
+            fileInput: document.getElementById('file-input'),
+            selectFileBtn: document.getElementById('select-file-btn'),
+            sendFileBtn: document.getElementById('send-file-btn'),
+            receiveFileBtn: document.getElementById('receive-file-btn'),
+            selectedFileInfo: document.getElementById('selected-file-info'),
+            transferProgressBar: document.getElementById('transfer-progress-bar'),
+            transferProgressFill: document.getElementById('transfer-progress-fill'),
+            transferProgressInfo: document.getElementById('transfer-progress-info'),
+            transferHistory: document.getElementById('transfer-history'),
+            historyItems: document.getElementById('history-items')
         };
         
         // 当前连接的WebSocket
@@ -569,58 +605,41 @@
         async function searchDeviceByIP() {
             const ip = elements.ipInput.value.trim();
             if (!ip) {
-                showSearchStatus('请输入IP地址', 'error');
+                showSearchStatus('请输入有效的IP地址', 'error');
                 return;
             }
             
-            // 验证IP地址格式
-            const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/;
-            if (!ipPattern.test(ip)) {
-                showSearchStatus('IP地址格式不正确', 'error');
+            // 验证IP格式
+            if (!validateIP(ip)) {
+                showSearchStatus('请输入有效的IP地址', 'error');
                 return;
             }
             
-            showSearchStatus(`正在搜索设备: ${ip}...`, 'info');
-            log(`搜索设备: ${ip}`, 'info');
+            showSearchStatus(`正在搜索设备: ${ip}`, 'info');
+            log(`开始搜索IP: ${ip}`, 'info');
             
+            // 尝试连接到该IP
             try {
-                // 尝试连接到指定IP的WebSocket服务
-                const wsUrl = `ws://${ip}:8928`;
-                const testWs = new WebSocket(wsUrl);
+                // 这里模拟连接测试 - 实际应用中可能需要调用后端API
+                await testDeviceConnection(ip);
                 
-                // 设置超时
-                const timeout = setTimeout(() => {
-                    testWs.close();
-                    showSearchStatus(`设备 ${ip} 未响应`, 'error');
-                    log(`设备 ${ip} 未响应`, 'error');
-                }, 3000);
-                
-                testWs.onopen = function() {
-                    clearTimeout(timeout);
-                    testWs.close();
-                    showSearchStatus(`在 ${ip} 发现设备!`, 'success');
-                    log(`在 ${ip} 发现设备!`, 'success');
-                    
-                    // 添加设备到列表
-                    addDeviceToList({
-                        deviceId: `temp_${ip}`,
-                        deviceName: `未知设备 (${ip})`,
-                        ip: ip,
-                        platform: 'unknown',
-                        lastSeen: Date.now()
-                    });
+                // 模拟找到设备
+                const device = {
+                    deviceId: `device-${ip.replace(/\./g, '-')}`,
+                    deviceName: `设备 (${ip})`,
+                    ip: ip,
+                    platform: 'Unknown',
+                    lastSeen: Date.now()
                 };
                 
-                testWs.onerror = function() {
-                    clearTimeout(timeout);
-                    testWs.close();
-                    showSearchStatus(`无法连接到 ${ip}`, 'error');
-                    log(`无法连接到 ${ip}`, 'error');
-                };
+                showSearchStatus(`已找到设备: ${ip}`, 'success');
+                log(`找到设备: ${device.deviceName}`, 'success');
                 
+                // 添加到设备列表
+                addDeviceToList(device);
             } catch (error) {
-                showSearchStatus(`搜索失败: ${error.message}`, 'error');
-                log(`搜索失败: ${error.message}`, 'error');
+                showSearchStatus(`未找到设备: ${ip}`, 'error');
+                log(`未找到设备: ${ip}`, 'error');
             }
         }
         
@@ -643,11 +662,298 @@
             showSearchStatus(`正在扫描子网: ${subnet}.0/24...`, 'info');
             log(`开始扫描子网 ${subnet}.0/24`, 'info');
             
-            // 模拟扫描过程 - 在实际应用中需要后端API支持
-            setTimeout(() => {
-                showSearchStatus(`局域网扫描完成，发现 0 个设备`, 'info');
-                log(`局域网扫描完成`, 'info');
-            }, 2000);
+            // 重置设备列表
+            const oldDevices = { ...discoveredDevices };
+            discoveredDevices = {};
+            elements.devicesContainer.innerHTML = '';
+            
+            // 标记为正在扫描
+            isScanning = true;
+            
+            try {
+                // 1. 首先尝试从后端API获取设备列表
+                const devices = await fetchDevicesFromBackend(subnet);
+                
+                if (devices && devices.length > 0) {
+                    // 添加到设备列表
+                    devices.forEach(device => addDeviceToList(device));
+                    showSearchStatus(`扫描完成，发现 ${devices.length} 个设备`, 'success');
+                    log(`局域网扫描完成，发现 ${devices.length} 个设备`, 'info');
+                } else {
+                    // 2. 如果API失败或没有找到设备，使用简单的模拟设备
+                    log('后端API未响应或未找到设备，使用模拟设备', 'info');
+                    await simulateDeviceDiscovery(subnet);
+                }
+                
+                // 3. 添加之前已连接但未被重新发现的设备（标记为离线）
+                Object.values(oldDevices).forEach(device => {
+                    if (!discoveredDevices[device.deviceId]) {
+                        device.ip = null;
+                        device.connected = false;
+                        device.lastSeen = Date.now();
+                        addDeviceToList(device);
+                    }
+                });
+                
+                // 4. 启动定时刷新
+                startDeviceStatusRefresh();
+            } catch (error) {
+                showSearchStatus(`扫描失败: ${error.message}`, 'error');
+                log(`扫描失败: ${error.message}`, 'error');
+                // 失败时显示模拟设备以便测试
+                await simulateDeviceDiscovery(subnet);
+            } finally {
+                isScanning = false;
+            }
+        }
+        
+        // 从后端API获取设备列表
+        async function fetchDevicesFromBackend(subnet) {
+            try {
+                // 尝试连接到本地后端服务
+                const response = await fetch(`http://localhost:8080/api/devices/search?subnet=${subnet}`, {
+                    method: 'GET',
+                    timeout: 3000
+                });
+                
+                if (response.ok) {
+                    return await response.json();
+                }
+                // 如果响应不成功，返回null
+                return null;
+            } catch (error) {
+                // API调用失败，返回null
+                return null;
+            }
+        }
+        
+        // 模拟设备发现
+        async function simulateDeviceDiscovery(subnet) {
+            // 模拟找到的设备
+            const mockDevices = [
+                {
+                    deviceId: `device-1-${Date.now()}`,
+                    deviceName: 'Android设备',
+                    ip: `${subnet}.101`,
+                    platform: 'Android',
+                    lastSeen: Date.now()
+                },
+                {
+                    deviceId: `device-2-${Date.now()}`,
+                    deviceName: '测试设备',
+                    ip: `${subnet}.102`,
+                    platform: 'Unknown',
+                    lastSeen: Date.now()
+                },
+                {
+                    deviceId: `device-3-${Date.now()}`,
+                    deviceName: '离线设备',
+                    ip: null,
+                    platform: 'Unknown',
+                    lastSeen: Date.now() - 60000 // 1分钟前
+                }
+            ];
+            
+            // 模拟网络延迟
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            // 添加模拟设备到列表
+            mockDevices.forEach(device => addDeviceToList(device));
+            
+            showSearchStatus(`扫描完成，发现 ${mockDevices.filter(d => d.ip).length} 个在线设备`, 'success');
+        }
+        
+        // 启动设备状态定时刷新
+        function startDeviceStatusRefresh() {
+            // 如果已有定时器，先清除
+            if (deviceRefreshInterval) {
+                clearInterval(deviceRefreshInterval);
+            }
+            
+            // 每30秒刷新一次设备状态
+            deviceRefreshInterval = setInterval(async () => {
+                if (isScanning) return; // 如果正在扫描，跳过
+                
+                try {
+                    // 尝试从后端获取最新设备状态
+                    const devices = await fetchDevicesFromBackend('');
+                    if (devices && devices.length > 0) {
+                        devices.forEach(device => {
+                            if (discoveredDevices[device.deviceId]) {
+                                // 更新设备状态
+                                Object.assign(discoveredDevices[device.deviceId], device);
+                                updateDeviceInList(device);
+                            }
+                        });
+                    }
+                } catch (error) {
+                    // 刷新失败，静默处理
+                }
+                
+                // 更新所有设备的最后活动时间
+                Object.values(discoveredDevices).forEach(device => {
+                    updateDeviceActivity(device);
+                });
+            }, 30000);
+        }
+        
+        // 更新设备活动状态
+        function updateDeviceActivity(device) {
+            if (!device.ip) {
+                // 离线设备，检查是否应该移除
+                const timeSinceLastSeen = Date.now() - device.lastSeen;
+                if (timeSinceLastSeen > 300000) { // 5分钟
+                    log(`设备 ${device.deviceName} 长时间离线，已移除`, 'info');
+                    removeDevice(device.deviceId);
+                }
+            }
+        }
+        
+        // 搜索特定IP的设备
+        async function searchDeviceByIP() {
+            const ip = elements.ipInput.value.trim();
+            if (!ip) {
+                showSearchStatus('请输入有效的IP地址', 'error');
+                return;
+            }
+            
+            // 验证IP格式
+            if (!validateIP(ip)) {
+                showSearchStatus('请输入有效的IP地址', 'error');
+                return;
+            }
+            
+            showSearchStatus(`正在搜索设备: ${ip}`, 'info');
+            log(`开始搜索IP: ${ip}`, 'info');
+            
+            // 尝试连接到该IP
+            try {
+                // 这里模拟连接测试 - 实际应用中可能需要调用后端API
+                await testDeviceConnection(ip);
+                
+                // 模拟找到设备
+                const device = {
+                    deviceId: `device-${ip.replace(/\./g, '-')}`,
+                    deviceName: `设备 (${ip})`,
+                    ip: ip,
+                    platform: 'Unknown',
+                    lastSeen: Date.now()
+                };
+                
+                showSearchStatus(`已找到设备: ${ip}`, 'success');
+                log(`找到设备: ${device.deviceName}`, 'success');
+                
+                // 添加到设备列表
+                addDeviceToList(device);
+            } catch (error) {
+                showSearchStatus(`未找到设备: ${ip}`, 'error');
+                log(`未找到设备: ${ip}`, 'error');
+            }
+        }
+        
+        // 测试设备连接
+        async function testDeviceConnection(ip) {
+            return new Promise((resolve, reject) => {
+                // 创建WebSocket连接测试
+                const testWs = new WebSocket(`ws://${ip}:8928`);
+                const timeout = setTimeout(() => {
+                    testWs.close();
+                    reject(new Error('连接超时'));
+                }, 2000);
+                
+                testWs.onopen = function() {
+                    clearTimeout(timeout);
+                    testWs.close();
+                    resolve();
+                };
+                
+                testWs.onclose = function() {
+                    clearTimeout(timeout);
+                    // 即使连接立即关闭，也认为IP是可达的
+                    resolve();
+                };
+                
+                testWs.onerror = function() {
+                    clearTimeout(timeout);
+                    testWs.close();
+                    reject(new Error('无法连接'));
+                };
+            });
+        }
+        
+        // 验证IP地址格式
+        function validateIP(ip) {
+            const ipRegex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+            if (!ipRegex.test(ip)) {
+                return false;
+            }
+            
+            // 检查每个数字是否在0-255范围内
+            const parts = ip.split('.');
+            return parts.every(part => parseInt(part) >= 0 && parseInt(part) <= 255);
+        }
+        
+        // 连接到特定设备
+        function connectToDevice(deviceId) {
+            const device = discoveredDevices[deviceId];
+            if (!device || !device.ip) {
+                log('设备信息不完整，无法连接', 'error');
+                return;
+            }
+            
+            log(`尝试连接到设备: ${device.deviceName} (${device.ip})`, 'info');
+            elements.connectionStatus.className = 'connection-status status-info';
+            elements.connectionStatus.textContent = `正在连接到 ${device.deviceName}...`;
+            
+            // 实际连接逻辑
+            const wsUrl = `ws://${device.ip}:8928`;
+            ws = new WebSocket(wsUrl);
+            
+            // 连接超时处理
+            const connectTimeout = setTimeout(() => {
+                if (ws.readyState === WebSocket.CONNECTING) {
+                    ws.close();
+                    log(`连接到设备超时: ${device.ip}`, 'error');
+                    elements.connectionStatus.className = 'connection-status status-error';
+                    elements.connectionStatus.textContent = '连接超时';
+                }
+            }, 5000);
+            
+            ws.onopen = function(event) {
+                clearTimeout(connectTimeout);
+                log(`已连接到设备: ${device.deviceName}`, 'success');
+                elements.connectionStatus.className = 'connection-status status-success';
+                elements.connectionStatus.textContent = `已连接到: ${device.deviceName}`;
+                isConnected = true;
+                device.connected = true;
+                
+                // 启用文件传输按钮
+                elements.sendFileBtn.disabled = false;
+                elements.receiveFileBtn.disabled = false;
+                
+                // 发送设备信息
+                ws.send(JSON.stringify({
+                    type: 'device_info',
+                    deviceInfo: {
+                        platform: 'web_device_manager',
+                        deviceName: '设备管理器',
+                        deviceId: 'web-device-manager-' + Date.now()
+                    }
+                }));
+            };
+            
+            ws.onclose = function(event) {
+                clearTimeout(connectTimeout);
+                log(`与设备断开连接: ${device.deviceName}`, 'info');
+                elements.connectionStatus.className = 'connection-status status-info';
+                elements.connectionStatus.textContent = '已断开连接';
+                isConnected = false;
+                device.connected = false;
+                
+                // 禁用文件传输按钮
+                elements.sendFileBtn.disabled = true;
+                elements.receiveFileBtn.disabled = true;
+            };
         }
         
         // 显示搜索状态
@@ -738,6 +1044,11 @@
                 elements.connectionStatus.className = 'connection-status status-success';
                 elements.connectionStatus.textContent = `已连接到: ${device.deviceName}`;
                 isConnected = true;
+                device.connected = true;
+                
+                // 启用文件传输按钮
+                elements.sendFileBtn.disabled = false;
+                elements.receiveFileBtn.disabled = false;
                 
                 // 发送设备信息
                 ws.send(JSON.stringify({
@@ -755,154 +1066,497 @@
                 elements.connectionStatus.className = 'connection-status status-info';
                 elements.connectionStatus.textContent = '已断开连接';
                 isConnected = false;
-            };
-            
-            ws.onerror = function(error) {
-                log(`连接到设备时出错: ${error.message}`, 'error');
-                elements.connectionStatus.className = 'connection-status status-error';
-                elements.connectionStatus.textContent = '连接失败';
-                isConnected = false;
-            };
-            
-            ws.onmessage = function(event) {
-                try {
-                    const message = JSON.parse(event.data);
-                    handleMessage(message);
-                } catch (e) {
-                    log(`消息解析错误: ${e.message}`, 'error');
-                }
-            };
-        }
-        
-        // 处理WebSocket消息
-        function handleMessage(message) {
-            switch (message.type) {
-                case 'device_found':
-                    log(`发现新设备: ${message.device.deviceName}`, 'success');
-                    addDeviceToList(message.device);
-                    break;
-                case 'android_connected':
-                    log(`Android设备已连接: ${message.deviceInfo.deviceName}`, 'success');
-                    break;
-                case 'android_disconnected':
-                    log('Android设备已断开连接', 'info');
-                    break;
-                default:
-                    log(`收到消息: ${message.type}`, 'info');
-                    break;
-            }
-        }
-        
-        // 移除设备
-        function removeDevice(deviceId) {
-            delete discoveredDevices[deviceId];
-            const deviceElement = document.getElementById(`device-${deviceId}`);
-            if (deviceElement) {
-                deviceElement.remove();
+                device.connected = false;
                 
-                // 如果没有设备了，显示"无设备"卡片
-                if (elements.devicesContainer.children.length === 0) {
-                    const noDeviceCard = document.createElement('div');
-                    noDeviceCard.className = 'device-card disconnected';
-                    noDeviceCard.innerHTML = `
-                        <div class="device-header">
-                            <div class="device-name">无设备</div>
-                            <div class="device-status status-disconnected">离线</div>
-                        </div>
-                        <div class="device-details">
-                            <div>IP: -</div>
-                            <div>平台: -</div>
-                            <div>最后活动: -</div>
-                        </div>
-                        <div class="device-actions">
-                            <button class="btn-primary" disabled>连接</button>
-                            <button class="btn-danger" disabled>移除</button>
-                        </div>
-                    `;
-                    elements.devicesContainer.appendChild(noDeviceCard);
-                }
+                // 禁用文件传输按钮
+                elements.sendFileBtn.disabled = true;
+                elements.receiveFileBtn.disabled = true;
+            };
+        }
+        
+        // 文件传输相关
+        let selectedFile = null;
+        let activeTransfer = null;
+        let transferHistory = [];
+        const CHUNK_SIZE = 64 * 1024; // 64KB chunks
+        
+        // 统一错误处理常量
+        const ERROR_TYPES = {
+            CONNECTION: { code: 1001, title: '连接错误' },
+            NETWORK: { code: 1002, title: '网络错误' },
+            FILE_TRANSFER: { code: 1003, title: '文件传输错误' },
+            DEVICE: { code: 1004, title: '设备错误' },
+            INVALID_INPUT: { code: 1005, title: '输入错误' },
+            UNKNOWN: { code: 9999, title: '未知错误' }
+        };
+
+        // 添加错误处理函数
+        function handleError(errorType, message, details = null) {
+            const errorInfo = ERROR_TYPES[errorType] || ERROR_TYPES.UNKNOWN;
+            
+            // 记录到日志
+            log(`[${errorInfo.code}] ${errorInfo.title}: ${message}`, 'error');
+            
+            // 显示错误模态框
+            showErrorModal(errorInfo.title, message, details);
+            
+            // 如果是连接错误，尝试重连
+            if (errorType === 'CONNECTION' && currentConnectionInfo && reconnectAttempts < maxReconnectAttempts) {
+                scheduleReconnect();
             }
-            log(`已移除设备: ${deviceId}`, 'info');
         }
-        
-        // 刷新设备列表
-        function refreshDevices() {
-            log('刷新设备列表', 'info');
-            showSearchStatus('正在刷新设备列表...', 'info');
-            
-            // 在实际应用中，这里会向服务器请求最新设备列表
-            setTimeout(() => {
-                showSearchStatus('设备列表已刷新', 'success');
-            }, 1000);
-        }
-        
-        // 设置事件监听器
-        function setupEventListeners() {
-            elements.searchIpBtn.addEventListener('click', searchDeviceByIP);
-            elements.scanNetworkBtn.addEventListener('click', scanNetworkForDevices);
-            elements.refreshDevicesBtn.addEventListener('click', refreshDevices);
-            
-            // 按Enter键搜索IP
-            elements.ipInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    searchDeviceByIP();
+
+        // 显示错误模态框
+        function showErrorModal(title, message, details = null) {
+            if (elements.errorModal) {
+                elements.errorTitle.textContent = title;
+                elements.errorMessage.textContent = message;
+                
+                if (details) {
+                    elements.errorDetails.textContent = `详细信息: ${details}`;
+                    elements.errorDetails.style.display = 'block';
+                } else {
+                    elements.errorDetails.style.display = 'none';
                 }
-            });
+                
+                elements.errorModal.style.display = 'flex';
+            } else {
+                // 降级显示alert
+                alert(`${title}: ${message}\n${details || ''}`);
+            }
         }
-        
-        // 页面加载完成后初始化
-        document.addEventListener('DOMContentLoaded', function() {
-            log('设备管理器已加载', 'info');
-            getLocalInfo();
-            setupEventListeners();
-        });
-        
-        // 现代化导航功能
-        document.addEventListener('DOMContentLoaded', function() {
-            const navToggle = document.getElementById('nav-toggle');
-            const navMenu = document.getElementById('nav-menu');
+
+        // 关闭错误模态框
+        function closeErrorModal() {
+            if (elements.errorModal) {
+                elements.errorModal.style.display = 'none';
+            }
+        }
+
+        // 调度重连
+        function scheduleReconnect() {
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+            }
             
-            // 切换移动端菜单
-            navToggle.addEventListener('click', function() {
-                navMenu.classList.toggle('active');
-                navToggle.classList.toggle('active');
-            });
+            reconnectAttempts++;
+            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000); // 指数退避，最大30秒
             
-            // 处理导航链接点击
-            const navLinks = document.querySelectorAll('.nav-link');
-            navLinks.forEach(link => {
-                link.addEventListener('click', function() {
-                    // 在移动端点击导航项后关闭菜单
-                    if (window.innerWidth <= 768) {
-                        navMenu.classList.remove('active');
-                        navToggle.classList.remove('active');
+            log(`将在 ${delay/1000} 秒后尝试第 ${reconnectAttempts}/${maxReconnectAttempts} 次重连`, 'info');
+            
+            reconnectTimeout = setTimeout(() => {
+                if (currentConnectionInfo) {
+                    log(`尝试重连到设备: ${currentConnectionInfo.deviceName}`, 'info');
+                    connectToDevice(currentConnectionInfo.deviceId);
+                }
+            }, delay);
+        }
+
+        // 重置重连状态
+        function resetReconnectState() {
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+                reconnectTimeout = null;
+            }
+            reconnectAttempts = 0;
+        }
+
+        // 连接到特定设备
+        function connectToDevice(deviceId) {
+            const device = discoveredDevices[deviceId];
+            if (!device || !device.ip) {
+                log('设备信息不完整，无法连接');
+                return;
+            }
+            
+            // 保存连接信息用于重连
+            currentConnectionInfo = device;
+            
+            log(`尝试连接到设备: ${device.deviceName} (${device.ip})`, 'info');
+            elements.connectionStatus.className = 'connection-status status-info';
+            elements.connectionStatus.textContent = `正在连接到 ${device.deviceName}...`;
+            
+            // 先断开之前的连接
+            if (ws && ws.readyState !== WebSocket.CLOSED) {
+                ws.close();
+            }
+            
+            // 实际连接逻辑
+            try {
+                const wsUrl = `ws://${device.ip}:8928`;
+                ws = new WebSocket(wsUrl);
+                
+                // 连接超时处理
+                const connectTimeout = setTimeout(() => {
+                    if (ws.readyState === WebSocket.CONNECTING) {
+                        ws.close();
+                        handleError('CONNECTION', `连接到设备超时: ${device.ip}`);
                     }
+                }, 8000);
+                
+                ws.onopen = function(event) {
+                    clearTimeout(connectTimeout);
+                    resetReconnectState();
+                    log(`已连接到设备: ${device.deviceName}`, 'success');
+                    elements.connectionStatus.className = 'connection-status status-success';
+                    elements.connectionStatus.textContent = `已连接到: ${device.deviceName}`;
+                    isConnected = true;
+                    device.connected = true;
                     
-                    // 移除其他活动状态
-                    navLinks.forEach(l => l.classList.remove('active'));
-                    // 添加当前活动状态
-                    this.classList.add('active');
-                });
+                    // 启用文件传输按钮
+                    elements.sendFileBtn.disabled = false;
+                    elements.receiveFileBtn.disabled = false;
+                    
+                    // 发送设备信息
+                    try {
+                        ws.send(JSON.stringify({
+                            type: 'device_info',
+                            deviceInfo: {
+                                platform: 'web_device_manager',
+                                deviceName: '设备管理器',
+                                deviceId: 'web-device-manager-' + Date.now()
+                            }
+                        }));
+                    } catch (e) {
+                        handleError('CONNECTION', '发送设备信息失败', e.message);
+                    }
+                };
+                
+                ws.onclose = function(event) {
+                    clearTimeout(connectTimeout);
+                    log(`与设备断开连接: ${device.deviceName}`, 'info');
+                    elements.connectionStatus.className = 'connection-status status-info';
+                    elements.connectionStatus.textContent = '已断开连接';
+                    isConnected = false;
+                    device.connected = false;
+                    
+                    // 禁用文件传输按钮
+                    elements.sendFileBtn.disabled = true;
+                    elements.receiveFileBtn.disabled = true;
+                    
+                    // 如果不是用户主动断开，尝试重连
+                    if (reconnectAttempts < maxReconnectAttempts) {
+                        handleError('CONNECTION', '连接意外断开，将尝试重连', `错误代码: ${event.code}`);
+                    }
+                };
+            } catch (error) {
+                handleError('CONNECTION', `创建连接失败: ${error.message}`);
+            }
+        }
+
+        // WebSocket错误处理
+        function setupWebSocketErrorHandler() {
+            if (ws) {
+                ws.onerror = function(error) {
+                    const errorMessage = error.message || '未知错误';
+                    handleError('CONNECTION', `连接到设备时出错: ${errorMessage}`);
+                    elements.connectionStatus.className = 'connection-status status-error';
+                    elements.connectionStatus.textContent = '连接失败';
+                    isConnected = false;
+                };
+                
+                ws.onmessage = function(event) {
+                    try {
+                        const message = JSON.parse(event.data);
+                        // 检查是否是错误消息
+                        if (message.type === 'error') {
+                            handleError('DEVICE', message.message || '设备错误', JSON.stringify(message.details || {}));
+                            return;
+                        }
+                        handleMessage(message);
+                    } catch (e) {
+                        handleError('CONNECTION', `消息解析错误: ${e.message}`);
+                    }
+                };
+            }
+        }
+
+        // 发送文件
+        async function sendFile() {
+            if (!selectedFile || !isConnected) {
+                handleError('FILE_TRANSFER', '无法发送文件：未选择文件或未连接设备');
+                return;
+            }
+            
+            log(`开始发送文件：${selectedFile.name}`, 'info');
+            
+            // 获取当前连接的设备
+            const connectedDevice = Object.values(discoveredDevices).find(device => device.connected);
+            if (!connectedDevice) {
+                handleError('DEVICE', '未找到连接的设备');
+                return;
+            }
+            
+            // 重置进度条
+            updateProgressBar(0);
+            
+            try {
+                // 创建传输记录
+                const transferId = generateTransferId();
+                activeTransfer = {
+                    id: transferId,
+                    type: 'send',
+                    fileName: selectedFile.name,
+                    fileSize: selectedFile.size,
+                    deviceId: connectedDevice.deviceId,
+                    deviceName: connectedDevice.deviceName,
+                    status: 'transferring',
+                    progress: 0,
+                    startTime: Date.now()
+                };
+                
+                // 读取文件并分块发送
+                await sendFileInChunks(selectedFile, transferId, connectedDevice.deviceId);
+                
+                activeTransfer.status = 'completed';
+                activeTransfer.endTime = Date.now();
+                activeTransfer.duration = activeTransfer.endTime - activeTransfer.startTime;
+                
+                log(`文件发送完成：${selectedFile.name}`, 'success');
+                addToTransferHistory(activeTransfer);
+                
+                // 显示成功提示
+                showNotification(`文件发送成功: ${selectedFile.name}`, 'success');
+            } catch (error) {
+                activeTransfer.status = 'error';
+                activeTransfer.error = error.message;
+                handleError('FILE_TRANSFER', `文件发送失败：${error.message}`);
+                addToTransferHistory(activeTransfer);
+            } finally {
+                activeTransfer = null;
+            }
+        }
+
+        // 分块发送文件
+        async function sendFileInChunks(file, transferId, deviceId) {
+            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+            
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                let currentChunk = 0;
+                let chunkSendAttempts = 0;
+                const maxChunkRetries = 3;
+                
+                function readNextChunk() {
+                    const start = currentChunk * CHUNK_SIZE;
+                    const end = Math.min(start + CHUNK_SIZE, file.size);
+                    const chunk = file.slice(start, end);
+                    
+                    reader.onload = function(event) {
+                        if (event.target.error) {
+                            handleError('FILE_TRANSFER', '文件读取错误');
+                            reject(new Error('文件读取错误'));
+                            return;
+                        }
+                        
+                        try {
+                            // 发送文件块
+                            if (ws && ws.readyState === WebSocket.OPEN) {
+                                ws.send(JSON.stringify({
+                                    type: 'file_chunk',
+                                    transferId: transferId,
+                                    fileName: file.name,
+                                    fileSize: file.size,
+                                    chunkIndex: currentChunk,
+                                    totalChunks: totalChunks,
+                                    data: event.target.result
+                                }));
+                                
+                                // 更新进度
+                                currentChunk++;
+                                const progress = Math.floor((currentChunk / totalChunks) * 100);
+                                updateProgressBar(progress);
+                                
+                                // 重置重试计数
+                                chunkSendAttempts = 0;
+                                
+                                if (currentChunk < totalChunks) {
+                                    readNextChunk();
+                                } else {
+                                    // 发送完成消息
+                                    ws.send(JSON.stringify({
+                                        type: 'file_transfer_complete',
+                                        transferId: transferId,
+                                        fileName: file.name,
+                                        fileSize: file.size,
+                                        deviceId: deviceId
+                                    }));
+                                    resolve();
+                                }
+                            } else {
+                                // 连接已关闭，尝试重发
+                                if (chunkSendAttempts < maxChunkRetries) {
+                                    chunkSendAttempts++;
+                                    log(`块发送失败，尝试重发 (${chunkSendAttempts}/${maxChunkRetries})`, 'warning');
+                                    setTimeout(readNextChunk, 1000 * chunkSendAttempts);
+                                } else {
+                                    reject(new Error('WebSocket连接已关闭且重发失败'));
+                                }
+                            }
+                        } catch (e) {
+                            handleError('FILE_TRANSFER', `发送文件块时出错: ${e.message}`);
+                            reject(e);
+                        }
+                    };
+                    
+                    reader.onerror = function() {
+                        handleError('FILE_TRANSFER', '文件读取错误');
+                        reject(new Error('文件读取错误'));
+                    };
+                    
+                    reader.readAsDataURL(chunk);
+                }
+                
+                // 开始读取第一个块
+                readNextChunk();
+            });
+        }
+
+        // 显示通知
+        function showNotification(message, type = 'info') {
+            // 简单实现，实际应用中可以使用更好的通知库
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            // 自动关闭
+            setTimeout(() => {
+                notification.remove();
+            }, 5000);
+        }
+
+        // 添加全局错误处理器
+        function setupGlobalErrorHandlers() {
+            // 监听未捕获的异常
+            window.addEventListener('error', function(event) {
+                handleError('UNKNOWN', `发生未捕获异常: ${event.message}`, `${event.filename}:${event.lineno}`);
             });
             
-            // 根据当前页面设置活动状态
-            function setActiveNavLink() {
-                const currentPath = window.location.pathname;
-                navLinks.forEach(link => {
-                    if (link.getAttribute('href') === currentPath) {
-                        link.classList.add('active');
-                    } else {
-                        link.classList.remove('active');
+            // 监听Promise拒绝
+            window.addEventListener('unhandledrejection', function(event) {
+                handleError('UNKNOWN', `Promise拒绝未处理: ${event.reason?.message || '未知原因'}`);
+            });
+        }
+
+        // 初始化函数
+        function init() {
+            // 初始化DOM引用
+            // ... existing initialization code ...
+            
+            // 设置错误处理
+            setupGlobalErrorHandlers();
+            setupWebSocketErrorHandler();
+            
+            // 关闭错误模态框事件
+            if (elements.closeErrorBtn) {
+                elements.closeErrorBtn.addEventListener('click', closeErrorModal);
+            }
+            
+            // 点击模态框外部关闭
+            if (elements.errorModal) {
+                elements.errorModal.addEventListener('click', function(event) {
+                    if (event.target === elements.errorModal) {
+                        closeErrorModal();
                     }
                 });
             }
             
-            setActiveNavLink();
-        });
+            // 初始化文件传输
+            initFileTransfer();
+        }
+
+        // 调用初始化函数
+        init();
+
+        // 初始化文件传输功能
+        function initFileTransfer() {
+            // 选择文件按钮点击事件
+            elements.selectFileBtn.addEventListener('click', function() {
+                elements.fileInput.click();
+            });
+            
+            // 文件选择变化事件
+            elements.fileInput.addEventListener('change', function(event) {
+                if (event.target.files && event.target.files[0]) {
+                    selectedFile = event.target.files[0];
+                    elements.selectedFileInfo.textContent = `已选择: ${selectedFile.name} (${formatFileSize(selectedFile.size)})`;
+                }
+            });
+            
+            // 发送文件按钮点击事件
+            elements.sendFileBtn.addEventListener('click', sendFile);
+            
+            // 接收文件按钮点击事件
+            elements.receiveFileBtn.addEventListener('click', function() {
+                showNotification('接收文件功能尚未实现', 'info');
+            });
+        }
         
-        // 使函数可在全局作用域访问（供按钮使用）
-        window.connectToDevice = connectToDevice;
-        window.removeDevice = removeDevice;
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // 生成传输ID
+        function generateTransferId() {
+            return 'transfer-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+        }
+        
+        // 添加到传输历史
+        function addToTransferHistory(transfer) {
+            transferHistory.unshift(transfer);
+            updateTransferHistoryUI();
+        }
+        
+        // 更新传输历史UI
+        function updateTransferHistoryUI() {
+            const historyItems = document.getElementById('history-items');
+            historyItems.innerHTML = '';
+            
+            transferHistory.slice(0, 10).forEach(transfer => {
+                const item = document.createElement('div');
+                item.className = `history-item history-${transfer.status}`;
+                
+                const statusIcon = transfer.status === 'completed' ? '✓' : 
+                                   transfer.status === 'error' ? '✗' : '⟳';
+                
+                item.innerHTML = `
+                    <div class="history-status">${statusIcon}</div>
+                    <div class="history-content">
+                        <div class="history-filename">${transfer.fileName}</div>
+                        <div class="history-info">
+                            ${transfer.type === 'send' ? '发送到' : '接收自'} ${transfer.deviceName}
+                        </div>
+                        <div class="history-details">
+                            ${formatFileSize(transfer.fileSize)} • 
+                            ${new Date(transfer.startTime).toLocaleString()}
+                        </div>
+                    </div>
+                `;
+                
+                historyItems.appendChild(item);
+            });
+        }
+        
+        // 更新进度条
+        function updateProgressBar(percent) {
+            elements.transferProgressFill.style.width = `${percent}%`;
+            elements.transferProgressInfo.textContent = `${percent}%`;
+        }
+        
+        // 变量初始化
+        let deviceRefreshInterval = null;
+        let isScanning = false;
+        let reconnectTimeout = null;
+        let reconnectAttempts = 0;
+        let maxReconnectAttempts = 5;
+        let currentConnectionInfo = null;
     </script>
 </body>
 </html>

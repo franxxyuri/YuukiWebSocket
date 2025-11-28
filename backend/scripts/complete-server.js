@@ -55,7 +55,7 @@ function broadcastDeviceDiscovery() {
     const message = `WINDOWS_DEVICE:${deviceInfo.deviceId}:${deviceInfo.deviceName}:${deviceInfo.version}`;
     const buffer = Buffer.from(message);
 
-    discoveryServer.send(buffer, 0, buffer.length, 8091, '255.255.255.255', (err) => {
+    discoveryServer.send(buffer, 0, buffer.length, discoveryPort, '255.255.255.255', (err) => {
 
         if (err) console.error('广播错误:', err);
 
@@ -99,7 +99,7 @@ discoveryServer.on('message', (msg, rinfo) => {
     }
 });
 
-discoveryServer.bind(8091);
+discoveryServer.bind(discoveryPort);
 
 // 获取本机IP地址
 function getLocalIP() {

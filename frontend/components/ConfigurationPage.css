@@ -1,0 +1,196 @@
+.configuration-page {
+  padding: 20px;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 连接状态卡片样式 */
+.connection-status-card {
+  transition: all 0.3s ease;
+}
+
+.connection-status-connected .ant-card-head-title {
+  color: #1890ff;
+  transition: color 0.3s ease;
+}
+
+.connection-status-disconnected .ant-card-head-title {
+  color: #ff4d4f;
+  transition: color 0.3s ease;
+}
+
+/* 日志表格样式 */
+.log-table {
+  font-size: 14px;
+}
+
+.log-table .ant-table-thead > tr > th {
+  font-weight: 600;
+  background-color: #fafafa;
+}
+
+.log-row-success {
+  background-color: #f6ffed;
+}
+
+.log-row-error {
+  background-color: #fff1f0;
+}
+
+.log-row-info {
+  background-color: #e6f7ff;
+}
+
+.log-row-default {
+  background-color: #ffffff;
+}
+
+/* 测试响应样式 */
+.test-response-success .ant-card-head {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.test-response-error .ant-card-head {
+  border-bottom: 1px solid #ffccc7;
+}
+
+.test-response-error .ant-card-head-title {
+  color: #ff4d4f;
+}
+
+.test-response-code {
+  background-color: #f6f8fa;
+  padding: 16px;
+  border-radius: 6px;
+  overflow: auto;
+  max-height: 200px;
+  font-size: 13px;
+  margin: 0;
+}
+
+.test-response-error .test-response-code {
+  color: #ff4d4f;
+}
+
+.test-response-success .test-response-code {
+  color: #1890ff;
+}
+
+/* 表单元素样式增强 */
+.form-item-enhanced .ant-form-item-label > label {
+  font-weight: 500;
+}
+
+/* 按钮组样式 */
+.button-group {
+  display: flex;
+  gap: 8px;
+}
+
+.button-group .ant-btn {
+  flex: 1;
+}
+
+/* 卡片样式增强 */
+.enhanced-card {
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  animation: slideInUp 0.4s ease-out;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.enhanced-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+  transition: all 0.3s ease;
+}
+
+/* 按钮动画效果 */
+.ant-btn {
+  transition: all 0.2s ease;
+}
+
+.ant-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.ant-btn:active {
+  transform: translateY(0);
+}
+
+/* 表格行动画 */
+.ant-table-tbody > tr > td {
+  transition: all 0.2s ease;
+}
+
+.log-table .ant-table-tbody > tr:hover > td {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* 标签页切换动画 */
+.ant-tabs-content {
+  transition: all 0.3s ease;
+}
+
+/* 表单元素动画 */
+.ant-input:focus,
+.ant-select-focused,
+.ant-input-number-focused {
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+/* 测试响应动画 */
+.test-response-code {
+  transition: all 0.3s ease;
+  animation: codeBlockAppear 0.4s ease-out;
+}
+
+@keyframes codeBlockAppear {
+  from {
+    opacity: 0;
+    max-height: 0;
+    padding: 0 16px;
+  }
+  to {
+    opacity: 1;
+    max-height: 200px;
+    padding: 16px;
+  }
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .configuration-page {
+    padding: 12px;
+  }
+  
+  .log-table {
+    font-size: 13px;
+  }
+  
+  .button-group {
+    flex-direction: column;
+  }
+}

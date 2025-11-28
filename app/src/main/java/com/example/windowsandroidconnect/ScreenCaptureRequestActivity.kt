@@ -73,9 +73,9 @@ class ScreenCaptureRequestActivity : Activity() {
                 broadcastIntent.putExtra(EXTRA_RESULT_DATA, data as android.content.Intent?)
                 sendBroadcast(broadcastIntent)
                 
-                // 同时启动ScreenCaptureService
-                val serviceIntent = Intent(this, com.example.windowsandroidconnect.service.ScreenCaptureService::class.java).apply {
-                    action = com.example.windowsandroidconnect.service.ScreenCaptureService.ACTION_START_CAPTURE
+                // 同时启动优化的ScreenCaptureService
+                val serviceIntent = Intent(this, com.example.windowsandroidconnect.service.OptimizedScreenCaptureService::class.java).apply {
+                    action = com.example.windowsandroidconnect.service.OptimizedScreenCaptureService.ACTION_START_CAPTURE
                     putExtra("resultCode", resultCode)
                     putExtra("data", data)
                 }

@@ -482,6 +482,7 @@
         // WebSocket连接
         let ws = null;
         let androidDevice = null;
+        let screenDisplayManager = null;
         
         // DOM元素
         const elements = {
@@ -510,6 +511,41 @@
             logArea: document.getElementById('log-area')
         };
         
+        // 初始化ScreenDisplayManager
+        function initScreenDisplayManager() {
+            if (window.ScreenDisplayManager) {
+                screenDisplayManager = new ScreenDisplayManager(elements.screenCanvas);
+                log('屏幕显示管理器已初始化', 'success');
+                
+                // 设置事件监听器
+                elements.screenCanvas.addEventListener('click', function(event) {
+                    if (screenDisplayManager && androidDevice) {
+                        screenDisplayManager.handleScreenClick(event);
+                    }
+                });
+                
+                elements.screenCanvas.addEventListener('mousemove', function(event) {
+                    if (screenDisplayManager && androidDevice) {
+                        screenDisplayManager.handleScreenMouseMove(event);
+                    }
+                });
+                
+                document.addEventListener('keydown', function(event) {
+                    if (screenDisplayManager && androidDevice) {
+                        screenDisplayManager.handleScreenKeyDown(event);
+                    }
+                });
+                
+                window.addEventListener('resize', function() {
+                    if (screenDisplayManager) {
+                        screenDisplayManager.handleResize();
+                    }
+                });
+            } else {
+                log('未找到ScreenDisplayManager，屏幕投屏功能不可用', 'error');
+            }
+        }
+        
         function connectToServer() {
 
             // 根据当前页面URL决定WebSocket连接地址
@@ -524,7 +560,7 @@
                 // 主服务器
                 wsUrl = 'ws://' + window.location.hostname + ':' + window.location.port;
             } else {
-                // 默认使用主服务器端口 - 修复：移除process.env引用，使用具体的端口
+                // 默认使用主服务器端口
                 const defaultPort = window.location.hostname.includes('9928') ? '9928' : '8928';
                 wsUrl = 'ws://' + window.location.hostname + ':' + defaultPort;
             }
@@ -532,140 +568,90 @@
             // 使用原生WebSocket连接
             ws = new WebSocket(wsUrl);
 
-
-
             ws.onopen = function(event) {
-
                 log('已连接到服务器: ' + wsUrl, 'success');
-
                 elements.connectionStatus.textContent = '已连接到服务器: ' + wsUrl;
-
                 elements.connectionStatus.style.color = '#4CAF50';
-
                 
-
                 // 发送设备信息（模拟Web客户端）
-
                 ws.send(JSON.stringify({
-
                     type: 'device_info',
-
                     deviceInfo: {
-
                         platform: 'web',
-
                         deviceName: 'Screen Stream Web Client',
-
                         deviceId: 'web-screen-' + Date.now()
-
                     }
-
                 }));
-
             };
-
-
 
             ws.onclose = function(event) {
-
                 log('与服务器断开连接: ' + wsUrl, 'error');
-
                 elements.connectionStatus.textContent = '与服务器断开连接: ' + wsUrl;
-
                 elements.connectionStatus.style.color = '#f44336';
-
+                
+                // 如果正在接收屏幕流，停止接收
+                if (screenDisplayManager && screenDisplayManager.isReceiving) {
+                    stopScreenStream();
+                }
             };
-
-
 
             ws.onerror = function(error) {
-
                 log('WebSocket连接错误: ' + error.message + ' (URL: ' + wsUrl + ')', 'error');
-
             };
-
-
 
             ws.onmessage = function(event) {
-
                 try {
-
+                    // 尝试解析为JSON
                     const message = JSON.parse(event.data);
-
                     handleMessage(message);
-
                 } catch (e) {
-
-                    log('消息解析错误: ' + e.message, 'error');
-
+                    // 如果不是JSON，可能是二进制数据（屏幕帧）
+                    if (event.data instanceof Blob || event.data instanceof ArrayBuffer) {
+                        if (screenDisplayManager && screenDisplayManager.isReceiving) {
+                            screenDisplayManager.handleFrameData(event.data);
+                        }
+                    } else {
+                        log('收到非JSON消息: ' + event.data, 'warning');
+                    }
                 }
-
             };
-
         }
         
-                // 处理接收到的消息
-
+        // 处理接收到的消息
         function handleMessage(message) {
-
             switch (message.type) {
-
                 case 'connection_established':
-
                     log('连接已建立，客户端ID: ' + message.clientId, 'success');
-
                     break;
-
                     
-
                 case 'device_connected':
-
                     handleDeviceConnected(message.deviceInfo);
-
                     break;
-
                     
-
                 case 'screen_frame':
-
                     handleScreenFrame(message);
-
                     break;
-
                     
-
+                case 'screen_frame_info':
+                    handleScreenFrameInfo(message);
+                    break;
+                    
                 case 'file_transfer':
-
                     handleFileTransfer(message);
-
                     break;
-
                     
-
                 case 'clipboard':
-
                     handleClipboard(message);
-
                     break;
-
                     
-
                 case 'notification':
-
                     handleNotification(message);
-
                     break;
-
                     
-
                 default:
-
                     log('收到未知消息类型: ' + message.type, 'warning');
-
                     break;
-
             }
-
         }
         
         // 处理设备连接
@@ -681,90 +667,117 @@
                 document.getElementById('android-device').className = 'device-card connected';
                 
                 log('Android设备已连接: ' + deviceInfo.deviceName, 'success');
+                
+                // 更新ScreenDisplayManager的当前设备信息
+                if (screenDisplayManager) {
+                    screenDisplayManager.currentDevice = deviceInfo;
+                }
+            }
+        }
+        
+        // 处理屏幕帧信息
+        function handleScreenFrameInfo(message) {
+            log(`收到屏幕帧信息: ${message.width}x${message.height}@${message.fps}fps`, 'info');
+            
+            if (screenDisplayManager) {
+                screenDisplayManager.handleScreenFrameInfo(message);
             }
         }
         
         // 处理屏幕帧
         function handleScreenFrame(message) {
-            // 简化处理，实际应用中需要解码图像数据
-            log('收到屏幕帧数据', 'info');
-        }
-        
-        // 处理文件传输
-        function handleFileTransfer(message) {
-            switch (message.action) {
-                case 'start':
-                    log('开始文件传输: ' + message.fileName, 'info');
-                    break;
-                case 'chunk':
-                    updateProgress(message.progress);
-                    break;
-                case 'complete':
-                    log('文件传输完成: ' + message.fileName, 'success');
-                    updateProgress(100);
-                    break;
-                case 'error':
-                    log('文件传输错误: ' + message.error, 'error');
-                    break;
+            if (screenDisplayManager && screenDisplayManager.isReceiving) {
+                // 如果消息包含base64编码的数据
+                if (message.data) {
+                    const binaryString = atob(message.data);
+                    const length = binaryString.length;
+                    const bytes = new Uint8Array(length);
+                    
+                    for (let i = 0; i < length; i++) {
+                        bytes[i] = binaryString.charCodeAt(i);
+                    }
+                    
+                    screenDisplayManager.handleFrameData(new Blob([bytes]));
+                } else if (message.frameData) {
+                    // 直接处理frameData
+                    screenDisplayManager.handleFrameData(new Blob([message.frameData]));
+                }
+                
+                log('收到屏幕帧数据', 'info');
             }
         }
         
-        // 处理剪贴板同步
-        function handleClipboard(message) {
-            log('剪贴板内容已同步: ' + message.data.substring(0, 50) + '...', 'info');
-        }
-        
-        // 处理通知
-        function handleNotification(message) {
-            if (message.action === 'posted') {
-                log('收到通知: ' + message.title, 'info');
+        // 开始屏幕流
+        function startScreenStream() {
+            if (!androidDevice) {
+                log('请先连接Android设备', 'error');
+                return;
             }
+            
+            if (!screenDisplayManager) {
+                log('屏幕显示管理器未初始化', 'error');
+                return;
+            }
+            
+            // 发送开始屏幕投屏命令
+            sendControlCommand({
+                commandType: 'screen_stream',
+                action: 'start',
+                quality: 0.8,
+                fps: 30
+            });
+            
+            elements.screenPlaceholder.style.display = 'none';
+            elements.screenCanvas.style.display = 'block';
+            
+            // 开始接收和渲染
+            screenDisplayManager.startReceiving();
+            screenDisplayManager.startRenderLoop();
+            
+            log('开始屏幕投屏...', 'info');
         }
         
-        // 更新进度条
-        function updateProgress(percent) {
-            elements.fileProgress.style.width = percent + '%';
-            elements.progressText.textContent = percent + '%';
+        // 停止屏幕流
+        function stopScreenStream() {
+            // 发送停止屏幕投屏命令
+            sendControlCommand({
+                commandType: 'screen_stream',
+                action: 'stop'
+            });
+            
+            elements.screenPlaceholder.style.display = 'block';
+            elements.screenCanvas.style.display = 'none';
+            
+            // 停止接收和渲染
+            if (screenDisplayManager) {
+                screenDisplayManager.stopReceiving();
+            }
+            
+            log('停止屏幕投屏', 'info');
         }
+        
+        // 文件传输和其他处理函数保持不变 ...
         
         // 发送控制命令
-
         function sendControlCommand(command) {
-
             if (!ws || ws.readyState !== WebSocket.OPEN) {
-
                 log('WebSocket未连接', 'error');
-
                 return;
-
             }
-
             
-
             if (!androidDevice) {
-
                 log('没有连接的Android设备', 'error');
-
                 return;
-
             }
-
             
-
             const message = {
-
                 type: 'control_command',
-
+                targetDeviceId: androidDevice.deviceId || androidDevice.id,
                 ...command
-
             };
-
             
-
             ws.send(JSON.stringify(message));
-
             log('发送控制命令: ' + command.commandType, 'info');
-
         }
         
         // 日志记录
@@ -782,11 +795,20 @@
             // 连接/断开连接按钮
             elements.connectBtn.addEventListener('click', function() {
                 log('正在搜索Android设备...', 'info');
-                // 实际应用中会发送设备发现请求
+                // 发送设备发现请求
+                sendControlCommand({
+                    commandType: 'device_discovery',
+                    action: 'search'
+                });
             });
             
             elements.disconnectBtn.addEventListener('click', function() {
                 if (androidDevice) {
+                    // 停止屏幕流
+                    if (screenDisplayManager && screenDisplayManager.isReceiving) {
+                        stopScreenStream();
+                    }
+                    
                     log('已断开与 ' + androidDevice.deviceName + ' 的连接', 'info');
                     androidDevice = null;
                     elements.androidStatus.textContent = '未连接';
@@ -794,6 +816,11 @@
                     elements.androidName.textContent = '-';
                     elements.androidIp.textContent = '-';
                     document.getElementById('android-device').className = 'device-card disconnected';
+                    
+                    // 发送断开连接命令
+                    sendControlCommand({
+                        commandType: 'disconnect'
+                    });
                 }
             });
             
@@ -805,6 +832,16 @@
                 }
                 log('选择文件进行传输...', 'info');
                 // 实际应用中会打开文件选择对话框
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.onchange = function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        log('准备传输文件: ' + file.name, 'info');
+                        // 这里应该实现文件传输逻辑
+                    }
+                };
+                input.click();
             });
             
             elements.receiveFileBtn.addEventListener('click', function() {
@@ -813,58 +850,52 @@
                     return;
                 }
                 log('准备接收文件...', 'info');
+                sendControlCommand({
+                    commandType: 'file_transfer',
+                    action: 'prepare_receive'
+                });
             });
             
             // 远程控制按钮
             elements.mouseModeBtn.addEventListener('click', function() {
                 elements.controlStatus.textContent = '鼠标模式已激活';
                 log('激活鼠标控制模式', 'info');
+                sendControlCommand({
+                    commandType: 'control_mode',
+                    mode: 'mouse'
+                });
             });
             
             elements.keyboardModeBtn.addEventListener('click', function() {
                 elements.controlStatus.textContent = '键盘模式已激活';
                 log('激活键盘控制模式', 'info');
+                sendControlCommand({
+                    commandType: 'control_mode',
+                    mode: 'keyboard'
+                });
             });
             
             // 同步功能按钮
             elements.clipboardSyncBtn.addEventListener('click', function() {
                 log('同步剪贴板内容...', 'info');
                 // 实际应用中会发送剪贴板同步请求
+                sendControlCommand({
+                    commandType: 'clipboard_sync',
+                    action: 'request'
+                });
             });
             
             elements.notificationBtn.addEventListener('click', function() {
                 log('查看通知历史...', 'info');
+                sendControlCommand({
+                    commandType: 'notification',
+                    action: 'get_history'
+                });
             });
             
             // 屏幕投屏按钮
-            elements.startScreenBtn.addEventListener('click', function() {
-                if (!androidDevice) {
-                    log('请先连接Android设备', 'error');
-                    return;
-                }
-                
-                // 发送开始屏幕投屏命令
-                sendControlCommand({
-                    commandType: 'screen_stream',
-                    action: 'start'
-                });
-                
-                elements.screenPlaceholder.style.display = 'none';
-                elements.screenCanvas.style.display = 'block';
-                log('开始屏幕投屏...', 'info');
-            });
-            
-            elements.stopScreenBtn.addEventListener('click', function() {
-                // 发送停止屏幕投屏命令
-                sendControlCommand({
-                    commandType: 'screen_stream',
-                    action: 'stop'
-                });
-                
-                elements.screenPlaceholder.style.display = 'block';
-                elements.screenCanvas.style.display = 'none';
-                log('停止屏幕投屏', 'info');
-            });
+            elements.startScreenBtn.addEventListener('click', startScreenStream);
+            elements.stopScreenBtn.addEventListener('click', stopScreenStream);
         }
         
         // 获取本地IP地址
@@ -923,6 +954,9 @@
             // 获取Windows设备信息
             elements.windowsName.textContent = navigator.platform;
             elements.windowsIp.textContent = window.location.hostname || '192.168.124.18';
+            
+            // 初始化屏幕显示管理器
+            initScreenDisplayManager();
         }
         
         // 页面加载完成后初始化

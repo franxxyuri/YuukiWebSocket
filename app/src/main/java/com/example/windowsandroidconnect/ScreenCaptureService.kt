@@ -4,6 +4,11 @@ import android.app.Activity
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.ImageFormat
+import android.hardware.display.VirtualDisplay
+
+import android.media.ImageReader
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
@@ -103,7 +108,7 @@ class ScreenCaptureService : Service() {
         mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data)
         
         // 初始化网络通信模块
-        networkCommunication = (application as? MyApplication)?.networkCommunication
+        networkCommunication = (application as? com.example.windowsandroidconnect.MyApplication)?.networkCommunication
     }
 
     /**
@@ -130,7 +135,7 @@ class ScreenCaptureService : Service() {
 
         // 初始化网络通信模块
         if (networkCommunication == null) {
-            networkCommunication = (application as? MyApplication)?.networkCommunication
+            networkCommunication = (application as? com.example.windowsandroidconnect.MyApplication)?.networkCommunication
         }
 
         // 创建屏幕捕获工作器
@@ -267,7 +272,7 @@ class ScreenCaptureWorker(
         imageReader = android.media.ImageReader.newInstance(
             SCREEN_WIDTH, 
             SCREEN_HEIGHT, 
-            android.graphics.ImageFormat.PRIVATE, 
+            ImageFormat.PRIVATE,
             2
         )
         
@@ -294,9 +299,10 @@ class ScreenCaptureWorker(
      */
     private suspend fun captureLoop() {
         while (isCapturing) {
+            var image: android.media.Image? = null
             try {
                 // 获取最新的图像
-                val image = withContext(Dispatchers.Main) {
+                image = withContext(Dispatchers.Main) {
                     imageReader?.acquireLatestImage()
                 }
                 
@@ -305,18 +311,20 @@ class ScreenCaptureWorker(
                     val bitmap = imageToBitmap(image)
                     val frameData = bitmapToByteArray(bitmap)
                     
-                    // 通过网络发送帧数据
-                    if (networkCommunication?.isConnected() == true) {
-                        networkCommunication?.sendScreenFrame(frameData)
+                    // 检查帧数据是否有效
+                    if (frameData.isNotEmpty()) {
+                        // 通过网络发送帧数据
+                        if (networkCommunication?.isConnected() == true) {
+                            networkCommunication?.sendScreenFrame(frameData)
+                        } else {
+                            Log.w(TAG, "网络未连接，跳过帧发送")
+                        }
                     } else {
-                        Log.w(TAG, "网络未连接，跳过帧发送")
+                        Log.w(TAG, "帧数据为空，跳过发送")
                     }
                     
                     // 限制帧率（例如30fps）
                     delay((1000 / 30).toLong())
-                    
-                    // 关闭图像
-                    image.close()
                 } else {
                     // 没有新图像，短暂休眠
                     delay(16) // 约60fps
@@ -324,6 +332,15 @@ class ScreenCaptureWorker(
             } catch (e: Exception) {
                 Log.e(TAG, "捕获循环错误", e)
                 delay(100) // 错误后短暂休眠
+            } finally {
+                // 确保图像在finally块中关闭
+                if (image != null) {
+                    try {
+                        image.close()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "关闭图像失败", e)
+                    }
+                }
             }
         }
     }
@@ -331,31 +348,66 @@ class ScreenCaptureWorker(
     /**
      * 将Image转换为Bitmap
      */
-    private fun imageToBitmap(image: android.media.Image): android.graphics.Bitmap {
+    private fun imageToBitmap(image: android.media.Image): android.graphics.Bitmap? {
         val planes = image.planes
+        if (planes.isEmpty() || planes[0].buffer == null) {
+            Log.w(TAG, "图像planes数组为空或缓冲区无效")
+            return null
+        }
         val buffer = planes[0].buffer
         val pixelStride = planes[0].pixelStride
         val rowStride = planes[0].rowStride
         val rowPadding = rowStride - pixelStride * image.width
-        
-        val bitmap = android.graphics.Bitmap.createBitmap(
-            image.width + rowPadding / pixelStride,
-            image.height,
-            android.graphics.Bitmap.Config.ARGB_8888
-        )
-        bitmap.copyPixelsFromBuffer(buffer)
-        return bitmap
+
+        // 确保尺寸有效
+        val actualWidth = if (image.width + rowPadding / pixelStride <= 0) image.width else image.width + rowPadding / pixelStride
+        val actualHeight = if (image.height <= 0) 1 else image.height
+
+        return try {
+            val bitmap = android.graphics.Bitmap.createBitmap(
+                actualWidth,
+                actualHeight,
+                android.graphics.Bitmap.Config.ARGB_8888
+            )
+            // 安全地复制像素，避免可能的错误
+            if (buffer.remaining() > 0) {
+                try {
+                    bitmap.copyPixelsFromBuffer(buffer)
+                } catch (e: Exception) {
+                    Log.e(TAG, "copyPixelsFromBuffer失败", e)
+                    // 创建一个空的位图作为备用
+                    android.graphics.Bitmap.createBitmap(actualWidth, actualHeight, android.graphics.Bitmap.Config.ARGB_8888)
+                }
+            } else {
+                Log.w(TAG, "图像缓冲区为空")
+                // 创建一个空的位图作为备用
+                android.graphics.Bitmap.createBitmap(actualWidth, actualHeight, android.graphics.Bitmap.Config.ARGB_8888)
+            }
+            bitmap
+        } catch (e: Exception) {
+            Log.e(TAG, "创建位图失败", e)
+            // 返回一个默认的空位图作为备用
+            android.graphics.Bitmap.createBitmap(SCREEN_WIDTH, SCREEN_HEIGHT, android.graphics.Bitmap.Config.ARGB_8888)
+        }
     }
     
     /**
      * 将Bitmap转换为字节数组
      */
-    private fun bitmapToByteArray(bitmap: android.graphics.Bitmap): ByteArray {
+    private fun bitmapToByteArray(bitmap: android.graphics.Bitmap?): ByteArray {
+        if (bitmap == null || bitmap.isRecycled) {
+            Log.w(TAG, "位图为空或已被回收，返回空字节数组")
+            return ByteArray(0)
+        }
         val outputStream = ByteArrayOutputStream()
         
         // 压缩图像以减少网络传输量
         val quality = 60 // 压缩质量（60%）
-        bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, quality, outputStream)
+        val result = bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, quality, outputStream)
+        if (!result) {
+            Log.e(TAG, "位图压缩失败")
+            return ByteArray(0)
+        }
         
         return outputStream.toByteArray()
     }

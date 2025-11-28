@@ -323,6 +323,7 @@ class DeviceDiscoveryService : Service() {
      */
     private fun notifyDeviceDiscovered(device: DeviceInfoWrapper) {
         try {
+            // 通过网络通信模块通知设备发现
             if (networkCommunication != null && networkCommunication!!.isConnected()) {
                 val message = JSONObject().apply {
                     put("type", "device_discovered")
@@ -338,6 +339,14 @@ class DeviceDiscoveryService : Service() {
                 }
                 networkCommunication?.sendMessage(message)
             }
+            
+            // 发送本地广播，供UI组件接收
+            val intent = Intent().apply {
+                action = "com.example.windowsandroidconnect.DEVICE_FOUND"
+                putExtra("deviceId", device.id)
+                putExtra("deviceInfo", "${device.name} (${device.platform}) - ${device.ip}:${device.port}")
+            }
+            sendBroadcast(intent)
         } catch (e: Exception) {
             Log.e(TAG, "通知设备发现失败", e)
         }

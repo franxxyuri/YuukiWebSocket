@@ -83,63 +83,24 @@
         android:background="#f9f9f9"
         android:layout_marginBottom="16dp" />
 
-    <!-- 测试页面按钮 -->
+    
+
+    
+
+    
+
+    
+
+    <!-- 快速功能验证测试页面按钮 -->
     <Button
-        android:id="@+id/test_page_button"
+        android:id="@+id/quick_test_button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="设备发现测试页面"
+        android:text="快速功能验证测试"
         android:textSize="16sp"
-        android:layout_marginBottom="8dp"
+        android:layout_marginTop="8dp"
         android:padding="12dp"
-        android:background="#9C27B0"
+        android:background="#795548"
         android:textColor="#ffffff" />
 
-    <!-- 配置管理页面按钮 -->
-    <Button
-        android:id="@+id/config_button"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="客户端配置管理"
-        android:textSize="16sp"
-        android:layout_marginBottom="8dp"
-        android:padding="12dp"
-        android:background="#4CAF50"
-        android:textColor="#ffffff" />
-
-    <!-- 调试测试页面按钮 -->
-    <Button
-        android:id="@+id/debug_test_button"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="调试测试页面"
-        android:textSize="16sp"
-        android:padding="12dp"
-        android:background="#FF5722"
-        android:textColor="#ffffff" />
-
-    <!-- 模拟测试页面按钮 -->
-    <Button
-        android:id="@+id/mock_test_button"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="模拟测试页面"
-        android:textSize="16sp"
-        android:layout_marginTop="8dp"
-        android:padding="12dp"
-        android:background="#607D8B"
-        android:textColor="#ffffff" />
-
-    <!-- 快速功能验证测试页面按钮 -->
-    <Button
-        android:id="@+id/quick_test_button"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="快速功能验证测试"
-        android:textSize="16sp"
-        android:layout_marginTop="8dp"
-        android:padding="12dp"
-        android:background="#795548"
-        android:textColor="#ffffff" />
-
 </LinearLayout>
