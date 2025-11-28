@@ -389,7 +389,7 @@ class MockTestActivity : Activity() {
         
         try {
             // 启动屏幕捕获服务
-            val intent = Intent(this, ScreenCaptureService::class.java)
+            val intent = Intent(this, com.example.windowsandroidconnect.service.ScreenCaptureService::class.java)
             startForegroundService(intent)
             
             startScreenCaptureButton.isEnabled = false
@@ -404,7 +404,7 @@ class MockTestActivity : Activity() {
     
     private fun stopMockScreenCapture() {
         try {
-            val intent = Intent(this, ScreenCaptureService::class.java)
+            val intent = Intent(this, com.example.windowsandroidconnect.service.ScreenCaptureService::class.java)
             stopService(intent)
             
             startScreenCaptureButton.isEnabled = true

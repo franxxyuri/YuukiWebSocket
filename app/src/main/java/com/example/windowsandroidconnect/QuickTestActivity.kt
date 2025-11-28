@@ -214,7 +214,7 @@ class QuickTestActivity : Activity() {
     private fun testScreenCapture() {
         try {
             // 尝试启动屏幕捕获服务
-            val intent = Intent(this, ScreenCaptureService::class.java)
+            val intent = Intent(this, com.example.windowsandroidconnect.service.ScreenCaptureService::class.java)
             startForegroundService(intent)
             logMessage("屏幕捕获服务启动测试完成")
             showToast("屏幕捕获测试完成")

@@ -847,10 +847,12 @@ async function startServer() {
         console.log('Vite开发服务器已启动');
         
         // 启动主服务器 (使用配置的端口)
-        server.listen(config.server.port, config.server.host, () => {
+    // 确保使用环境变量中指定的端口
+    const actualPort = parseInt(process.env.SERVER_PORT) || config.server.port;
+    server.listen(actualPort, config.server.host, () => {
             const localIP = getLocalIP();
-            console.log(`Windows主服务运行在: http://${localIP}:${config.server.port}`);
-            console.log(`Windows主服务运行在: http://${config.server.host}:${config.server.port}`);
+            console.log(`Windows主服务运行在: http://${localIP}:${actualPort}`);
+            console.log(`Windows主服务运行在: http://${config.server.host}:${actualPort}`);
             console.log(`Vite开发服务器运行在: http://${localIP}:${config.vite.port}`);
             console.log(`Vite开发服务器运行在: http://${config.vite.host}:${config.vite.port}`);
             console.log('等待Android设备连接...');

@@ -524,7 +524,7 @@ class MainActivity : Activity() {
         startService(projectionIntent)
         
         // 启动屏幕捕获服务
-        val captureIntent = Intent(this, ScreenCaptureService::class.java)
+        val captureIntent = Intent(this, com.example.windowsandroidconnect.service.ScreenCaptureService::class.java)
         startForegroundService(captureIntent)
         
         showToast("正在启动屏幕投屏...")
