@@ -4,6 +4,8 @@
  */
 import WebSocketStrategy from './connection-strategy/WebSocketStrategy';
 import MockConnectionStrategy from './connection-strategy/MockConnectionStrategy';
+import TCPStrategy from './connection-strategy/TCPStrategy';
+import KCPStrategy from './connection-strategy/KCPStrategy';
 import configManager from './ConfigManager';
 
 class ConnectionManager {
@@ -134,7 +136,7 @@ class ConnectionManager {
 
   /**
    * 设置连接类型
-   * @param {string} type - 连接类型 ('websocket' | 'mock' | 其他自定义类型)
+   * @param {string} type - 连接类型 ('websocket' | 'mock' | 'tcp' | 'kcp')
    * @returns {ConnectionManager} 连接管理器实例，支持链式调用
    */
   setConnectionType(type) {
@@ -153,6 +155,14 @@ class ConnectionManager {
       case 'mock':
         this.strategy = new MockConnectionStrategy(connectionConfig);
         console.log('已切换到模拟连接策略');
+        break;
+      case 'tcp':
+        this.strategy = new TCPStrategy(connectionConfig);
+        console.log('已切换到TCP连接策略');
+        break;
+      case 'kcp':
+        this.strategy = new KCPStrategy(connectionConfig);
+        console.log('已切换到KCP连接策略');
         break;
       case 'websocket':
       default:
@@ -177,7 +187,7 @@ class ConnectionManager {
     // 优先使用传入的URL，如果没有则从配置中获取，如果配置中也没有则使用默认值
     const url = serverUrl || 
                 configManager.get('connection.websocketUrl', this.config.serverUrl) || 
-                'ws://localhost:8781/ws';
+                'ws://localhost:8928';
     
     console.log(`正在连接到 ${this.config.connectionType} 服务器: ${url}`);
     
@@ -329,11 +339,11 @@ class ConnectionManager {
   
   /**
    * 切换连接策略
-   * @param {string} strategyType - 策略类型 ('websocket' | 'mock')
+   * @param {string} strategyType - 策略类型 ('websocket' | 'mock' | 'tcp' | 'kcp')
    * @returns {Promise<void>}
    */
   async switchStrategy(strategyType) {
-    if (!['websocket', 'mock'].includes(strategyType)) {
+    if (!['websocket', 'mock', 'tcp', 'kcp'].includes(strategyType)) {
       throw new Error(`不支持的连接策略类型: ${strategyType}`);
     }
     
@@ -403,54 +413,94 @@ class ConnectionManager {
    */
   
   // 开始设备发现
-  startDeviceDiscovery() {
-    // 发送命令到服务器（如果是WebSocket模式）
-    if (this.config.connectionType !== 'mock') {
-      this.sendCommand('start_device_discovery', {});
+  async startDeviceDiscovery() {
+    if (this.config.connectionType === 'mock') {
+      // 模拟模式下返回模拟数据
+      const mockDevices = [
+        {
+          id: 'mock-device-1',
+          name: 'Android Phone 1',
+          model: 'Google Pixel 7',
+          ip: '192.168.1.101',
+          battery: 78,
+          status: 'available',
+          lastSeen: new Date().toISOString()
+        },
+        {
+          id: 'mock-device-2',
+          name: 'Android Tablet',
+          model: 'Samsung Galaxy Tab S7',
+          ip: '192.168.1.102',
+          battery: 45,
+          status: 'available',
+          lastSeen: new Date().toISOString()
+        },
+        {
+          id: 'mock-device-3',
+          name: 'Android TV',
+          model: 'Xiaomi Mi Box S',
+          ip: '192.168.1.103',
+          battery: 100,
+          status: 'available',
+          lastSeen: new Date().toISOString()
+        }
+      ];
+      return mockDevices;
     }
     
-    // 直接返回模拟设备列表，确保UI有数据显示
-    const mockDevices = [
-      {
-        id: 'device-1',
-        name: 'Android Phone 1',
-        model: 'Google Pixel 7',
-        ip: '192.168.1.101',
-        battery: 78,
-        status: 'available',
-        lastSeen: new Date().toISOString()
-      },
-      {
-        id: 'device-2',
-        name: 'Android Tablet',
-        model: 'Samsung Galaxy Tab S7',
-        ip: '192.168.1.102',
-        battery: 45,
-        status: 'available',
-        lastSeen: new Date().toISOString()
-      },
-      {
-        id: 'device-3',
-        name: 'Android TV',
-        model: 'Xiaomi Mi Box S',
-        ip: '192.168.1.103',
-        battery: 100,
-        status: 'available',
-        lastSeen: new Date().toISOString()
-      }
-    ];
-    
-    return Promise.resolve(mockDevices);
+    // WebSocket模式下发送命令并等待响应
+    await this.sendCommand('start_device_discovery', {});
+    // 立即获取已发现的设备
+    return this.getDiscoveredDevices();
   }
 
   // 停止设备发现
-  stopDeviceDiscovery() {
+  async stopDeviceDiscovery() {
+    if (this.config.connectionType === 'mock') {
+      return Promise.resolve({ success: true });
+    }
     return this.sendRequest('stop_device_discovery', {});
   }
 
   // 获取已发现的设备
-  getDiscoveredDevices() {
-    return this.sendRequest('get_discovered_devices', {});
+  async getDiscoveredDevices() {
+    if (this.config.connectionType === 'mock') {
+      // 模拟模式下返回模拟数据
+      const mockDevices = [
+        {
+          id: 'mock-device-1',
+          name: 'Android Phone 1',
+          model: 'Google Pixel 7',
+          ip: '192.168.1.101',
+          battery: 78,
+          status: 'available',
+          lastSeen: new Date().toISOString()
+        },
+        {
+          id: 'mock-device-2',
+          name: 'Android Tablet',
+          model: 'Samsung Galaxy Tab S7',
+          ip: '192.168.1.102',
+          battery: 45,
+          status: 'available',
+          lastSeen: new Date().toISOString()
+        },
+        {
+          id: 'mock-device-3',
+          name: 'Android TV',
+          model: 'Xiaomi Mi Box S',
+          ip: '192.168.1.103',
+          battery: 100,
+          status: 'available',
+          lastSeen: new Date().toISOString()
+        }
+      ];
+      return mockDevices;
+    }
+    
+    // WebSocket模式下发送请求并返回结果
+    const response = await this.sendRequest('get_discovered_devices', {});
+    return response.devices || [];
   }
 
   // 发送文件
@@ -510,6 +560,40 @@ class ConnectionManager {
       ...eventData
     });
   }
+  
+  // 获取已连接的设备列表
+  async getConnectedDevices() {
+    if (this.config.connectionType === 'mock') {
+      // 模拟模式下返回空列表
+      return [];
+    }
+    
+    // WebSocket模式下发送请求
+    const response = await this.sendRequest('get_connected_devices', {});
+    return response.devices || [];
+  }
+  
+  // 连接到设备
+  async connectDevice(deviceId) {
+    if (this.config.connectionType === 'mock') {
+      // 模拟模式下直接返回成功
+      return Promise.resolve({ success: true });
+    }
+    
+    // WebSocket模式下发送请求
+    return this.sendRequest('connect_device', { deviceId });
+  }
+  
+  // 断开设备连接
+  async disconnectDevice(deviceId) {
+    if (this.config.connectionType === 'mock') {
+      // 模拟模式下直接返回成功
+      return Promise.resolve({ success: true });
+    }
+    
+    // WebSocket模式下发送请求
+    return this.sendRequest('disconnect_device', { deviceId });
+  }
 }
 
 // 创建单例实例
@@ -522,7 +606,7 @@ connectionManager.initialize({
                   window.location.search.includes('mock=true') 
     ? 'mock' 
     : 'websocket',
-  serverUrl: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_WS_SERVER_URL) || 'ws://localhost:8781/ws'
+  serverUrl: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_WS_SERVER_URL) || 'ws://localhost:8928'
 });
 
 export default connectionManager;

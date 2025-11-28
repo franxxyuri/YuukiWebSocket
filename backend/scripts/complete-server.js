@@ -229,19 +229,38 @@ wss.on('connection', (ws, request) => {
             const message = JSON.parse(data);
             console.log('收到消息:', message.type);
             
+            // 检查是否是请求消息（有requestId）
+            const hasRequestId = message.requestId !== undefined;
+            
+            // 处理响应的辅助函数
+            const sendResponse = (responseData) => {
+                if (hasRequestId) {
+                    const response = {
+                        ...responseData,
+                        requestId: message.requestId
+                    };
+                    ws.send(JSON.stringify(response));
+                }
+            };
+            
             // 根据消息类型处理
             switch (message.type) {
                 case 'device_info':
                     handleDeviceInfo(clientId, message.deviceInfo);
+                    if (hasRequestId) {
+                        sendResponse({ success: true });
+                    }
                     break;
                 case 'screen_frame':
                     handleScreenFrame(clientId, message);
                     break;
                 case 'file_transfer':
                     handleFileTransfer(clientId, message);
+                    sendResponse({ success: true });
                     break;
                 case 'control_command':
                     handleControlCommand(clientId, message);
+                    sendResponse({ success: true });
                     break;
                 case 'clipboard':
                     handleClipboard(clientId, message);
@@ -261,8 +280,30 @@ wss.on('connection', (ws, request) => {
                 case 'get_discovered_devices':
                     handleGetDiscoveredDevices(clientId, message);
                     break;
+                case 'get_connected_devices':
+                    // 返回已连接的设备列表
+                    const connectedDevices = [];
+                    if (androidDevice) {
+                        connectedDevices.push(androidDevice.info);
+                    }
+                    sendResponse({
+                        success: true,
+                        devices: connectedDevices
+                    });
+                    break;
+                case 'connect_device':
+                    // 简化处理：假设连接成功
+                    sendResponse({ success: true });
+                    break;
+                case 'disconnect_device':
+                    // 简化处理：假设断开成功
+                    sendResponse({ success: true });
+                    break;
                 default:
                     console.log('未知消息类型:', message.type);
+                    if (hasRequestId) {
+                        sendResponse({ success: false, error: '未知消息类型' });
+                    }
                     break;
             }
         } catch (error) {

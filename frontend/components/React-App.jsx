@@ -9,7 +9,8 @@ import {
   CopyOutlined,
   SettingOutlined,
   EyeOutlined,
-  NotificationOutlined
+  NotificationOutlined,
+  BugOutlined
 } from '@ant-design/icons';
 // 导入样式文件
 import '../src/styles/global.css';
@@ -20,21 +21,177 @@ import DeviceDiscovery from './DeviceDiscovery';
 import FileTransfer from './FileTransfer';
 import ScreenShare from './ScreenShare';
 import RemoteControl from './RemoteControl';
+import DebugPage from './DebugPage';
 
 const { Header, Content, Sider } = Layout;
 const { Title, Text } = Typography;
 
-// DeviceCard组件已移除，使用DeviceDiscovery组件代替
+// 定义菜单选项，提取到组件外部，避免每次渲染都重新创建
+const menuItems = [
+  {
+    key: 'devices',
+    icon: <WifiOutlined />,
+    label: '设备管理'
+  },
+  {
+    key: 'files',
+    icon: <DesktopOutlined />,
+    label: '文件传输'
+  },
+  {
+    key: 'screen',
+    icon: <EyeOutlined />,
+    label: '屏幕投屏'
+  },
+  {
+    key: 'control',
+    icon: <ControlOutlined />,
+    label: '远程控制'
+  },
+  {
+    key: 'notifications',
+    icon: <NotificationOutlined />,
+    label: '通知同步'
+  },
+  {
+    key: 'clipboard',
+    icon: <CopyOutlined />,
+    label: '剪贴板'
+  },
+  {
+    key: 'debug',
+    icon: <BugOutlined />,
+    label: '调试工具'
+  },
+  {
+    key: 'settings',
+    icon: <SettingOutlined />,
+    label: '设置'
+  }
+];
+
+// 通知同步组件
+const NotificationsContent = ({ connectedDevice }) => {
+  return (
+    <div style={{ padding: '20px' }}>
+      <Title level={3}>通知同步</Title>
+      <div style={{ color: '#666', marginBottom: '20px' }}>
+        {connectedDevice ? `已连接 ${connectedDevice.name}` : '请先连接设备'}
+      </div>
+      {connectedDevice && (
+        <List
+          itemLayout="horizontal"
+          dataSource={[
+            { id: 1, title: '新消息', content: '您有一条新微信消息', time: '2分钟前' },
+            { id: 2, title: '应用更新', content: '微信有可用更新', time: '5分钟前' },
+            { id: 3, title: '系统提醒', content: '电池电量低，请充电', time: '10分钟前' }
+          ]}
+          renderItem={item => (
+            <List.Item>
+              <List.Item.Meta
+                title={item.title}
+                description={
+                  <div>
+                    <div>{item.content}</div>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>{item.time}</Text>
+                  </div>
+                }
+              />
+              <Button size="small">查看</Button>
+            </List.Item>
+          )}
+        />
+      )}
+    </div>
+  );
+};
+
+// 剪贴板同步组件
+const ClipboardContent = ({ connectedDevice }) => {
+  return (
+    <div style={{ padding: '20px' }}>
+      <Title level={3}>剪贴板同步</Title>
+      <div style={{ color: '#666', marginBottom: '20px' }}>
+        {connectedDevice ? `已连接 ${connectedDevice.name}` : '请先连接设备'}
+      </div>
+      {connectedDevice && (
+        <div style={{ 
+          border: '1px solid #d9d9d9', 
+          borderRadius: '8px', 
+          padding: '20px', 
+          background: '#fafafa'
+        }}>
+          <Title level={4} style={{ marginBottom: '12px' }}>同步剪贴板内容</Title>
+          <div style={{ 
+            minHeight: '100px', 
+            border: '1px solid #d9d9d9', 
+            borderRadius: '4px', 
+            padding: '10px', 
+            background: '#fff',
+            fontFamily: 'monospace',
+            whiteSpace: 'pre-wrap',
+            marginBottom: '12px'
+          }}>
+            {window.navigator.clipboard ? '点击同步按钮以同步剪贴板内容' : '浏览器不支持剪贴板API'}
+          </div>
+          <Space>
+            <Button type="primary" icon={<CopyOutlined />}>同步到设备</Button>
+            <Button icon={<CopyOutlined />}>从设备同步</Button>
+          </Space>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// 设置组件
+const SettingsContent = () => {
+  return (
+    <div style={{ padding: '20px' }}>
+      <Title level={3}>应用设置</Title>
+      <div style={{ color: '#666' }}>
+        <div style={{ marginBottom: '24px' }}>
+          <Title level={5} style={{ marginBottom: '12px' }}>连接设置</Title>
+          <Space orientation="vertical" size="middle">
+        <div>
+          <Text strong>自动重连: </Text>
+          <span>开启</span>
+        </div>
+        <div>
+          <Text strong>超时时间: </Text>
+          <span>30秒</span>
+        </div>
+      </Space>
+        </div>
+        <div>
+          <Title level={5} style={{ marginBottom: '12px' }}>界面设置</Title>
+          <Space orientation="vertical" size="middle">
+        <div>
+          <Text strong>主题: </Text>
+          <span>亮色</span>
+        </div>
+        <div>
+          <Text strong>语言: </Text>
+          <span>简体中文</span>
+        </div>
+      </Space>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const App = () => {
   const [selectedMenu, setSelectedMenu] = useState('devices');
   const [connectedDevice, setConnectedDevice] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState({ isConnected: false, isMockMode: false });
   const [connectionError, setConnectionError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   // 初始化API服务连接
   useEffect(() => {
     const initConnection = async () => {
+      setLoading(true);
       try {
         await apiService.connect();
         
@@ -70,6 +227,8 @@ const App = () => {
           setConnectionStatus({ isConnected: true, isMockMode: true });
           message.warning('无法连接到后端服务，已切换到模拟演示模式');
         }
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -85,43 +244,11 @@ const App = () => {
     setConnectedDevice(device);
   }, []);
 
-  const menuItems = [
-    {
-      key: 'devices',
-      icon: <WifiOutlined />,
-      label: '设备管理'
-    },
-    {
-      key: 'files',
-      icon: <DesktopOutlined />,
-      label: '文件传输'
-    },
-    {
-      key: 'screen',
-      icon: <EyeOutlined />,
-      label: '屏幕投屏'
-    },
-    {
-      key: 'control',
-      icon: <ControlOutlined />,
-      label: '远程控制'
-    },
-    {
-      key: 'notifications',
-      icon: <NotificationOutlined />,
-      label: '通知同步'
-    },
-    {
-      key: 'clipboard',
-      icon: <CopyOutlined />,
-      label: '剪贴板'
-    },
-    {
-      key: 'settings',
-      icon: <SettingOutlined />,
-      label: '设置'
-    }
-  ];
+  // 使用useMemo优化当前选中的菜单标签查找
+  const currentMenuLabel = useMemo(() => {
+    const menuItem = menuItems.find(item => item.key === selectedMenu);
+    return menuItem ? menuItem.label : '';
+  }, [selectedMenu]);
 
   const renderContent = () => {
     switch (selectedMenu) {
@@ -137,111 +264,17 @@ const App = () => {
       case 'control':
         return <RemoteControl connectedDevice={connectedDevice} />;
 
-
       case 'notifications':
-        return (
-          <div style={{ padding: '20px' }}>
-            <Title level={3}>通知同步</Title>
-            <div style={{ color: '#666', marginBottom: '20px' }}>
-              {connectedDevice ? `已连接 ${connectedDevice.name}` : '请先连接设备'}
-            </div>
-            {connectedDevice && (
-              <List
-                itemLayout="horizontal"
-                dataSource={[
-                  { id: 1, title: '新消息', content: '您有一条新微信消息', time: '2分钟前' },
-                  { id: 2, title: '应用更新', content: '微信有可用更新', time: '5分钟前' },
-                  { id: 3, title: '系统提醒', content: '电池电量低，请充电', time: '10分钟前' }
-                ]}
-                renderItem={item => (
-                  <List.Item>
-                    <List.Item.Meta
-                      title={item.title}
-                      description={
-                        <div>
-                          <div>{item.content}</div>
-                          <Text type="secondary" style={{ fontSize: '12px' }}>{item.time}</Text>
-                        </div>
-                      }
-                    />
-                    <Button size="small">查看</Button>
-                  </List.Item>
-                )}
-              />
-            )}
-          </div>
-        );
+        return <NotificationsContent connectedDevice={connectedDevice} />;
 
       case 'clipboard':
-        return (
-          <div style={{ padding: '20px' }}>
-            <Title level={3}>剪贴板同步</Title>
-            <div style={{ color: '#666', marginBottom: '20px' }}>
-              {connectedDevice ? `已连接 ${connectedDevice.name}` : '请先连接设备'}
-            </div>
-            {connectedDevice && (
-              <div style={{ 
-                border: '1px solid #d9d9d9', 
-                borderRadius: '8px', 
-                padding: '20px', 
-                background: '#fafafa'
-              }}>
-                <Title level={4} style={{ marginBottom: '12px' }}>同步剪贴板内容</Title>
-                <div style={{ 
-                  minHeight: '100px', 
-                  border: '1px solid #d9d9d9', 
-                  borderRadius: '4px', 
-                  padding: '10px', 
-                  background: '#fff',
-                  fontFamily: 'monospace',
-                  whiteSpace: 'pre-wrap',
-                  marginBottom: '12px'
-                }}>
-                  {window.navigator.clipboard ? '点击同步按钮以同步剪贴板内容' : '浏览器不支持剪贴板API'}
-                </div>
-                <Space>
-                  <Button type="primary" icon={<CopyOutlined />}>同步到设备</Button>
-                  <Button icon={<CopyOutlined />}>从设备同步</Button>
-                </Space>
-              </div>
-            )}
-          </div>
-        );
+        return <ClipboardContent connectedDevice={connectedDevice} />;
+
+      case 'debug':
+        return <DebugPage />;
 
       case 'settings':
-        return (
-          <div style={{ padding: '20px' }}>
-            <Title level={3}>应用设置</Title>
-            <div style={{ color: '#666' }}>
-              <div style={{ marginBottom: '24px' }}>
-                <Title level={5} style={{ marginBottom: '12px' }}>连接设置</Title>
-                <Space orientation="vertical" size="middle">
-              <div>
-                <Text strong>自动重连: </Text>
-                <span>开启</span>
-              </div>
-              <div>
-                <Text strong>超时时间: </Text>
-                <span>30秒</span>
-              </div>
-            </Space>
-              </div>
-              <div>
-                <Title level={5} style={{ marginBottom: '12px' }}>界面设置</Title>
-                <Space orientation="vertical" size="middle">
-              <div>
-                <Text strong>主题: </Text>
-                <span>亮色</span>
-              </div>
-              <div>
-                <Text strong>语言: </Text>
-                <span>简体中文</span>
-              </div>
-            </Space>
-              </div>
-            </div>
-          </div>
-        );
+        return <SettingsContent />;
 
       default:
         return null;
@@ -270,7 +303,7 @@ const App = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%' }}>
             <div>
               <Title level={5} style={{ margin: 0 }}>
-                {menuItems.find(item => item.key === selectedMenu)?.label}
+                {currentMenuLabel}
               </Title>
             </div>
             <div>
@@ -281,10 +314,12 @@ const App = () => {
                       color: connectionStatus.isConnected ? '#52c41a' : 
                              connectionStatus.isMockMode ? '#faad14' : '#ff4d4f' 
                     }} />} 
-                    valueStyle={{ 
-                      color: connectionStatus.isConnected ? '#52c41a' : 
-                             connectionStatus.isMockMode ? '#faad14' : '#ff4d4f', 
-                      fontSize: '14px' 
+                    styles={{
+                      content: { 
+                        color: connectionStatus.isConnected ? '#52c41a' : 
+                               connectionStatus.isMockMode ? '#faad14' : '#ff4d4f', 
+                        fontSize: '14px' 
+                      }
                     }}
                   />
                 </Space>
@@ -293,7 +328,9 @@ const App = () => {
         </Header>
         
         <Content style={{ marginTop: 64, margin: '20px', background: '#fff', padding: '20px', borderRadius: '6px' }}>
-          {renderContent()}
+          <Spin spinning={loading} tip="加载中...">
+            {renderContent()}
+          </Spin>
         </Content>
       </Layout>
     </Layout>

@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Card, Tabs, Button, message, Table, Input, Form, Switch, Collapse, Badge, Divider } from 'antd';
 import { 
   PlayCircleOutlined, StopOutlined, ReloadOutlined, BugOutlined, 
-  MonitorOutlined, FileOutlined, SmartphoneOutlined, MessageOutlined,
-  LinkOutlined, LinkOffOutlined, CheckCircleOutlined, CloseCircleOutlined,
+  MonitorOutlined, FileOutlined, MobileOutlined, MessageOutlined,
+  LinkOutlined, CheckCircleOutlined, CloseCircleOutlined,
   EyeOutlined, DatabaseOutlined, EditOutlined
 } from '@ant-design/icons';
 import './DebugPage.css';
@@ -164,7 +164,7 @@ const DebugPage = () => {
       render: (type) => (
         <span>
           {type === 'Android' ? 
-            <SmartphoneOutlined style={{ color: '#3f8600' }} /> : 
+            <MobileOutlined style={{ color: '#3f8600' }} /> : 
             <MonitorOutlined style={{ color: '#1890ff' }} />
           } {type}
         </span>
@@ -197,7 +197,7 @@ const DebugPage = () => {
       render: (_, record) => (
         <Button 
           size="small" 
-          icon={record.status === 'connected' ? <LinkOutlined /> : <LinkOffOutlined />}
+          icon={record.status === 'connected' ? <LinkOutlined /> : <CloseCircleOutlined />}
           onClick={() => {
             const updatedDevices = simulatedDevices.map(device => 
               device.id === record.id 
@@ -282,7 +282,7 @@ const DebugPage = () => {
             <Card title="设备发现测试" size="small" className="status-card" style={{ marginTop: 16 }}>
               <Button 
                 type="primary" 
-                icon={<SmartphoneOutlined />} 
+                icon={<MobileOutlined />} 
                 onClick={simulateDeviceDiscovery}
                 style={{ marginBottom: 16 }}
               >
