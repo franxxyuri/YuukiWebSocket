@@ -343,7 +343,7 @@ class QuickTestActivity : Activity() {
         }
         layout.addView(deviceListTitle)
         
-        // 创建滚动的设备列表容器
+        // 创建可点击的设备列表容器
         val deviceListScrollView = ScrollView(this).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -358,13 +358,22 @@ class QuickTestActivity : Activity() {
             layoutParams.setMargins(0, 0, 0, 16)
             this@apply.layoutParams = layoutParams
         }
+        
+        // 使用LinearLayout作为设备列表容器，支持点击事件
+        val deviceListLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(8, 8, 8, 8)
+        }
+        
+        // 初始设备列表文本
         deviceListText = TextView(this).apply {
             text = """暂无设备
 """
             textSize = 12f
             setTextColor(Color.DKGRAY)
         }
-        deviceListScrollView.addView(deviceListText)
+        deviceListLayout.addView(deviceListText)
+        deviceListScrollView.addView(deviceListLayout)
         layout.addView(deviceListScrollView)
         
         // 测试按钮标题
@@ -1281,14 +1290,66 @@ class QuickTestActivity : Activity() {
 
     private fun updateDeviceList() {
         runOnUiThread {
+            // 找到deviceListText的父容器
+            val parent = deviceListText.parent as? LinearLayout ?: return@runOnUiThread
+            
+            // 清空所有子视图
+            parent.removeAllViews()
+            
             if (discoveredDevices.isEmpty()) {
-                deviceListText.text = """暂无设备
+                // 如果没有设备，显示提示文本
+                deviceListText = TextView(this).apply {
+                    text = """暂无设备
 """
-            } else {
-                val deviceListStr = discoveredDevices.values.joinToString("\n") { deviceInfo ->
-                    deviceInfo
+                    textSize = 12f
+                    setTextColor(Color.DKGRAY)
                 }
-                deviceListText.text = deviceListStr
+                parent.addView(deviceListText)
+            } else {
+                // 创建可点击的设备项
+                discoveredDevices.forEach { (deviceId, deviceInfo) ->
+                    // 解析设备信息，提取IP和端口
+                    val deviceIp = deviceInfo.split("\n").find { it.startsWith("IP:") }?.substring(3)?.trim()
+                    val devicePort = deviceInfo.split("\n").find { it.startsWith("Port:") }?.substring(5)?.trim() ?: "8928"
+                    
+                    val deviceItem = LinearLayout(this).apply {
+                        orientation = LinearLayout.VERTICAL
+                        setPadding(12, 12, 12, 12)
+                        setBackgroundColor(Color.parseColor("#FFFFFF"))
+                        setOnClickListener {
+                            // 点击设备项时自动填充IP和端口并连接
+                            if (deviceIp != null) {
+                                serverIpInput.setText(deviceIp)
+                                serverPortInput.setText(devicePort)
+                                connectToServer()
+                            }
+                        }
+                        // 添加点击效果
+                        foreground = android.graphics.drawable.RippleDrawable(
+                            android.content.res.ColorStateList.valueOf(Color.parseColor("#E0E0E0")),
+                            null,
+                            android.graphics.drawable.ColorDrawable(Color.parseColor("#FFFFFF"))
+                        )
+                        // 设置边框
+                        setBackgroundResource(android.R.drawable.dialog_frame)
+                        // 设置外边距
+                        val layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        )
+                        layoutParams.setMargins(0, 0, 0, 8)
+                        this.layoutParams = layoutParams
+                    }
+                    
+                    val deviceInfoText = TextView(this).apply {
+                        text = deviceInfo
+                        textSize = 12f
+                        setTextColor(Color.DKGRAY)
+                    }
+                    
+                    deviceItem.addView(deviceInfoText)
+                    parent.addView(deviceItem)
+                }
             }
         }
     }

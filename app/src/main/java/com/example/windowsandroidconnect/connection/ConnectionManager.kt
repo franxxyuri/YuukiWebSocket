@@ -2,6 +2,7 @@ package com.example.windowsandroidconnect.connection
 
 import android.util.Log
 import org.json.JSONObject
+import kotlinx.coroutines.delay
 
 /**
  * 连接管理器
@@ -12,6 +13,11 @@ class ConnectionManager {
     private var currentStrategy: ConnectionStrategy? = null
     private val connectionStrategies = mutableMapOf<String, ConnectionStrategy>()
     private val strategyFactories = mutableMapOf<String, () -> ConnectionStrategy>()
+    
+    // 智能连接配置
+    private val connectionRetryDelay = 1000L // 重试延迟时间
+    private val maxConnectionAttempts = 3 // 每种策略最大重试次数
+    private val fallbackStrategies = listOf("tcp", "websocket", "http", "kcp", "udp") // 连接失败时的备选策略顺序
     
     /**
      * 注册连接策略工厂
@@ -57,6 +63,60 @@ class ConnectionManager {
             Log.e("ConnectionManager", "不支持的连接类型: $type")
             false
         }
+    }
+    
+    /**
+     * 智能连接到服务器
+     * 当指定的连接策略失败时，自动尝试备选策略
+     */
+    suspend fun smartConnect(ip: String, port: Int, preferredStrategyType: String? = null): Boolean {
+        // 如果指定了首选策略，先尝试该策略
+        if (preferredStrategyType != null) {
+            if (selectStrategy(preferredStrategyType)) {
+                val success = connectWithRetry(ip, port)
+                if (success) {
+                    return true
+                }
+            }
+        }
+        
+        // 如果首选策略失败或未指定，尝试备选策略
+        for (strategyType in fallbackStrategies) {
+            if (strategyType == preferredStrategyType) continue // 跳过已尝试的策略
+            
+            if (selectStrategy(strategyType)) {
+                val success = connectWithRetry(ip, port)
+                if (success) {
+                    return true
+                }
+            }
+        }
+        
+        return false
+    }
+    
+    /**
+     * 带重试机制的连接
+     */
+    private suspend fun connectWithRetry(ip: String, port: Int): Boolean {
+        var attempts = 0
+        while (attempts < maxConnectionAttempts) {
+            attempts++
+            Log.d("ConnectionManager", "尝试连接 (${currentStrategy?.getConnectionType()})，第 $attempts/$maxConnectionAttempts 次")
+            
+            val success = connect(ip, port)
+            if (success) {
+                return true
+            }
+            
+            // 如果不是最后一次尝试，等待后重试
+            if (attempts < maxConnectionAttempts) {
+                delay(connectionRetryDelay)
+            }
+        }
+        
+        Log.e("ConnectionManager", "连接失败 (${currentStrategy?.getConnectionType()})，已尝试 $maxConnectionAttempts 次")
+        return false
     }
     
     /**

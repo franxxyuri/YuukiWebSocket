@@ -1,6 +1,7 @@
 package com.example.windowsandroidconnect.connection
 
 import android.Manifest
+import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothSocket
@@ -9,6 +10,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresPermission
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import org.json.JSONObject
@@ -155,9 +157,10 @@ class BluetoothConnectionStrategy(context: Context) : ConnectionStrategy {
     /**
      * 启动蓝牙启用请求
      */
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun requestEnableBluetooth(activityContext: Context) {
         val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-        (activityContext as android.app.Activity).startActivityForResult(enableBtIntent, REQUEST_BLUETOOTH_PERMISSIONS)
+        (activityContext as Activity).startActivityForResult(enableBtIntent, REQUEST_BLUETOOTH_PERMISSIONS)
     }
     
     private var bluetoothSocket: BluetoothSocket? = null
@@ -295,6 +298,7 @@ class BluetoothConnectionStrategy(context: Context) : ConnectionStrategy {
         return "Bluetooth"
     }
     
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun getConfig(): Map<String, Any> {
         return mapOf(
             "connectionType" to "Bluetooth",

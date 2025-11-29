@@ -552,6 +552,16 @@ class APIService {
     
     console.log('API服务已销毁');
   }
+  
+  /**
+   * 获取模拟数据
+   * @param {string} type - 数据类型
+   * @returns {*} 模拟数据
+   */
+  getMockData(type) {
+    // 转发给connectionManager
+    return connectionManager.getMockData(type);
+  }
 }
 
 // 创建单例实例

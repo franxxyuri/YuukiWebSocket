@@ -22,7 +22,7 @@ class ConnectionManager {
     };
     
     // 连接状态管理
-    this.isConnected = false;
+    this._isConnected = false;
     this.reconnectAttempts = 0;
     
     // 监听配置变化，自动更新连接策略
@@ -65,7 +65,7 @@ class ConnectionManager {
     
     // 否则返回基本状态
     return {
-      isConnected: this.isConnected,
+      isConnected: this._isConnected,
       connectionType: this.config.connectionType,
       isMockMode: this.config.useMock,
       reconnectAttempts: this.reconnectAttempts,
@@ -270,10 +270,10 @@ class ConnectionManager {
     try {
       await this.strategy.connect(url);
       console.log(`成功连接到 ${url}`);
-      this.isConnected = true;
+      this._isConnected = true;
       this.reconnectAttempts = 0;
     } catch (error) {
-      this.isConnected = false;
+      this._isConnected = false;
       
       // 如果配置了自动重连且未达到最大尝试次数
       if (this.config.maxReconnectAttempts && this.reconnectAttempts < this.config.maxReconnectAttempts) {
