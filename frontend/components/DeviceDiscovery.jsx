@@ -1,5 +1,8 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Card, Button, List, Avatar, Tag, Spin, message, Typography, Empty, Space, Divider } from 'antd';
+import { Card, Button, List, Avatar, Tag, Spin, message, Typography, Empty, Space, Divider, Input, Form, Modal } from 'antd';
+import { 
+  PlusOutlined 
+} from '@ant-design/icons';
 import { 
   AndroidOutlined, 
   WifiOutlined, 
@@ -30,6 +33,13 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
   const [connectionStatus, setConnectionStatus] = useState(false);
   const [connectionMode, setConnectionMode] = useState('normal'); // normal, mock
   
+  // 手动IP连接状态
+  const [manualConnectModalVisible, setManualConnectModalVisible] = useState(false);
+  const [manualIp, setManualIp] = useState('');
+  const [manualDeviceName, setManualDeviceName] = useState('');
+  const [manualConnectLoading, setManualConnectLoading] = useState(false);
+  const [manualConnectForm] = Form.useForm();
+  
   const scanIntervalRef = useRef(null);
   const lastScanTimeRef = useRef(null);
 
@@ -58,18 +68,10 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
         setConnectionStatus(true);
         setConnectionError(null);
       } catch (err) {
-        console.warn('连接失败，尝试使用模拟数据:', err.message);
+        console.warn('连接失败:', err.message);
         setConnectionStatus(false);
         setConnectionError(err.message);
-        
-        // 在无后端服务时使用mock数据
-        const mockDevices = apiService.getMockData('deviceList') || [];
-        if (mockDevices.length > 0) {
-          setDiscoveredDevices(mockDevices);
-          message.warning('后端服务未连接，使用模拟数据进行演示');
-        } else {
-          message.error('无法连接到服务器，请确保后端服务正在运行');
-        }
+        message.error('无法连接到服务器，请确保后端服务正在运行');
       }
     };
 
@@ -370,6 +372,55 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
       message.error(`断开连接失败: ${err.message || '未知错误'}`);
     }
   }, [connectedDevice, onDeviceDisconnect]);
+
+  // 打开手动连接模态框
+  const handleOpenManualConnectModal = useCallback(() => {
+    setManualConnectModalVisible(true);
+  }, []);
+
+  // 关闭手动连接模态框
+  const handleCloseManualConnectModal = useCallback(() => {
+    setManualConnectModalVisible(false);
+    manualConnectForm.resetFields();
+    setManualIp('');
+    setManualDeviceName('');
+  }, [manualConnectForm]);
+
+  // 处理手动连接
+  const handleManualConnect = useCallback(async (values) => {
+    const { ip, deviceName } = values;
+    
+    if (!ip) {
+      message.error('请输入设备IP地址');
+      return;
+    }
+
+    setManualConnectLoading(true);
+    
+    try {
+      // 创建手动输入的设备对象
+      const manualDevice = {
+        id: `manual_${ip.replace(/\./g, '_')}`,
+        name: deviceName || `手动连接设备`,
+        model: 'Manual Connection',
+        ip: ip,
+        battery: 100,
+        status: 'available',
+        lastSeen: new Date().toISOString()
+      };
+
+      // 调用连接设备函数
+      await handleConnectDevice(manualDevice);
+      
+      // 关闭模态框
+      handleCloseManualConnectModal();
+    } catch (err) {
+      console.warn('手动连接设备失败:', err.message);
+      message.error(`手动连接设备失败: ${err.message || '未知错误'}`);
+    } finally {
+      setManualConnectLoading(false);
+    }
+  }, [handleConnectDevice, handleCloseManualConnectModal]);
 
   // 切换收藏设备
   const toggleFavorite = useCallback((deviceId) => {
@@ -694,6 +745,14 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
               {isScanning ? '扫描中...' : '扫描设备'}
             </Button>
             <Button
+              type="default"
+              icon={<PlusOutlined />}
+              onClick={handleOpenManualConnectModal}
+              size="large"
+            >
+              手动输入IP连接
+            </Button>
+            <Button
               icon={<ReloadOutlined />}
               onClick={handleRefreshDevices}
               loading={isRefreshing}
@@ -720,6 +779,60 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
           )}
         </Card>
       </div>
+      
+      {/* 手动IP连接模态框 */}
+      <Modal
+        title="手动输入IP连接"
+        open={manualConnectModalVisible}
+        onCancel={handleCloseManualConnectModal}
+        footer={null}
+        width={500}
+      >
+        <Form
+          form={manualConnectForm}
+          layout="vertical"
+          onFinish={handleManualConnect}
+        >
+          <Form.Item
+            name="deviceName"
+            label="设备名称"
+            rules={[{ required: false, message: '请输入设备名称' }]}
+          >
+            <Input
+              placeholder="例如: My Android Device"
+              onChange={(e) => setManualDeviceName(e.target.value)}
+            />
+          </Form.Item>
+          
+          <Form.Item
+            name="ip"
+            label="设备IP地址"
+            rules={[
+              { required: true, message: '请输入设备IP地址' },
+              {
+                pattern: /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/,
+                message: '请输入有效的IP地址'
+              }
+            ]}
+          >
+            <Input
+              placeholder="例如: 192.168.1.100"
+              onChange={(e) => setManualIp(e.target.value)}
+            />
+          </Form.Item>
+          
+          <Form.Item>
+            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+              <Button onClick={handleCloseManualConnectModal}>
+                取消
+              </Button>
+              <Button type="primary" htmlType="submit" loading={manualConnectLoading}>
+                连接设备
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
       
       {/* 收藏设备 */}
       {renderFavoriteDevices()}

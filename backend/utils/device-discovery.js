@@ -141,13 +141,65 @@ class DeviceDiscovery {
 
   handleUdpMessage(msg, rinfo) {
     try {
-      const data = JSON.parse(msg.toString());
+      const message = msg.toString();
       
-      if (data.type === 'device_broadcast' && data.device) {
-        this.onDeviceFound(data.device, rinfo);
+      // 尝试解析JSON格式消息
+      try {
+        const data = JSON.parse(message);
+        
+        if (data.type === 'device_broadcast' && data.device) {
+          this.onDeviceFound(data.device, rinfo);
+        }
+      } catch (jsonError) {
+        // JSON解析失败，尝试解析传统格式消息
+        if (message.startsWith('ANDROID_DEVICE') || message.startsWith('WINDOWS_DEVICE')) {
+          this.parseLegacyDeviceMessage(message, rinfo);
+        } else {
+          console.error('解析UDP消息失败:', jsonError);
+        }
       }
     } catch (error) {
-      console.error('解析UDP消息失败:', error);
+      console.error('处理UDP消息失败:', error);
+    }
+  }
+  
+  /**
+   * 解析传统格式的设备广播消息
+   * 格式: ANDROID_DEVICE:deviceId:deviceName:version
+   * 或: WINDOWS_DEVICE:deviceId:deviceName:version
+   */
+  parseLegacyDeviceMessage(message, rinfo) {
+    try {
+      const parts = message.split(':');
+      if (parts.length < 4) {
+        console.warn('传统格式消息不完整:', message);
+        return;
+      }
+      
+      const deviceType = parts[0];
+      const deviceId = parts[1];
+      const deviceName = parts[2];
+      const version = parts[3];
+      
+      const device = {
+        deviceId: deviceId,
+        deviceName: deviceName,
+        platform: deviceType === 'ANDROID_DEVICE' ? 'android' : 'windows',
+        version: version,
+        ip: rinfo.address,
+        port: 8928, // 默认端口
+        capabilities: [
+          'file_transfer',
+          'screen_mirror',
+          'remote_control',
+          'notification',
+          'clipboard_sync'
+        ]
+      };
+      
+      this.onDeviceFound(device, rinfo);
+    } catch (error) {
+      console.error('解析传统格式设备消息失败:', error);
     }
   }
 

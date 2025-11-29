@@ -42,7 +42,8 @@ class App extends React.Component {
             autoReconnect: true,
             maxReconnectAttempts: 5,
             reconnectDelay: 1000,
-            strategyType: 'mock', // 开发环境使用模拟连接
+            strategyType: 'websocket', // 默认使用真实连接
+            mockMode: false, // 默认不使用模拟模式
             messageTimeout: 5000
           },
           debugMode: true
@@ -56,10 +57,9 @@ class App extends React.Component {
         this.setState({ connected: true });
         message.success('连接成功');
       } catch (error) {
-        console.warn('无法建立连接，将使用模拟模式:', error);
-        message.warning('无法建立连接，将使用模拟模式运行');
-        // 仍然设置为已连接，因为模拟连接可以正常工作
-        this.setState({ connected: true });
+        console.warn('无法建立连接:', error);
+        message.error('无法建立连接，请检查服务器状态或网络连接');
+        this.setState({ connected: false });
       }
 
       // 注册全局事件监听
@@ -68,6 +68,7 @@ class App extends React.Component {
     } catch (error) {
       console.error('应用初始化失败:', error);
       message.error('应用初始化失败，请检查配置');
+      this.setState({ loading: false, connected: false });
     } finally {
       this.setState({ loading: false });
     }
