@@ -1,0 +1,76 @@
+{
+  "startTime": 1764424793093,
+  "endTime": 1764424793121,
+  "duration": 28,
+  "totalTests": 5,
+  "passedTests": 1,
+  "failedTests": 4,
+  "tests": [
+    {
+      "name": "测试服务器HTTP响应",
+      "type": "api",
+      "status": "failed",
+      "error": "HTTP请求失败: connect ECONNREFUSED 127.0.0.1:8928",
+      "startTime": 1764424793097,
+      "endTime": 1764424793102,
+      "duration": 5
+    },
+    {
+      "name": "测试设备列表API",
+      "type": "api",
+      "status": "failed",
+      "error": "HTTP请求失败: connect ECONNREFUSED 127.0.0.1:8928",
+      "startTime": 1764424793102,
+      "endTime": 1764424793103,
+      "duration": 1
+    },
+    {
+      "name": "测试WebSocket连接",
+      "type": "websocket",
+      "status": "failed",
+      "error": "WebSocket连接错误: connect ECONNREFUSED 127.0.0.1:8928",
+      "startTime": 1764424793103,
+      "endTime": 1764424793105,
+      "duration": 2
+    },
+    {
+      "name": "测试设备发现端口可用性",
+      "type": "discovery",
+      "status": "passed",
+      "error": null,
+      "startTime": 1764424793105,
+      "endTime": 1764424793119,
+      "duration": 14
+    },
+    {
+      "name": "测试服务器端口可用性",
+      "type": "system",
+      "status": "failed",
+      "error": "服务器端口不可用",
+      "startTime": 1764424793119,
+      "endTime": 1764424793121,
+      "duration": 2
+    }
+  ],
+  "serverInfo": {
+    "host": "127.0.0.1",
+    "port": 8928,
+    "timestamp": "2025-11-29T13:59:53.136Z"
+  },
+  "testConfig": {
+    "server": {
+      "host": "127.0.0.1",
+      "port": 8928
+    },
+    "websocket": {
+      "url": "ws://127.0.0.1:8928"
+    },
+    "discovery": {
+      "port": 8091,
+      "broadcastAddress": "255.255.255.255"
+    },
+    "timeout": 5000,
+    "retries": 3,
+    "reportPath": "C:\\Users\\admin\\AndroidStudioProjects\\MyApplication8\\backend\\tests\\reports"
+  }
+}

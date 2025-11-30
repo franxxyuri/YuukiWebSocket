@@ -10,7 +10,7 @@ class TCPStrategy extends ConnectionStrategy {
     super();
     this.serverUrl = serverUrl;
     this.socket = null;
-    this.isConnected = false;
+    this._isConnected = false;
     this.reconnectAttempts = 0;
     
     // 初始化事件和回调容器
@@ -48,7 +48,7 @@ class TCPStrategy extends ConnectionStrategy {
         }
 
         // 确保当前没有活跃连接
-        if (this.socket && this.isConnected) {
+        if (this.socket && this._isConnected) {
           console.warn('TCP已经连接');
           resolve();
           return;
@@ -64,7 +64,7 @@ class TCPStrategy extends ConnectionStrategy {
         // 连接事件
         this.socket.connect(this.port, this.host, () => {
           console.log(`TCP连接已建立: ${this.host}:${this.port}`);
-          this.isConnected = true;
+          this._isConnected = true;
           this.reconnectAttempts = 0;
           resolve();
           
@@ -89,7 +89,7 @@ class TCPStrategy extends ConnectionStrategy {
         // 连接关闭事件
         this.socket.on('close', (hadError) => {
           console.log('TCP连接已关闭', hadError ? '（有错误）' : '');
-          this.isConnected = false;
+          this._isConnected = false;
           this.handleEvent('disconnect', { hadError });
           
           // 尝试自动重连
@@ -163,7 +163,7 @@ class TCPStrategy extends ConnectionStrategy {
    * @param {object} message - 要发送的消息对象
    */
   send(message) {
-    if (!this.socket || !this.isConnected) {
+    if (!this.socket || !this._isConnected) {
       console.error('TCP未连接到服务器');
       return false;
     }
@@ -197,7 +197,7 @@ class TCPStrategy extends ConnectionStrategy {
    */
   getConnectionStatus() {
     return {
-      isConnected: this.isConnected,
+      isConnected: this._isConnected,
       serverUrl: this.serverUrl,
       host: this.host,
       port: this.port,
@@ -211,7 +211,7 @@ class TCPStrategy extends ConnectionStrategy {
    * @returns {boolean} 是否已连接
    */
   isConnected() {
-    return this.isConnected;
+    return this._isConnected;
   }
   
   /**
@@ -251,7 +251,7 @@ class TCPStrategy extends ConnectionStrategy {
    * @returns {Promise<object>} 包含响应的Promise
    */
   sendRequest(type, data) {
-    if (!this.socket || !this.isConnected) {
+    if (!this.socket || !this._isConnected) {
       return Promise.reject(new Error('TCP未连接到服务器'));
     }
 
@@ -305,6 +305,7 @@ class TCPStrategy extends ConnectionStrategy {
       // 处理设备发现相关消息
       switch (message.type) {
         case 'device_found':
+        case 'device_discovered':
           this.handleEvent('deviceDiscovered', message.device);
           break;
         case 'android_connected':

@@ -20,7 +20,7 @@ class ConfigManager {
     return {
       // 连接配置
       connection: {
-        websocketUrl: 'ws://localhost:8781/ws',
+        websocketUrl: 'ws://localhost:8928',
         mockMode: process.env.NODE_ENV === 'development' && window.location.search.includes('useMock=true'),
         autoReconnect: true,
         reconnectAttempts: 5,
@@ -97,6 +97,15 @@ class ConfigManager {
       const savedConfig = localStorage.getItem(this.storageKey);
       if (savedConfig) {
         const parsedConfig = JSON.parse(savedConfig);
+        // 清理旧的错误配置
+        if (parsedConfig.connection && parsedConfig.connection.websocketUrl) {
+          const oldUrl = parsedConfig.connection.websocketUrl;
+          // 如果URL包含/ws后缀或指向Vite开发服务器端口(8781)，则使用默认值
+          if (oldUrl.includes('/ws') || oldUrl.includes(':8781')) {
+            console.log('🔧 清理旧的WebSocket URL配置:', oldUrl);
+            delete parsedConfig.connection.websocketUrl;
+          }
+        }
         this.config = this.deepMerge(this.config, parsedConfig);
         console.log('✅ 配置已从本地存储加载');
       }

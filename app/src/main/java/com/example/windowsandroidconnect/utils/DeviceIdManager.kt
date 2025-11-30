@@ -50,4 +50,12 @@ object DeviceIdManager {
         val preferences: SharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         preferences.edit().remove(KEY_DEVICE_ID).apply()
     }
+    
+    /**
+     * 在没有Context的情况下获取设备ID
+     * 生成一个基于设备硬件信息的唯一ID
+     */
+    fun getDeviceIdWithoutContext(): String {
+        return generateDeviceId()
+    }
 }

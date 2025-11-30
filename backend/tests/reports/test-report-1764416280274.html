@@ -1,0 +1,203 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>服务器自测报告</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            background-color: #1890ff;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .summary {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+        .summary-item {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            flex: 1;
+            margin: 0 10px;
+        }
+        .summary-item h3 {
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: #666;
+        }
+        .summary-item .value {
+            font-size: 32px;
+            font-weight: bold;
+        }
+        .passed { color: #52c41a; }
+        .failed { color: #ff4d4f; }
+        .total { color: #1890ff; }
+        .duration { color: #faad14; }
+        .test-results {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .results-header {
+            background-color: #fafafa;
+            padding: 16px;
+            font-weight: bold;
+            display: grid;
+            grid-template-columns: 3fr 1fr 1fr 1fr 1fr;
+            border-bottom: 1px solid #e8e8e8;
+        }
+        .test-item {
+            padding: 16px;
+            display: grid;
+            grid-template-columns: 3fr 1fr 1fr 1fr 1fr;
+            border-bottom: 1px solid #e8e8e8;
+        }
+        .test-item:last-child {
+            border-bottom: none;
+        }
+        .test-item.passed {
+            background-color: #f6ffed;
+        }
+        .test-item.failed {
+            background-color: #fff2f0;
+        }
+        .test-item .status {
+            font-weight: bold;
+        }
+        .test-item .error {
+            grid-column: 1 / -1;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #fff2f0;
+            border-radius: 4px;
+            color: #ff4d4f;
+            font-size: 14px;
+        }
+        footer {
+            margin-top: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        .timestamp {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>服务器自测报告</h1>
+            <div class="timestamp">生成时间: 2025/11/29 19:38:00</div>
+        </header>
+        
+        <div class="summary">
+            <div class="summary-item">
+                <h3>总测试数</h3>
+                <div class="value total">5</div>
+            </div>
+            <div class="summary-item">
+                <h3>通过测试</h3>
+                <div class="value passed">4</div>
+            </div>
+            <div class="summary-item">
+                <h3>失败测试</h3>
+                <div class="value failed">1</div>
+            </div>
+            <div class="summary-item">
+                <h3>测试时长</h3>
+                <div class="value duration">34ms</div>
+            </div>
+        </div>
+        
+        <div class="test-results">
+            <div class="results-header">
+                <div>测试用例</div>
+                <div>类型</div>
+                <div>状态</div>
+                <div>时长</div>
+                <div>时间</div>
+            </div>
+            
+            <div class="test-item failed">
+                <div>测试服务器HTTP响应</div>
+                <div>api</div>
+                <div class="status failed">失败</div>
+                <div>7ms</div>
+                <div>19:38:00</div>
+                <div class="error">解析响应失败: Unexpected token '<', "<!DOCTYPE "... is not valid JSON</div>
+            </div>
+            
+            <div class="test-item passed">
+                <div>测试设备列表API</div>
+                <div>api</div>
+                <div class="status passed">通过</div>
+                <div>3ms</div>
+                <div>19:38:00</div>
+                
+            </div>
+            
+            <div class="test-item passed">
+                <div>测试WebSocket连接</div>
+                <div>websocket</div>
+                <div class="status passed">通过</div>
+                <div>5ms</div>
+                <div>19:38:00</div>
+                
+            </div>
+            
+            <div class="test-item passed">
+                <div>测试设备发现端口可用性</div>
+                <div>discovery</div>
+                <div class="status passed">通过</div>
+                <div>13ms</div>
+                <div>19:38:00</div>
+                
+            </div>
+            
+            <div class="test-item passed">
+                <div>测试服务器端口可用性</div>
+                <div>system</div>
+                <div class="status passed">通过</div>
+                <div>3ms</div>
+                <div>19:38:00</div>
+                
+            </div>
+            
+        </div>
+        
+        <footer>
+            <p>Windows-Android Connect 自动化测试报告</p>
+        </footer>
+    </div>
+</body>
+</html>
+  

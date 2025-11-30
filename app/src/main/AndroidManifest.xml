@@ -167,12 +167,6 @@
                 android:resource="@xml/accessibility_service_config" />
         </service>
 
-        <!-- 屏幕捕获服务 -->
-        <service
-            android:name="com.example.windowsandroidconnect.ScreenCaptureService"
-            android:enabled="true"
-            android:exported="false" />
-
         <!-- 接收器 -->
         <receiver
             android:name="com.example.windowsandroidconnect.receiver.BootReceiver"

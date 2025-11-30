@@ -202,17 +202,20 @@
                     .catch(() => {});
                 
                 pc.onicecandidate = (ice) => {
-                    if (ice && ice.candidate && ice.candidate.candidate) {
-                        const myIP = /([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/.exec(ice.candidate.candidate)[1];
-                        
-                        if (myIP && !myIP.startsWith('192.168.1') && !myIP.startsWith('10.') && !myIP.startsWith('172.')) {
-                            // 这是一个公网IP，跳过
-                        } else {
-                            // 这是一个局域网IP
-                            ips.push(myIP);
-                        }
+            if (ice && ice.candidate && ice.candidate.candidate) {
+                const match = /([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/.exec(ice.candidate.candidate);
+                if (match && match[1]) {
+                    const myIP = match[1];
+                    
+                    if (myIP && !myIP.startsWith('192.168.1') && !myIP.startsWith('10.') && !myIP.startsWith('172.')) {
+                        // 这是一个公网IP，跳过
+                    } else {
+                        // 这是一个局域网IP
+                        ips.push(myIP);
                     }
-                };
+                }
+            }
+        };
                 
                 // 等待一段时间收集IP地址
                 setTimeout(() => {
@@ -237,7 +240,8 @@
         // 检查服务器状态
         async function checkServerStatus() {
             try {
-                const response = await fetch('http://localhost:8928/api/status');
+                // 使用实际运行的端口9928
+                const response = await fetch('http://localhost:9928/api/status');
                 if (response.ok) {
                     const data = await response.json();
                     elements.serverStatus.className = 'status success';

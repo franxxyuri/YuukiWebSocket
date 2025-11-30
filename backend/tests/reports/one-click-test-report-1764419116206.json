@@ -1,0 +1,347 @@
+{
+  "startTime": 1764419090255,
+  "endTime": 1764419116190,
+  "duration": 25935,
+  "totalTests": 14,
+  "passedTests": 2,
+  "failedTests": 25,
+  "skippedTests": 0,
+  "tests": [
+    {
+      "name": "CommonJS测试: test-android-connection.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行超时 (5000ms)",
+      "startTime": 1764419090262,
+      "endTime": 1764419100281,
+      "duration": 10019
+    },
+    {
+      "name": "CommonJS测试: test-android-connection.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行失败，退出码: null\n错误输出: ",
+      "startTime": 1764419090262,
+      "endTime": 1764419100287,
+      "duration": 10025,
+      "output": "开始测试Android客户端连接...\n✅ 已成功连接到WebSocket服务器\n📤 发送设备信息...\n📥 收到服务器消息: connection_established\n✅ 连接确认成功: {\n  type: 'connection_established',\n  clientId: 'client-1764419090343-bghjt75ir',\n  timestamp: 1764419090343\n}\n",
+      "errorOutput": ""
+    },
+    {
+      "name": "CommonJS测试: test-client.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行失败，退出码: 1\n错误输出: file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-client.js:2\r\nconst net = require('net');\r\n            ^\r\n\r\nReferenceError: require is not defined in ES module scope, you can use import instead\r\nThis file is being treated as an ES module because it has a '.js' file extension and 'C:\\Users\\admin\\AndroidStudioProjects\\MyApplication8\\package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.\r\n    at file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-client.js:2:13\r\n    at ModuleJob.run (node:internal/modules/esm/module_job:234:25)\r\n    at async ModuleLoader.import (node:internal/modules/esm/loader:473:24)\r\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:123:5)\r\n\r\nNode.js v20.18.0\r\n",
+      "startTime": 1764419100281,
+      "endTime": 1764419100329,
+      "duration": 48,
+      "output": "",
+      "errorOutput": "file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-client.js:2\r\nconst net = require('net');\r\n            ^\r\n\r\nReferenceError: require is not defined in ES module scope, you can use import instead\r\nThis file is being treated as an ES module because it has a '.js' file extension and 'C:\\Users\\admin\\AndroidStudioProjects\\MyApplication8\\package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.\r\n    at file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-client.js:2:13\r\n    at ModuleJob.run (node:internal/modules/esm/module_job:234:25)\r\n    at async ModuleLoader.import (node:internal/modules/esm/loader:473:24)\r\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:123:5)\r\n\r\nNode.js v20.18.0\r\n"
+    },
+    {
+      "name": "CommonJS测试: test-connection.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行失败，退出码: 1\n错误输出: file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-connection.js:1\r\nconst WebSocket = require('ws');\r\n                  ^\r\n\r\nReferenceError: require is not defined in ES module scope, you can use import instead\r\nThis file is being treated as an ES module because it has a '.js' file extension and 'C:\\Users\\admin\\AndroidStudioProjects\\MyApplication8\\package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.\r\n    at file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-connection.js:1:19\r\n    at ModuleJob.run (node:internal/modules/esm/module_job:234:25)\r\n    at async ModuleLoader.import (node:internal/modules/esm/loader:473:24)\r\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:123:5)\r\n\r\nNode.js v20.18.0\r\n",
+      "startTime": 1764419100330,
+      "endTime": 1764419100377,
+      "duration": 47,
+      "output": "",
+      "errorOutput": "file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-connection.js:1\r\nconst WebSocket = require('ws');\r\n                  ^\r\n\r\nReferenceError: require is not defined in ES module scope, you can use import instead\r\nThis file is being treated as an ES module because it has a '.js' file extension and 'C:\\Users\\admin\\AndroidStudioProjects\\MyApplication8\\package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.\r\n    at file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-connection.js:1:19\r\n    at ModuleJob.run (node:internal/modules/esm/module_job:234:25)\r\n    at async ModuleLoader.import (node:internal/modules/esm/loader:473:24)\r\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:123:5)\r\n\r\nNode.js v20.18.0\r\n"
+    },
+    {
+      "name": "CommonJS测试: test-improved-client.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行失败，退出码: 1\n错误输出: file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-improved-client.js:1\r\nconst WebSocket = require('ws');\r\n                  ^\r\n\r\nReferenceError: require is not defined in ES module scope, you can use import instead\r\nThis file is being treated as an ES module because it has a '.js' file extension and 'C:\\Users\\admin\\AndroidStudioProjects\\MyApplication8\\package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.\r\n    at file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-improved-client.js:1:19\r\n    at ModuleJob.run (node:internal/modules/esm/module_job:234:25)\r\n    at async ModuleLoader.import (node:internal/modules/esm/loader:473:24)\r\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:123:5)\r\n\r\nNode.js v20.18.0\r\n",
+      "startTime": 1764419100377,
+      "endTime": 1764419100422,
+      "duration": 45,
+      "output": "",
+      "errorOutput": "file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-improved-client.js:1\r\nconst WebSocket = require('ws');\r\n                  ^\r\n\r\nReferenceError: require is not defined in ES module scope, you can use import instead\r\nThis file is being treated as an ES module because it has a '.js' file extension and 'C:\\Users\\admin\\AndroidStudioProjects\\MyApplication8\\package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.\r\n    at file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-improved-client.js:1:19\r\n    at ModuleJob.run (node:internal/modules/esm/module_job:234:25)\r\n    at async ModuleLoader.import (node:internal/modules/esm/loader:473:24)\r\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:123:5)\r\n\r\nNode.js v20.18.0\r\n"
+    },
+    {
+      "name": "CommonJS测试: test-improved-server.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行失败，退出码: 1\n错误输出:   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\r\n                                 Dload  Upload   Total   Spent    Left  Speed\r\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\r100     2  100     2    0     0    789      0 --:--:-- --:--:-- --:--:--  1000\r\n  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\r\n                                 Dload  Upload   Total   Spent    Left  Speed\r\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\r100    88  100    88    0     0  42328      0 --:--:-- --:--:-- --:--:-- 44000\r\n❌ 测试失败: API服务器状态\n   错误: 服务器状态API返回格式不正确\n  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\r\n                                 Dload  Upload   Total   Spent    Left  Speed\r\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\r100   160  100   160    0     0  72892      0 --:--:-- --:--:-- --:--:-- 80000\r\n❌ 测试失败: API已连接设备\n   错误: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON\n  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\r\n                                 Dload  Upload   Total   Spent    Left  Speed\r\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\r100    88  100    88    0     0  45151      0 --:--:-- --:--:-- --:--:-- 88000\r\n  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\r\n                                 Dload  Upload   Total   Spent    Left  Speed\r\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\r100    88  100    88    0     0  41083      0 --:--:-- --:--:-- --:--:-- 44000\r\n  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\r\n                                 Dload  Upload   Total   Spent    Left  Speed\r\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\r100   216  100   158  100    58  81653  29974 --:--:-- --:--:-- --:--:--  210k\r\n❌ 测试失败: API安全性 - 无效设备ID\n   错误: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON\n  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\r\n                                 Dload  Upload   Total   Spent    Left  Speed\r\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\r100   240  100   240    0     0  10300      0 --:--:-- --:--:-- --:--:-- 10434\r\n  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\r\n                                 Dload  Upload   Total   Spent    Left  Speed\r\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\r100 12991  100 12991    0     0  4723k      0 --:--:-- --:--:-- --:--:-- 6343k\r\n❌ 测试失败: 简单测试路由\n   错误: 简单测试路由返回不正确\n",
+      "startTime": 1764419100423,
+      "endTime": 1764419100670,
+      "duration": 247,
+      "output": "\n====================================\n运行改进后服务器的测试\n====================================\n\n=== 测试: API设备列表格式 ===\n   设备数量: 0\n✅ 测试通过: API设备列表格式\n\n=== 测试: API服务器状态 ===\n\n=== 测试: API已连接设备 ===\n\n=== 测试: API缓存机制 ===\n   第一次请求耗时: 22ms\n   第二次请求耗时: 23ms\n   ⚠️  缓存效果不明显，可能是因为服务器负载低\n✅ 测试通过: API缓存机制\n\n=== 测试: API安全性 - 无效设备ID ===\n\n=== 测试: 静态资源访问 ===\n   静态资源访问通过: vite.svg\n✅ 测试通过: 静态资源访问\n\n=== 测试: 简单测试路由 ===\n\n====================================\n测试结果汇总\n====================================\n总测试数: 7\n通过: 3\n失败: 4\n\n⚠️  有 4 个测试失败\n",
+      "errorOutput": "  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\r\n                                 Dload  Upload   Total   Spent    Left  Speed\r\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\r100     2  100     2    0     0    789      0 --:--:-- --:--:-- --:--:--  1000\r\n  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\r\n                                 Dload  Upload   Total   Spent    Left  Speed\r\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\r100    88  100    88    0     0  42328      0 --:--:-- --:--:-- --:--:-- 44000\r\n❌ 测试失败: API服务器状态\n   错误: 服务器状态API返回格式不正确\n  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\r\n                                 Dload  Upload   Total   Spent    Left  Speed\r\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\r100   160  100   160    0     0  72892      0 --:--:-- --:--:-- --:--:-- 80000\r\n❌ 测试失败: API已连接设备\n   错误: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON\n  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\r\n                                 Dload  Upload   Total   Spent    Left  Speed\r\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\r100    88  100    88    0     0  45151      0 --:--:-- --:--:-- --:--:-- 88000\r\n  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\r\n                                 Dload  Upload   Total   Spent    Left  Speed\r\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\r100    88  100    88    0     0  41083      0 --:--:-- --:--:-- --:--:-- 44000\r\n  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\r\n                                 Dload  Upload   Total   Spent    Left  Speed\r\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\r100   216  100   158  100    58  81653  29974 --:--:-- --:--:-- --:--:--  210k\r\n❌ 测试失败: API安全性 - 无效设备ID\n   错误: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON\n  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\r\n                                 Dload  Upload   Total   Spent    Left  Speed\r\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\r100   240  100   240    0     0  10300      0 --:--:-- --:--:-- --:--:-- 10434\r\n  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\r\n                                 Dload  Upload   Total   Spent    Left  Speed\r\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\r100 12991  100 12991    0     0  4723k      0 --:--:-- --:--:-- --:--:-- 6343k\r\n❌ 测试失败: 简单测试路由\n   错误: 简单测试路由返回不正确\n"
+    },
+    {
+      "name": "CommonJS测试: test-modules.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行失败，退出码: 1\n错误输出: ❌ 模块加载失败: require is not defined\n",
+      "startTime": 1764419100671,
+      "endTime": 1764419100717,
+      "duration": 46,
+      "output": "🔍 检查服务端模块...\n加载网络通信模块...\n",
+      "errorOutput": "❌ 模块加载失败: require is not defined\n"
+    },
+    {
+      "name": "CommonJS测试: test-network-interfaces.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行失败，退出码: 1\n错误输出: file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-network-interfaces.js:3\r\nconst os = require('os');\r\n           ^\r\n\r\nReferenceError: require is not defined in ES module scope, you can use import instead\r\nThis file is being treated as an ES module because it has a '.js' file extension and 'C:\\Users\\admin\\AndroidStudioProjects\\MyApplication8\\package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.\r\n    at file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-network-interfaces.js:3:12\r\n    at ModuleJob.run (node:internal/modules/esm/module_job:234:25)\r\n    at async ModuleLoader.import (node:internal/modules/esm/loader:473:24)\r\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:123:5)\r\n\r\nNode.js v20.18.0\r\n",
+      "startTime": 1764419100717,
+      "endTime": 1764419100777,
+      "duration": 60,
+      "output": "Testing network interface detection...\n",
+      "errorOutput": "file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-network-interfaces.js:3\r\nconst os = require('os');\r\n           ^\r\n\r\nReferenceError: require is not defined in ES module scope, you can use import instead\r\nThis file is being treated as an ES module because it has a '.js' file extension and 'C:\\Users\\admin\\AndroidStudioProjects\\MyApplication8\\package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.\r\n    at file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-network-interfaces.js:3:12\r\n    at ModuleJob.run (node:internal/modules/esm/module_job:234:25)\r\n    at async ModuleLoader.import (node:internal/modules/esm/loader:473:24)\r\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:123:5)\r\n\r\nNode.js v20.18.0\r\n"
+    },
+    {
+      "name": "CommonJS测试: test-network.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行失败，退出码: 1\n错误输出: file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-network.js:1\r\nconst WebSocketServer = require('./websocket-server.js');\r\n                        ^\r\n\r\nReferenceError: require is not defined in ES module scope, you can use import instead\r\nThis file is being treated as an ES module because it has a '.js' file extension and 'C:\\Users\\admin\\AndroidStudioProjects\\MyApplication8\\package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.\r\n    at file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-network.js:1:25\r\n    at ModuleJob.run (node:internal/modules/esm/module_job:234:25)\r\n    at async ModuleLoader.import (node:internal/modules/esm/loader:473:24)\r\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:123:5)\r\n\r\nNode.js v20.18.0\r\n",
+      "startTime": 1764419100777,
+      "endTime": 1764419100833,
+      "duration": 56,
+      "output": "",
+      "errorOutput": "file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-network.js:1\r\nconst WebSocketServer = require('./websocket-server.js');\r\n                        ^\r\n\r\nReferenceError: require is not defined in ES module scope, you can use import instead\r\nThis file is being treated as an ES module because it has a '.js' file extension and 'C:\\Users\\admin\\AndroidStudioProjects\\MyApplication8\\package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.\r\n    at file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-network.js:1:25\r\n    at ModuleJob.run (node:internal/modules/esm/module_job:234:25)\r\n    at async ModuleLoader.import (node:internal/modules/esm/loader:473:24)\r\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:123:5)\r\n\r\nNode.js v20.18.0\r\n"
+    },
+    {
+      "name": "CommonJS测试: test-runner.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行失败，退出码: 1\n错误输出: file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-runner.js:229\r\n    console.log('   console.log('   • React Web应用框架');');\r\n                ^^^^^^^^^^^^^^^^^\r\n\r\nSyntaxError: missing ) after argument list\r\n    at compileSourceTextModule (node:internal/modules/esm/utils:339:16)\r\n    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:168:18)\r\n    at callTranslator (node:internal/modules/esm/loader:428:14)\r\n    at ModuleLoader.moduleProvider (node:internal/modules/esm/loader:434:30)\r\n    at async link (node:internal/modules/esm/module_job:87:21)\r\n\r\nNode.js v20.18.0\r\n",
+      "startTime": 1764419100834,
+      "endTime": 1764419100881,
+      "duration": 47,
+      "output": "",
+      "errorOutput": "file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-runner.js:229\r\n    console.log('   console.log('   • React Web应用框架');');\r\n                ^^^^^^^^^^^^^^^^^\r\n\r\nSyntaxError: missing ) after argument list\r\n    at compileSourceTextModule (node:internal/modules/esm/utils:339:16)\r\n    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:168:18)\r\n    at callTranslator (node:internal/modules/esm/loader:428:14)\r\n    at ModuleLoader.moduleProvider (node:internal/modules/esm/loader:434:30)\r\n    at async link (node:internal/modules/esm/module_job:87:21)\r\n\r\nNode.js v20.18.0\r\n"
+    },
+    {
+      "name": "CommonJS测试: test-server-functions.js",
+      "type": "system",
+      "status": "passed",
+      "error": null,
+      "startTime": 1764419100881,
+      "endTime": 1764419104002,
+      "duration": 3121,
+      "output": "开始测试Windows-Android Connect服务端功能...\n🚀 开始服务端功能测试...\n\n\n--- 测试HTTP API ---\n✅ 状态API测试通过: {\n  server: 'running',\n  timestamp: 1764419100976,\n  androidConnected: false,\n  totalClients: 0\n}\n\n--- 测试WebSocket连接 ---\n✅ WebSocket连接成功\n📤 发送设备信息\n📥 收到消息: connection_established\n⏳ WebSocket测试完成\n\n✅ 所有测试完成\n🔌 WebSocket连接已关闭\n",
+      "errorOutput": ""
+    },
+    {
+      "name": "CommonJS测试: test-server-ports.js",
+      "type": "system",
+      "status": "passed",
+      "error": null,
+      "startTime": 1764419104002,
+      "endTime": 1764419106082,
+      "duration": 2080,
+      "output": "正在测试8928端口...\n8928端口状态码: 200\n8928端口响应数据: {\"server\":\"running\",\"timestamp\":1764419104067,\"androidConnected\":false,\"totalClients\":0}\n正在测试8781端口...\n8781端口连接失败: \n",
+      "errorOutput": ""
+    },
+    {
+      "name": "CommonJS测试: test-server.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行失败，退出码: 1\n错误输出: file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-server.js:1\r\nconst WebSocket = require('ws');\r\n                  ^\r\n\r\nReferenceError: require is not defined in ES module scope, you can use import instead\r\nThis file is being treated as an ES module because it has a '.js' file extension and 'C:\\Users\\admin\\AndroidStudioProjects\\MyApplication8\\package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.\r\n    at file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-server.js:1:19\r\n    at ModuleJob.run (node:internal/modules/esm/module_job:234:25)\r\n    at async ModuleLoader.import (node:internal/modules/esm/loader:473:24)\r\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:123:5)\r\n\r\nNode.js v20.18.0\r\n",
+      "startTime": 1764419106082,
+      "endTime": 1764419106127,
+      "duration": 45,
+      "output": "",
+      "errorOutput": "file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-server.js:1\r\nconst WebSocket = require('ws');\r\n                  ^\r\n\r\nReferenceError: require is not defined in ES module scope, you can use import instead\r\nThis file is being treated as an ES module because it has a '.js' file extension and 'C:\\Users\\admin\\AndroidStudioProjects\\MyApplication8\\package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.\r\n    at file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-server.js:1:19\r\n    at ModuleJob.run (node:internal/modules/esm/module_job:234:25)\r\n    at async ModuleLoader.import (node:internal/modules/esm/loader:473:24)\r\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:123:5)\r\n\r\nNode.js v20.18.0\r\n"
+    },
+    {
+      "name": "CommonJS测试: test-websocket-client.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行失败，退出码: 1\n错误输出: file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-websocket-client.js:1\r\nconst WebSocket = require('ws');\r\n                  ^\r\n\r\nReferenceError: require is not defined in ES module scope, you can use import instead\r\nThis file is being treated as an ES module because it has a '.js' file extension and 'C:\\Users\\admin\\AndroidStudioProjects\\MyApplication8\\package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.\r\n    at file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-websocket-client.js:1:19\r\n    at ModuleJob.run (node:internal/modules/esm/module_job:234:25)\r\n    at async ModuleLoader.import (node:internal/modules/esm/loader:473:24)\r\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:123:5)\r\n\r\nNode.js v20.18.0\r\n",
+      "startTime": 1764419106127,
+      "endTime": 1764419106174,
+      "duration": 47,
+      "output": "",
+      "errorOutput": "file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-websocket-client.js:1\r\nconst WebSocket = require('ws');\r\n                  ^\r\n\r\nReferenceError: require is not defined in ES module scope, you can use import instead\r\nThis file is being treated as an ES module because it has a '.js' file extension and 'C:\\Users\\admin\\AndroidStudioProjects\\MyApplication8\\package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.\r\n    at file:///C:/Users/admin/AndroidStudioProjects/MyApplication8/backend/tests/test-websocket-client.js:1:19\r\n    at ModuleJob.run (node:internal/modules/esm/module_job:234:25)\r\n    at async ModuleLoader.import (node:internal/modules/esm/loader:473:24)\r\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:123:5)\r\n\r\nNode.js v20.18.0\r\n"
+    },
+    {
+      "name": "CommonJS测试: test-client.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行超时 (5000ms)",
+      "startTime": 1764419100281,
+      "endTime": 1764419110288,
+      "duration": 10007
+    },
+    {
+      "name": "CommonJS测试: test-connection.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行超时 (5000ms)",
+      "startTime": 1764419100330,
+      "endTime": 1764419110335,
+      "duration": 10005
+    },
+    {
+      "name": "CommonJS测试: test-improved-client.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行超时 (5000ms)",
+      "startTime": 1764419100377,
+      "endTime": 1764419110383,
+      "duration": 10006
+    },
+    {
+      "name": "CommonJS测试: test-improved-server.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行超时 (5000ms)",
+      "startTime": 1764419100423,
+      "endTime": 1764419110430,
+      "duration": 10007
+    },
+    {
+      "name": "CommonJS测试: test-modules.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行超时 (5000ms)",
+      "startTime": 1764419100671,
+      "endTime": 1764419110678,
+      "duration": 10007
+    },
+    {
+      "name": "CommonJS测试: test-network-interfaces.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行超时 (5000ms)",
+      "startTime": 1764419100717,
+      "endTime": 1764419110726,
+      "duration": 10009
+    },
+    {
+      "name": "CommonJS测试: test-network.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行超时 (5000ms)",
+      "startTime": 1764419100777,
+      "endTime": 1764419110788,
+      "duration": 10011
+    },
+    {
+      "name": "CommonJS测试: test-runner.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行超时 (5000ms)",
+      "startTime": 1764419100834,
+      "endTime": 1764419110851,
+      "duration": 10017
+    },
+    {
+      "name": "CommonJS测试: test-server-functions.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行超时 (5000ms)",
+      "startTime": 1764419100881,
+      "endTime": 1764419110898,
+      "duration": 10017
+    },
+    {
+      "name": "CommonJS测试: test-server-ports.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行超时 (5000ms)",
+      "startTime": 1764419104002,
+      "endTime": 1764419114015,
+      "duration": 10013
+    },
+    {
+      "name": "CommonJS测试: test-server.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行超时 (5000ms)",
+      "startTime": 1764419106082,
+      "endTime": 1764419116095,
+      "duration": 10013
+    },
+    {
+      "name": "CommonJS测试: test-websocket-client.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行超时 (5000ms)",
+      "startTime": 1764419106127,
+      "endTime": 1764419116142,
+      "duration": 10015
+    },
+    {
+      "name": "CommonJS测试: test-websocket-connection.js",
+      "type": "system",
+      "status": "failed",
+      "error": "测试文件执行超时 (5000ms)",
+      "startTime": 1764419106174,
+      "endTime": 1764419116190,
+      "duration": 10016
+    }
+  ],
+  "coverage": {
+    "files": [
+      {
+        "name": "api-service.js",
+        "totalLines": 500,
+        "coveredLines": 420,
+        "coverageRate": 84
+      },
+      {
+        "name": "websocket-service.js",
+        "totalLines": 300,
+        "coveredLines": 255,
+        "coverageRate": 85
+      },
+      {
+        "name": "device-discovery.js",
+        "totalLines": 200,
+        "coveredLines": 160,
+        "coverageRate": 80
+      }
+    ],
+    "totalLines": 1000,
+    "coveredLines": 835,
+    "coverageRate": 83.5
+  },
+  "environment": {
+    "nodeVersion": "v20.18.0",
+    "platform": "win32",
+    "arch": "x64",
+    "testEnvironment": "development"
+  },
+  "serverInfo": {
+    "host": "127.0.0.1",
+    "port": 8928,
+    "timestamp": "2025-11-29T12:25:16.206Z"
+  },
+  "testConfig": {
+    "server": {
+      "host": "127.0.0.1",
+      "port": 8928
+    },
+    "websocket": {
+      "url": "ws://127.0.0.1:8928"
+    },
+    "discovery": {
+      "port": 8091,
+      "broadcastAddress": "255.255.255.255"
+    },
+    "timeout": 5000,
+    "retries": 3,
+    "reportPath": "C:\\Users\\admin\\AndroidStudioProjects\\MyApplication8\\backend\\tests\\reports",
+    "testFilesPath": "C:\\Users\\admin\\AndroidStudioProjects\\MyApplication8\\backend\\tests",
+    "mockEnabled": true,
+    "coverageEnabled": true,
+    "testEnvironment": "development",
+    "testFilter": null,
+    "testType": null,
+    "verbose": false,
+    "onlyFailed": false,
+    "reportFormats": [
+      "html",
+      "json",
+      "junit"
+    ]
+  },
+  "mockEnabled": true,
+  "coverageEnabled": true
+}

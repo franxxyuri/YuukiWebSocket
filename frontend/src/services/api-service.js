@@ -546,7 +546,7 @@ class APIService {
     this.eventListeners.clear();
     
     // 断开连接
-    if (connectionManager.isConnected) {
+    if (connectionManager.isConnected()) {
       connectionManager.disconnect();
     }
     

@@ -8,11 +8,11 @@
   "scripts": {
     "start": "node backend/scripts/complete-server.js",
     "dev": "node backend/scripts/complete-server.js",
-    "dev:vite": "vite --config backend/config/vite-config.js",
+    "dev:vite": "vite",
     "dev:integrated": "node backend/scripts/integrated-vite-server.js",
     "dev:config": "node -r dotenv/config backend/scripts/complete-server.js",
     "start:config": "node -r dotenv/config backend/scripts/complete-server.js",
-    "build": "vite build --config backend/config/vite-config.js",
+    "build": "vite build",
     "preview": "vite preview",
     "server": "node backend/scripts/complete-server.js",
     "server:ports": "SERVER_PORT=${SERVER_PORT:-8928} VITE_PORT=${VITE_PORT:-8781} DISCOVERY_PORT=${DISCOVERY_PORT:-8190} NETWORK_COMM_PORT=${NETWORK_COMM_PORT:-8826} node backend/scripts/complete-server.js",
@@ -24,7 +24,10 @@
     "lint": "eslint *.js *.jsx",
     "clean": "del /s /q node_modules",
     "android-build": "cd app && ./gradlew build",
-    "check-deps": "npm list --depth=0"
+    "check-deps": "npm list --depth=0",
+    "self-test": "node backend/scripts/auto-test.js",
+    "self-test:verbose": "node backend/scripts/auto-test.js --verbose",
+    "start:separated": "start-separated.bat"
   },
   "keywords": [
     "react",
@@ -43,6 +46,7 @@
     "express": "^5.1.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-router-dom": "^7.9.6",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "ws": "^8.18.0"
