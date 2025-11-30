@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Layout, Menu, Typography, Spin, ConfigProvider, theme, Badge, message, notification } from 'antd';
-import { LaptopOutlined, FileTextOutlined, VideoCameraOutlined, AppstoreOutlined, SettingOutlined, BellOutlined, DisconnectOutlined, BugOutlined } from '@ant-design/icons';
+import { LaptopOutlined, FileTextOutlined, VideoCameraOutlined, AppstoreOutlined, SettingOutlined, BellOutlined, DisconnectOutlined, BugOutlined, DashboardOutlined } from '@ant-design/icons';
+import Dashboard from './components/Dashboard';
 import DeviceDiscovery from './components/DeviceDiscovery';
 import FileTransfer from './components/FileTransfer';
 import ScreenShare from './components/ScreenShare';
@@ -17,16 +18,41 @@ const { SubMenu } = Menu;
 class App extends React.Component {
   state = {
     collapsed: false,
-    current: 'device-discovery',
+    current: 'dashboard',
     connected: false,
     loading: true,
     unreadNotifications: 0,
-    notifications: []
+    notifications: [],
+    connectedDevice: null
   };
 
   componentDidMount() {
     // 初始化应用
     this.initializeApp();
+    // 解析URL参数，自动切换到对应的页面
+    this.parseUrlParams();
+  }
+
+  // 解析URL参数
+  parseUrlParams() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const page = urlParams.get('page');
+    if (page) {
+      // 将URL参数映射到内部菜单key
+      const pageMap = {
+        'dashboard': 'dashboard',
+        'devices': 'device-discovery',
+        'screen': 'screen-share',
+        'screen-stream': 'screen-share',
+        'device-manager': 'device-discovery',
+        'file-transfer': 'file-transfer',
+        'remote-control': 'remote-control',
+        'configuration': 'configuration',
+        'debug': 'debug'
+      };
+      const menuKey = pageMap[page] || 'dashboard';
+      this.setState({ current: menuKey });
+    }
   }
 
   // 应用初始化
@@ -38,7 +64,7 @@ class App extends React.Component {
         // 设置默认配置
         const defaultConfig = {
           connection: {
-            url: 'ws://localhost:8928',
+            websocketUrl: 'ws://localhost:8928',
             autoReconnect: true,
             maxReconnectAttempts: 5,
             reconnectDelay: 1000,
@@ -136,6 +162,12 @@ class App extends React.Component {
   // 设备断开处理
   handleDeviceDisconnected = (device) => {
     this.addNotification(`设备已断开: ${device.name || device.id}`);
+    this.setState({ connectedDevice: null });
+  };
+  
+  // 处理设备连接
+  handleDeviceConnect = (device) => {
+    this.setState({ connectedDevice: device });
   };
 
   // 通知处理
@@ -202,20 +234,26 @@ class App extends React.Component {
     const { current } = this.state;
     
     switch (current) {
+      case 'dashboard':
+        return <Dashboard connectedDevice={this.state.connectedDevice} />;
       case 'device-discovery':
-        return <DeviceDiscovery />;
+        return <DeviceDiscovery 
+          onDeviceConnect={this.handleDeviceConnect} 
+          onDeviceDisconnect={this.handleDeviceDisconnect} 
+          connectedDevice={this.state.connectedDevice} 
+        />;
       case 'file-transfer':
-        return <FileTransfer />;
+        return <FileTransfer connectedDevice={this.state.connectedDevice} />;
       case 'screen-share':
-        return <ScreenShare />;
+        return <ScreenShare connectedDevice={this.state.connectedDevice} />;
       case 'remote-control':
-        return <RemoteControl />;
+        return <RemoteControl connectedDevice={this.state.connectedDevice} />;
       case 'configuration':
         return <ConfigurationPage />;
       case 'debug':
         return <DebugPage />;
       default:
-        return <DeviceDiscovery />;
+        return <Dashboard connectedDevice={this.state.connectedDevice} />;
     }
   }
 
@@ -280,6 +318,9 @@ class App extends React.Component {
                 style={{ height: '100%', borderRight: 0 }}
                 onClick={this.handleMenuClick}
               >
+                <Menu.Item key="dashboard" icon={<DashboardOutlined />}>
+                  仪表盘
+                </Menu.Item>
                 <Menu.Item key="device-discovery" icon={<AppstoreOutlined />}>
                   设备发现
                 </Menu.Item>

@@ -1,0 +1,76 @@
+{
+  "startTime": 1764416226185,
+  "endTime": 1764416226225,
+  "duration": 40,
+  "totalTests": 5,
+  "passedTests": 4,
+  "failedTests": 1,
+  "tests": [
+    {
+      "name": "测试服务器HTTP响应",
+      "type": "api",
+      "status": "failed",
+      "error": "解析响应失败: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON",
+      "startTime": 1764416226191,
+      "endTime": 1764416226200,
+      "duration": 9
+    },
+    {
+      "name": "测试设备列表API",
+      "type": "api",
+      "status": "passed",
+      "error": null,
+      "startTime": 1764416226200,
+      "endTime": 1764416226202,
+      "duration": 2
+    },
+    {
+      "name": "测试WebSocket连接",
+      "type": "websocket",
+      "status": "passed",
+      "error": null,
+      "startTime": 1764416226202,
+      "endTime": 1764416226208,
+      "duration": 6
+    },
+    {
+      "name": "测试设备发现端口可用性",
+      "type": "discovery",
+      "status": "passed",
+      "error": null,
+      "startTime": 1764416226208,
+      "endTime": 1764416226222,
+      "duration": 14
+    },
+    {
+      "name": "测试服务器端口可用性",
+      "type": "system",
+      "status": "passed",
+      "error": null,
+      "startTime": 1764416226222,
+      "endTime": 1764416226225,
+      "duration": 3
+    }
+  ],
+  "serverInfo": {
+    "host": "127.0.0.1",
+    "port": 8928,
+    "timestamp": "2025-11-29T11:37:06.240Z"
+  },
+  "testConfig": {
+    "server": {
+      "host": "127.0.0.1",
+      "port": 8928
+    },
+    "websocket": {
+      "url": "ws://127.0.0.1:8928"
+    },
+    "discovery": {
+      "port": 8091,
+      "broadcastAddress": "255.255.255.255"
+    },
+    "timeout": 5000,
+    "retries": 3,
+    "reportPath": "C:\\Users\\admin\\AndroidStudioProjects\\MyApplication8\\backend\\tests\\reports"
+  }
+}

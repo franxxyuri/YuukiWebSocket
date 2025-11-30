@@ -16,7 +16,6 @@ import {
   InfoCircleOutlined
 } from '@ant-design/icons';
 import apiService from '../src/services/api-service';
-import deviceDiscoveryService from '../services/DeviceDiscoveryService';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -103,7 +102,7 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
   const initializeDeviceDiscovery = useCallback(async () => {
     try {
       // 注册设备发现事件监听器
-      deviceDiscoveryService.on('deviceFound', (device) => {
+      apiService.on('deviceDiscovered', (device) => {
         setDiscoveredDevices(prevDevices => {
           // 检查设备是否已存在
           const existingIndex = prevDevices.findIndex(d => d.id === device.id || d.ip === device.ip);
@@ -122,41 +121,30 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
         });
       });
 
-      deviceDiscoveryService.on('deviceStatusChanged', (data) => {
+      apiService.on('deviceConnected', (device) => {
         setDiscoveredDevices(prevDevices => {
-          return prevDevices.map(device => {
-            if (device.id === data.device.id) {
-              return data.device;
+          return prevDevices.map(d => {
+            if (d.id === device.id) {
+              return { ...d, status: 'connected' };
             }
-            return device;
+            return d;
           });
         });
       });
 
-      deviceDiscoveryService.on('deviceRemoved', (data) => {
+      apiService.on('deviceDisconnected', (device) => {
         setDiscoveredDevices(prevDevices => {
-          return prevDevices.filter(device => device.id !== data.device.id);
+          return prevDevices.map(d => {
+            if (d.id === device.id) {
+              return { ...d, status: 'available' };
+            }
+            return d;
+          });
         });
       });
 
-      deviceDiscoveryService.on('scanCompleted', (data) => {
-        setDiscoveredDevices(prevDevices => {
-          // 过滤掉已连接的设备
-          const filteredDevices = data.devices.filter(device => !connectedDevice || device.id !== connectedDevice.id);
-          return filteredDevices;
-        });
-        setIsScanning(false);
-        message.success('设备扫描完成');
-      });
-
-      deviceDiscoveryService.on('scanError', (data) => {
-        setError(`扫描设备失败: ${data.error}`);
-        setIsScanning(false);
-        message.error(`扫描设备失败: ${data.error}`);
-      });
-
-      // 启动设备发现服务
-      await deviceDiscoveryService.startScan(true, 30000); // 连续扫描，每30秒一次
+      // 启动设备发现
+      await apiService.startDeviceDiscovery();
     } catch (err) {
       setError(`初始化设备发现失败: ${err.message}`);
       console.error('Failed to initialize device discovery:', err);
@@ -181,11 +169,17 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
         return;
       }
       
-      // 使用设备发现服务扫描设备
-      await deviceDiscoveryService.scan();
+      // 使用API服务扫描设备
+      await apiService.startDeviceDiscovery();
       
       // 启动定期扫描
       handleStartAutoScan();
+      
+      // 模拟设备发现
+      setTimeout(() => {
+        setIsScanning(false);
+        message.success('设备扫描完成');
+      }, 1500);
     } catch (err) {
       console.warn('扫描设备失败:', err.message);
       setError(`扫描设备失败: ${err.message}`);
@@ -210,14 +204,19 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
   }, [isScanning]);
 
   // 停止扫描
-  const handleStopScan = useCallback(() => {
+  const handleStopScan = useCallback(async () => {
     if (scanIntervalRef.current) {
       clearInterval(scanIntervalRef.current);
       scanIntervalRef.current = null;
     }
     
-    // 停止设备发现服务
-    deviceDiscoveryService.stopScan();
+    // 停止设备发现服务，添加错误处理
+    try {
+      await apiService.stopDeviceDiscovery();
+    } catch (error) {
+      console.warn('停止设备发现失败:', error);
+      // 忽略错误，继续执行
+    }
     
     setIsScanning(false);
   }, []);
@@ -229,7 +228,23 @@ const DeviceDiscovery = ({ onDeviceConnect, onDeviceDisconnect, connectedDevice:
     setIsRefreshing(true);
     
     try {
-      await deviceDiscoveryService.scan();
+      // 使用API服务获取设备列表
+      const devices = await apiService.getDiscoveredDevices();
+      if (devices && devices.length > 0) {
+        setDiscoveredDevices(prevDevices => {
+          // 合并新设备到现有列表
+          const updatedDevices = [...prevDevices];
+          devices.forEach(newDevice => {
+            const existingIndex = updatedDevices.findIndex(d => d.id === newDevice.id || d.ip === newDevice.ip);
+            if (existingIndex === -1) {
+              updatedDevices.push(newDevice);
+            } else {
+              updatedDevices[existingIndex] = newDevice;
+            }
+          });
+          return updatedDevices;
+        });
+      }
       message.success('设备列表已更新');
     } catch (err) {
       message.error('刷新设备列表失败');

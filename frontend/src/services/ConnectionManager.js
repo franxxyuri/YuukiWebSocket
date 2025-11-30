@@ -188,7 +188,10 @@ class ConnectionManager {
     const eventNames = ['connect', 'disconnect', 'error', 'deviceDiscovered', 'deviceConnected', 'deviceDisconnected', 'fileTransferStarted', 'fileTransferProgress', 'fileTransferCompleted', 'fileTransferFailed', 'screenShareStarted', 'screenShareStopped', 'screenFrameReceived', 'remoteControlEnabled', 'remoteControlDisabled', 'remoteControlError', 'clipboardContentReceived'];
     
     eventNames.forEach(eventName => {
-      this.strategy.on(eventName, this.triggerEvent.bind(this));
+      this.strategy.on(eventName, (data) => {
+        // 确保事件名称被正确传递，而不是将事件对象作为事件名称
+        this.triggerEvent(eventName, data);
+      });
     });
   }
   
@@ -261,15 +264,19 @@ class ConnectionManager {
     }
     
     // 优先使用传入的URL，如果没有则从配置中获取，如果配置中也没有则使用默认值
+    // 确保不使用带有/ws后缀的URL，因为WebSocketStrategy会直接使用完整URL
     const url = serverUrl || 
                 configManager.get('connection.websocketUrl', this.config.serverUrl) || 
                 'ws://localhost:8928';
     
-    console.log(`正在连接到 ${this.config.connectionType} 服务器: ${url}`);
+    // 清理URL，确保不包含/ws后缀
+    const cleanUrl = url.replace(/\/ws$/, '');
+    
+    console.log(`正在连接到 ${this.config.connectionType} 服务器: ${cleanUrl}`);
     
     try {
-      await this.strategy.connect(url);
-      console.log(`成功连接到 ${url}`);
+      await this.strategy.connect(cleanUrl);
+      console.log(`成功连接到 ${cleanUrl}`);
       this._isConnected = true;
       this.reconnectAttempts = 0;
     } catch (error) {
@@ -282,7 +289,7 @@ class ConnectionManager {
         // 使用setTimeout进行延迟重连
         return new Promise((resolve, reject) => {
           setTimeout(() => {
-            this.connect(url)
+            this.connect(cleanUrl)
               .then(resolve)
               .catch(reject);
           }, 1000);
@@ -437,8 +444,10 @@ class ConnectionManager {
     // 尝试重新连接（如果不是模拟模式）
     if (strategyType !== 'mock') {
       try {
-        const url = configManager.get('connection.url') || this.config.serverUrl;
-        await this.strategy.connect(url);
+        const url = configManager.get('connection.websocketUrl') || this.config.serverUrl;
+        // 清理URL，确保不包含/ws后缀
+        const cleanUrl = url.replace(/\/ws$/, '');
+        await this.strategy.connect(cleanUrl);
         console.log(`已成功切换到${strategyType}策略并连接`);
       } catch (error) {
         console.error('切换策略后连接失败:', error.message);
@@ -526,7 +535,7 @@ class ConnectionManager {
     
     // 发送开始设备发现命令
     await this.sendCommand('start_device_discovery', {});
-    // 不等待响应，设备发现结果将通过device_found事件返回
+    // 不等待响应，设备发现结果将通过device_discovered事件返回
     return [];
   }
 
@@ -574,7 +583,7 @@ class ConnectionManager {
       return mockDevices;
     }
     
-    // 直接返回空数组，设备发现结果将通过device_found事件返回
+    // 直接返回空数组，设备发现结果将通过device_discovered事件返回
     // 实际设备列表由DeviceDiscoveryService维护
     return [];
   }
@@ -595,6 +604,42 @@ class ConnectionManager {
       action: 'receive',
       transferInfo,
       savePath
+    });
+  }
+  
+  // 获取设备文件列表
+  getDeviceFiles(deviceId, path = '/') {
+    return this.sendRequest('get_device_files', {
+      deviceId,
+      path
+    });
+  }
+  
+  // 上传文件
+  uploadFile(deviceId, fileMetadata, options = {}) {
+    return this.sendRequest('upload_file', {
+      deviceId,
+      fileMetadata,
+      options
+    });
+  }
+  
+  // 下载文件
+  downloadFile(deviceId, fileInfo, options = {}) {
+    return this.sendRequest('download_file', {
+      deviceId,
+      fileName: fileInfo.name,
+      filePath: fileInfo.path,
+      fileSize: fileInfo.size,
+      options
+    });
+  }
+  
+  // 取消文件传输
+  cancelFileTransfer(transferId, type) {
+    return this.sendRequest('cancel_file_transfer', {
+      transferId,
+      type
     });
   }
 

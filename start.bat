@@ -14,12 +14,13 @@ echo ║  1. 开发模式 (Development)                                   ║
 echo ║  2. 测试模式 (Testing)                                       ║
 echo ║  3. 生产模式 (Production)                                     ║
 echo ║  4. 配置模式 (Custom Config)                                  ║
+echo ║  5. 分离模式 (Separated Mode)                                 ║
 echo ║                                                              ║
-echo ║  5. 环境检查                                                  ║
-echo ║  6. 打开测试页面                                              ║
-echo ║  7. 重启服务器                                                ║
-echo ║  8. 构建项目                                                  ║
-echo ║  9. 停止所有服务                                              ║
+echo ║  6. 环境检查                                                  ║
+echo ║  7. 打开测试页面                                              ║
+echo ║  8. 重启服务器                                                ║
+echo ║  9. 构建项目                                                  ║
+echo ║  10. 停止所有服务                                             ║
 echo ║                                                              ║
 echo ║  0. 退出                                                      ║
 echo ╚══════════════════════════════════════════════════════════════╝

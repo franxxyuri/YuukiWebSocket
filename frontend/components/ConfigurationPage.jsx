@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './ConfigurationPage.css';
 import { Card, Form, Input, Select, Switch, Button, message, Statistic, Row, Col, Divider, Tabs, Table, Tooltip } from 'antd';
-import { SettingOutlined, LinkOutlined, LinkOffOutlined, SendOutlined, EyeOutlined, RefreshOutlined, CheckCircleOutlined, CloseCircleOutlined, InfoCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { SettingOutlined, LinkOutlined, DisconnectOutlined, SendOutlined, EyeOutlined, ReloadOutlined, CheckCircleOutlined, CloseCircleOutlined, InfoCircleOutlined, ClockCircleOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import apiService from '../src/services/api-service';
 import configManager from '../src/services/ConfigManager';
 import connectionManager from '../src/services/ConnectionManager';
@@ -13,6 +13,9 @@ const ConfigurationPage = () => {
   const [testResponse, setTestResponse] = useState(null);
   const [logs, setLogs] = useState([]);
   const [activeTab, setActiveTab] = useState('config');
+  // 自测状态管理
+  const [isRunningSelfTest, setIsRunningSelfTest] = useState(false);
+  const [selfTestResults, setSelfTestResults] = useState(null);
 
   // 初始化配置和连接状态
   useEffect(() => {
@@ -79,7 +82,7 @@ const ConfigurationPage = () => {
         debugMode: values.debugMode
       };
       
-      await configManager.setConfig(newConfig);
+      configManager.set(newConfig);
       message.success('配置已保存');
       addLog('配置已保存并应用');
     } catch (error) {
@@ -159,6 +162,27 @@ const ConfigurationPage = () => {
     }
   };
 
+  // 运行自测
+  const handleRunSelfTest = async () => {
+    try {
+      setIsRunningSelfTest(true);
+      setSelfTestResults(null);
+      addLog('开始系统自测...');
+      
+      const response = await apiService.sendRequest('run-self-test', {});
+      setSelfTestResults(response);
+      addLog('自测完成: ' + JSON.stringify(response.results));
+      message.success('系统自测完成');
+    } catch (error) {
+      console.error('运行自测失败:', error);
+      message.error('运行自测失败');
+      setSelfTestResults({ error: error.message });
+      addLog('自测失败: ' + error.message);
+    } finally {
+      setIsRunningSelfTest(false);
+    }
+  };
+
   // 根据消息内容返回对应的状态样式
   const getMessageStatus = (message) => {
     if (message.includes('成功') || message.includes('已连接') || message.includes('已建立')) {
@@ -211,7 +235,7 @@ const ConfigurationPage = () => {
   const ConnectionStatusCard = () => (
     <Card 
       title="连接状态" 
-      icon={connectionStatus ? <LinkOutlined style={{ color: '#1890ff' }} /> : <LinkOffOutlined style={{ color: '#ff4d4f' }} />}
+      icon={connectionStatus ? <LinkOutlined style={{ color: '#1890ff' }} /> : <DisconnectOutlined style={{ color: '#ff4d4f' }} />}
       size="small"
       className={`enhanced-card ${connectionStatus ? 'connection-status-connected' : 'connection-status-disconnected'}`}
       bodyStyle={{ padding: '16px' }}
@@ -246,7 +270,7 @@ const ConfigurationPage = () => {
           <Divider orientation="left" plain>操作</Divider>
           <Button 
             type="primary" 
-            icon={<RefreshOutlined />} 
+            icon={<ReloadOutlined />} 
             onClick={handleReconnect}
             disabled={connectionStatus}
             style={{ marginRight: 8 }}
@@ -256,7 +280,7 @@ const ConfigurationPage = () => {
           </Button>
           <Button 
             danger 
-            icon={<LinkOffOutlined />} 
+            icon={<DisconnectOutlined />} 
             onClick={handleDisconnect}
             disabled={!connectionStatus}
             size="large"
@@ -348,12 +372,202 @@ const ConfigurationPage = () => {
             </Card>
           </Col>
         )}
+        <Col span={24}>
+          <Button 
+            type="primary" 
+            danger
+            icon={<PlayCircleOutlined />} 
+            onClick={handleRunSelfTest}
+            disabled={isRunningSelfTest}
+            block
+            size="large"
+          >
+            {isRunningSelfTest ? '自测中...' : '运行系统自测'}
+          </Button>
+        </Col>
+        {selfTestResults && (
+          <Col span={24}>
+            <Divider orientation="left" plain>自测结果</Divider>
+            <Card 
+              size="small" 
+              className={`enhanced-card ${selfTestResults.error ? 'test-response-error' : 'test-response-success'}`}
+            >
+              {selfTestResults.error ? (
+                <div className="test-error-message">{selfTestResults.error}</div>
+              ) : (
+                <div className="self-test-results">
+                  <div className="results-summary">
+                    <Row gutter={[16, 8]}>
+                      <Col span={6}>
+                        <div className="summary-item">
+                          <span className="summary-label">总测试数:</span>
+                          <span className="summary-value">{selfTestResults.results.totalTests}</span>
+                        </div>
+                      </Col>
+                      <Col span={6}>
+                        <div className="summary-item">
+                          <span className="summary-label">通过:</span>
+                          <span className="summary-value success">{selfTestResults.results.passedTests}</span>
+                        </div>
+                      </Col>
+                      <Col span={6}>
+                        <div className="summary-item">
+                          <span className="summary-label">失败:</span>
+                          <span className="summary-value error">{selfTestResults.results.failedTests}</span>
+                        </div>
+                      </Col>
+                      <Col span={6}>
+                        <div className="summary-item">
+                          <span className="summary-label">测试时长:</span>
+                          <span className="summary-value">{selfTestResults.results.duration}ms</span>
+                        </div>
+                      </Col>
+                    </Row>
+                  </div>
+                  <Divider orientation="left" plain style={{ margin: '16px 0 16px 0' }}>测试详情</Divider>
+                  <div className="test-details">
+                    {selfTestResults.results.tests.map((test, index) => (
+                      <div key={index} className={`test-item ${test.status}`}>
+                        <Row gutter={[16, 4]} align="middle">
+                          <Col span={12}>
+                            <div className="test-name">{test.name}</div>
+                          </Col>
+                          <Col span={4}>
+                            <div className="test-type">{test.type}</div>
+                          </Col>
+                          <Col span={4}>
+                            <div className={`test-status ${test.status}`}>
+                              {test.status === 'passed' ? '通过' : '失败'}
+                            </div>
+                          </Col>
+                          <Col span={4}>
+                            <div className="test-duration">{test.duration}ms</div>
+                          </Col>
+                          {test.error && (
+                            <Col span={24}>
+                              <div className="test-error">{test.error}</div>
+                            </Col>
+                          )}
+                        </Row>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </Card>
+          </Col>
+        )}
       </Row>
     </Card>
   );
 
   return (
     <div className="configuration-page">
+      <style jsx>{`
+        .self-test-results {
+          font-family: monospace;
+        }
+        
+        .results-summary {
+          margin-bottom: 16px;
+        }
+        
+        .summary-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 8px;
+          background: #f5f5f5;
+          border-radius: 4px;
+        }
+        
+        .summary-label {
+          font-size: 12px;
+          color: #666;
+          margin-bottom: 4px;
+        }
+        
+        .summary-value {
+          font-size: 18px;
+          font-weight: bold;
+        }
+        
+        .summary-value.success {
+          color: #52c41a;
+        }
+        
+        .summary-value.error {
+          color: #ff4d4f;
+        }
+        
+        .test-details {
+          margin-top: 16px;
+        }
+        
+        .test-item {
+          padding: 12px;
+          margin-bottom: 8px;
+          background: #fafafa;
+          border-radius: 4px;
+          border-left: 4px solid #d9d9d9;
+        }
+        
+        .test-item.passed {
+          border-left-color: #52c41a;
+          background: #f6ffed;
+        }
+        
+        .test-item.failed {
+          border-left-color: #ff4d4f;
+          background: #fff2f0;
+        }
+        
+        .test-name {
+          font-weight: bold;
+          font-size: 14px;
+        }
+        
+        .test-type {
+          font-size: 12px;
+          color: #666;
+        }
+        
+        .test-status {
+          font-weight: bold;
+          font-size: 12px;
+        }
+        
+        .test-status.passed {
+          color: #52c41a;
+        }
+        
+        .test-status.failed {
+          color: #ff4d4f;
+        }
+        
+        .test-duration {
+          font-size: 12px;
+          color: #666;
+        }
+        
+        .test-error {
+          margin-top: 8px;
+          padding: 8px;
+          background: #fff2f0;
+          border-radius: 4px;
+          color: #ff4d4f;
+          font-size: 12px;
+          word-break: break-word;
+        }
+        
+        .test-error-message {
+          color: #ff4d4f;
+          padding: 12px;
+          background: #fff2f0;
+          border-radius: 4px;
+          font-size: 14px;
+        }
+      `}</style>
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={8}>
           <ConnectionStatusCard />

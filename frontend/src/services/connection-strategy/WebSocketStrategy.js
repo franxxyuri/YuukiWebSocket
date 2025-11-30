@@ -1,16 +1,22 @@
 /**
  * WebSocket连接策略类
- * 实现WebSocket连接、消息发送和接收、事件处理等功能
+ * 实现基于WebSocket的设备连接、消息发送和接收功能
  */
-
 import ConnectionStrategy from './ConnectionStrategy';
 
 class WebSocketStrategy extends ConnectionStrategy {
-  constructor(serverUrl, options = {}) {
+  constructor(config = {}) {
     super();
-    this.serverUrl = serverUrl;
+    // 支持两种调用方式：直接传入serverUrl字符串，或者传入配置对象
+    if (typeof config === 'string') {
+      this.serverUrl = config;
+      this.config = {};
+    } else {
+      this.serverUrl = config.websocketUrl || 'ws://localhost:8928';
+      this.config = config;
+    }
     this.socket = null;
-    this.isConnected = false;
+    this._isConnected = false;
     this.reconnectAttempts = 0;
     
     // 初始化事件和回调容器
@@ -19,10 +25,10 @@ class WebSocketStrategy extends ConnectionStrategy {
     this.requestId = 0;
     
     // 配置项
-    this.maxReconnectAttempts = options.maxReconnectAttempts || 5;
-    this.reconnectDelay = options.reconnectDelay || 3000;
-    this.autoReconnect = options.autoReconnect !== undefined ? options.autoReconnect : true;
-    this.messageTimeout = options.messageTimeout || 30000; // 30秒默认超时
+    this.maxReconnectAttempts = this.config.maxReconnectAttempts || 5;
+    this.reconnectDelay = this.config.reconnectDelay || 3000;
+    this.autoReconnect = this.config.autoReconnect !== undefined ? this.config.autoReconnect : true;
+    this.messageTimeout = this.config.messageTimeout || 30000; // 30秒默认超时
   }
 
   /**
@@ -45,13 +51,15 @@ class WebSocketStrategy extends ConnectionStrategy {
           return;
         }
 
-        // 创建新的WebSocket连接
-        this.socket = new WebSocket(this.serverUrl);
+        // 创建新的WebSocket连接，确保URL末尾没有斜杠
+        const cleanUrl = this.serverUrl.replace(/\/$/, '');
+        console.log(`正在建立WebSocket连接到: ${cleanUrl}`);
+        this.socket = new WebSocket(cleanUrl);
 
         // 设置连接打开事件
         this.socket.onopen = () => {
           console.log('WebSocket连接已建立');
-          this.isConnected = true;
+          this._isConnected = true;
           this.reconnectAttempts = 0;
           resolve();
           
@@ -67,13 +75,14 @@ class WebSocketStrategy extends ConnectionStrategy {
             this.handleMessage(message);
           } catch (error) {
             console.error('解析WebSocket消息时出错:', error);
+            this.handleEvent('error', error);
           }
         };
 
         // 设置连接关闭事件
         this.socket.onclose = (event) => {
           console.log('WebSocket连接已关闭', event);
-          this.isConnected = false;
+          this._isConnected = false;
           this.handleEvent('disconnect', { code: event.code, reason: event.reason });
           
           // 尝试自动重连
@@ -146,7 +155,7 @@ class WebSocketStrategy extends ConnectionStrategy {
    */
   getConnectionStatus() {
     return {
-      isConnected: this.isConnected,
+      isConnected: this._isConnected,
       serverUrl: this.serverUrl,
       reconnectAttempts: this.reconnectAttempts,
       connectionType: 'websocket'
@@ -158,7 +167,7 @@ class WebSocketStrategy extends ConnectionStrategy {
    * @returns {boolean} 是否已连接
    */
   isConnected() {
-    return this.isConnected;
+    return this._isConnected;
   }
   
   /**
@@ -252,6 +261,7 @@ class WebSocketStrategy extends ConnectionStrategy {
       // 处理设备发现相关消息
       switch (message.type) {
         case 'device_found':
+        case 'device_discovered':
           this.handleEvent('deviceDiscovered', message.device);
           break;
         case 'android_connected':
@@ -304,6 +314,9 @@ class WebSocketStrategy extends ConnectionStrategy {
           console.error('WebSocket重连失败:', error);
         });
       }, this.reconnectDelay);
+    } else {
+      console.error('已达到最大重连尝试次数，停止重连');
+      this.handleEvent('error', new Error('已达到最大重连尝试次数'));
     }
   }
 }

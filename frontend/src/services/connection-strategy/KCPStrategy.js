@@ -10,7 +10,7 @@ class KCPStrategy extends ConnectionStrategy {
     super();
     this.serverUrl = serverUrl;
     this.socket = null;
-    this.isConnected = false;
+    this._isConnected = false;
     this.reconnectAttempts = 0;
     
     // 初始化事件和回调容器
@@ -63,7 +63,7 @@ class KCPStrategy extends ConnectionStrategy {
         }
 
         // 确保当前没有活跃连接
-        if (this.socket && this.isConnected) {
+        if (this.socket && this._isConnected) {
           console.warn('KCP已经连接');
           resolve();
           return;
@@ -78,7 +78,7 @@ class KCPStrategy extends ConnectionStrategy {
 
         // 模拟KCP连接延迟
         setTimeout(() => {
-          this.isConnected = true;
+          this._isConnected = true;
           this.connectionState = 'connected';
           this.reconnectAttempts = 0;
           console.log(`KCP连接已建立: ${this.host}:${this.port}`);
@@ -105,7 +105,7 @@ class KCPStrategy extends ConnectionStrategy {
       this.socket.close();
       this.socket = null;
     }
-    this.isConnected = false;
+    this._isConnected = false;
     this.connectionState = 'disconnected';
     this.handleEvent('disconnect', '正常断开');
   }
@@ -115,7 +115,7 @@ class KCPStrategy extends ConnectionStrategy {
    * @param {object} message - 要发送的消息对象
    */
   send(message) {
-    if (!this.isConnected) {
+    if (!this._isConnected) {
       console.error('KCP未连接到服务器');
       return false;
     }
@@ -164,7 +164,7 @@ class KCPStrategy extends ConnectionStrategy {
    */
   getConnectionStatus() {
     return {
-      isConnected: this.isConnected,
+      isConnected: this._isConnected,
       serverUrl: this.serverUrl,
       host: this.host,
       port: this.port,
@@ -180,7 +180,7 @@ class KCPStrategy extends ConnectionStrategy {
    * @returns {boolean} 是否已连接
    */
   isConnected() {
-    return this.isConnected;
+    return this._isConnected;
   }
   
   /**
@@ -220,7 +220,7 @@ class KCPStrategy extends ConnectionStrategy {
    * @returns {Promise<object>} 包含响应的Promise
    */
   sendRequest(type, data) {
-    if (!this.isConnected) {
+    if (!this._isConnected) {
       return Promise.reject(new Error('KCP未连接到服务器'));
     }
 
@@ -276,6 +276,7 @@ class KCPStrategy extends ConnectionStrategy {
       // 处理设备发现相关消息
       switch (message.type) {
         case 'device_found':
+        case 'device_discovered':
           this.handleEvent('deviceDiscovered', message.device);
           break;
         case 'android_connected':

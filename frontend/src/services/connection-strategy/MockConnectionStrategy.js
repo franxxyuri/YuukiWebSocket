@@ -7,7 +7,7 @@ import ConnectionStrategy from './ConnectionStrategy';
 class MockConnectionStrategy extends ConnectionStrategy {
   constructor(config = {}) {
     super();
-    this.isConnected = false;
+    this._isConnected = false;
     this.eventHandlers = new Map();
     this.messageCallbacks = new Map();
     this.requestId = 0;
@@ -56,7 +56,7 @@ class MockConnectionStrategy extends ConnectionStrategy {
     return new Promise((resolve) => {
       console.log('✅ 模拟连接到服务器:', serverUrl);
       this.serverUrl = serverUrl;
-      this.isConnected = true;
+      this._isConnected = true;
       
       // 模拟连接成功事件
       setTimeout(() => {
@@ -72,7 +72,7 @@ class MockConnectionStrategy extends ConnectionStrategy {
    */
   disconnect() {
     console.log('🔌 模拟断开连接');
-    this.isConnected = false;
+    this._isConnected = false;
     this.messageCallbacks.clear();
     this.handleEvent('disconnect', '正常断开');
   }
@@ -82,7 +82,7 @@ class MockConnectionStrategy extends ConnectionStrategy {
    * @param {string} message - 要发送的消息
    */
   send(message) {
-    if (!this.isConnected) {
+    if (!this._isConnected) {
       throw new Error('模拟连接未连接');
     }
     console.log('📤 模拟发送消息:', message);
@@ -95,7 +95,7 @@ class MockConnectionStrategy extends ConnectionStrategy {
    * @returns {Promise<object>} 包含响应的Promise
    */
   sendRequest(type, data) {
-    if (!this.isConnected) {
+    if (!this._isConnected) {
       return Promise.reject(new Error('模拟连接未连接到服务器'));
     }
 
@@ -151,6 +151,129 @@ class MockConnectionStrategy extends ConnectionStrategy {
                 requestId
               });
             }
+            break;
+            
+          case 'get_device_files':
+            // 模拟获取设备文件列表
+            const mockDeviceFiles = [
+              { id: 'file-1', name: 'document.pdf', size: 2500000, type: 'application/pdf', path: '/documents/report.pdf', lastModified: Date.now() - 86400000 },
+              { id: 'file-2', name: 'photo.jpg', size: 4500000, type: 'image/jpeg', path: '/photos/vacation.jpg', lastModified: Date.now() - 172800000 },
+              { id: 'file-3', name: 'video.mp4', size: 50000000, type: 'video/mp4', path: '/videos/presentation.mp4', lastModified: Date.now() - 259200000 },
+              { id: 'file-4', name: 'audio.mp3', size: 8000000, type: 'audio/mpeg', path: '/audio/music.mp3', lastModified: Date.now() - 345600000 },
+              { id: 'file-5', name: 'spreadsheet.xlsx', size: 1500000, type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', path: '/documents/data.xlsx', lastModified: Date.now() - 432000000 }
+            ];
+            
+            // 触发设备文件列表事件
+            this.handleEvent('device_file_list', {
+              files: mockDeviceFiles,
+              deviceId: data.deviceId
+            });
+            
+            resolve({
+              success: true,
+              files: mockDeviceFiles,
+              requestId
+            });
+            break;
+            
+          case 'upload_file':
+            // 模拟上传文件
+            const uploadTransferId = `upload-${Date.now()}`;
+            const uploadFileName = data.fileMetadata.fileName;
+            
+            // 模拟上传进度
+            let uploadProgress = 0;
+            const uploadInterval = setInterval(() => {
+              uploadProgress += 10;
+              if (uploadProgress > 100) uploadProgress = 100;
+              
+              this.handleEvent('file_transfer_progress', {
+                transferId: uploadTransferId,
+                progress: uploadProgress,
+                totalBytes: data.fileMetadata.fileSize,
+                transferredBytes: Math.floor((uploadProgress / 100) * data.fileMetadata.fileSize),
+                type: 'upload'
+              });
+              
+              if (uploadProgress === 100) {
+                clearInterval(uploadInterval);
+                
+                // 模拟上传完成
+                this.handleEvent('file_transfer_complete', {
+                  transferId: uploadTransferId,
+                  fileName: uploadFileName,
+                  filePath: `/uploads/${uploadFileName}`,
+                  fileSize: data.fileMetadata.fileSize,
+                  type: 'upload',
+                  timestamp: Date.now()
+                });
+              }
+            }, 300);
+            
+            resolve({
+              success: true,
+              transferId: uploadTransferId,
+              message: '文件上传已开始',
+              requestId
+            });
+            break;
+            
+          case 'download_file':
+            // 模拟下载文件
+            const downloadTransferId = `download-${Date.now()}`;
+            const downloadFileName = data.fileName;
+            
+            // 模拟下载进度
+            let downloadProgress = 0;
+            const downloadInterval = setInterval(() => {
+              downloadProgress += 15;
+              if (downloadProgress > 100) downloadProgress = 100;
+              
+              this.handleEvent('file_transfer_progress', {
+                transferId: downloadTransferId,
+                progress: downloadProgress,
+                totalBytes: data.fileSize,
+                transferredBytes: Math.floor((downloadProgress / 100) * data.fileSize),
+                type: 'download'
+              });
+              
+              if (downloadProgress === 100) {
+                clearInterval(downloadInterval);
+                
+                // 模拟下载完成
+                this.handleEvent('file_transfer_complete', {
+                  transferId: downloadTransferId,
+                  fileName: downloadFileName,
+                  filePath: data.filePath,
+                  fileSize: data.fileSize,
+                  type: 'download',
+                  timestamp: Date.now()
+                });
+              }
+            }, 250);
+            
+            resolve({
+              success: true,
+              transferId: downloadTransferId,
+              message: '文件下载已开始',
+              requestId
+            });
+            break;
+            
+          case 'cancel_file_transfer':
+            // 模拟取消文件传输
+            this.handleEvent('file_transfer_failed', {
+              transferId: data.transferId,
+              fileName: '取消的文件',
+              error: '传输已取消',
+              type: data.type
+            });
+            
+            resolve({
+              success: true,
+              message: '文件传输已取消',
+              requestId
+            });
             break;
             
           case 'control_command':
@@ -213,7 +336,7 @@ class MockConnectionStrategy extends ConnectionStrategy {
    * @param {object} data - 命令数据
    */
   sendCommand(type, data) {
-    if (!this.isConnected) {
+    if (!this._isConnected) {
       throw new Error('模拟连接未连接到服务器');
     }
 
@@ -329,7 +452,7 @@ class MockConnectionStrategy extends ConnectionStrategy {
    */
   getConnectionStatus() {
     return {
-      isConnected: this.isConnected,
+      isConnected: this._isConnected,
       connectionType: 'mock',
       serverUrl: this.serverUrl,
       mockDevices: this.mockDevices.length
@@ -341,7 +464,7 @@ class MockConnectionStrategy extends ConnectionStrategy {
    * @returns {boolean} 是否已连接
    */
   isConnected() {
-    return this.isConnected;
+    return this._isConnected;
   }
 }
 
