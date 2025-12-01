@@ -12,7 +12,7 @@ class WebSocketStrategy extends ConnectionStrategy {
       this.serverUrl = config;
       this.config = {};
     } else {
-      this.serverUrl = config.websocketUrl || 'ws://localhost:8928';
+      this.serverUrl = config.websocketUrl || null;
       this.config = config;
     }
     this.socket = null;
@@ -318,6 +318,28 @@ class WebSocketStrategy extends ConnectionStrategy {
       console.error('已达到最大重连尝试次数，停止重连');
       this.handleEvent('error', new Error('已达到最大重连尝试次数'));
     }
+  }
+
+  /**
+   * 检查是否已连接
+   * @returns {boolean} 是否已连接
+   */
+  isConnected() {
+    return this._isConnected;
+  }
+
+  /**
+   * 获取连接状态
+   * @returns {object} 连接状态对象
+   */
+  getConnectionStatus() {
+    return {
+      isConnected: this._isConnected,
+      serverUrl: this.serverUrl,
+      reconnectAttempts: this.reconnectAttempts,
+      maxReconnectAttempts: this.maxReconnectAttempts,
+      autoReconnect: this.autoReconnect
+    };
   }
 }
 

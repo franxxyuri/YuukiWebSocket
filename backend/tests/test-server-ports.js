@@ -1,49 +1,53 @@
 import http from 'http';
 
-// 测试8928端口
-const options8828 = {
+// 从环境变量读取端口配置，或使用默认值
+const serverPort = parseInt(process.env.SERVER_PORT) || 8928;
+const vitePort = parseInt(process.env.VITE_PORT) || 8781;
+
+// 测试服务器端口
+const serverOptions = {
   hostname: 'localhost',
-  port: 8928,
+  port: serverPort,
   path: '/api/status',
   method: 'GET'
 };
 
-console.log('正在测试8928端口...');
-const req8828 = http.request(options8828, (res) => {
-  console.log('8928端口状态码:', res.statusCode);
+console.log(`正在测试${serverPort}端口...`);
+const serverReq = http.request(serverOptions, (res) => {
+  console.log(`${serverPort}端口状态码:`, res.statusCode);
   
   res.on('data', (chunk) => {
-    console.log('8928端口响应数据:', chunk.toString());
+    console.log(`${serverPort}端口响应数据:`, chunk.toString());
   });
 });
 
-req8828.on('error', (e) => {
-  console.log('8928端口连接失败:', e.message);
+serverReq.on('error', (e) => {
+  console.log(`${serverPort}端口连接失败:`, e.message);
 });
 
-req8828.end();
+serverReq.end();
 
-// 测试8781端口
+// 测试Vite开发服务器端口
 setTimeout(() => {
-  const options8080 = {
+  const viteOptions = {
     hostname: 'localhost',
-    port: 8781,
+    port: vitePort,
     path: '/api/status',
     method: 'GET'
   };
 
-  console.log('正在测试8781端口...');
-  const req8080 = http.request(options8080, (res) => {
-    console.log('8781端口状态码:', res.statusCode);
+  console.log(`正在测试${vitePort}端口...`);
+  const viteReq = http.request(viteOptions, (res) => {
+    console.log(`${vitePort}端口状态码:`, res.statusCode);
     
     res.on('data', (chunk) => {
-      console.log('8781端口响应数据:', chunk.toString());
+      console.log(`${vitePort}端口响应数据:`, chunk.toString());
     });
   });
 
-  req8080.on('error', (e) => {
-    console.log('8781端口连接失败:', e.message);
+  viteReq.on('error', (e) => {
+    console.log(`${vitePort}端口连接失败:`, e.message);
   });
 
-  req8080.end();
+  viteReq.end();
 }, 2000);

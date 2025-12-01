@@ -3,7 +3,8 @@ const mdns = require('multicast-dns')();
 const crypto = require('crypto');
 
 class DeviceDiscovery {
-  constructor() {
+  constructor(config) {
+    this.config = config;
     this.devices = new Map();
     this.isDiscovering = false;
     this.broadcastInterval = null;
@@ -11,7 +12,7 @@ class DeviceDiscovery {
       deviceId: this.generateDeviceId(),
       deviceName: 'Windows-PC',
       ip: this.getLocalIP(),
-      port: 8190,
+      port: config.discovery.port,
       platform: 'windows',
       version: '1.0.0',
       capabilities: [
@@ -131,8 +132,8 @@ class DeviceDiscovery {
     const buffer = Buffer.from(message);
 
     // 广播到局域网
-    const broadcastAddress = '255.255.255.255';
-    client.send(buffer, 0, buffer.length, 8190, broadcastAddress, (err) => {
+    const broadcastAddress = this.config.discovery.broadcastAddress || '255.255.255.255';
+    client.send(buffer, 0, buffer.length, this.config.discovery.port, broadcastAddress, (err) => {
       if (err) {
         console.error('UDP广播发送失败:', err);
       }
@@ -187,7 +188,7 @@ class DeviceDiscovery {
         platform: deviceType === 'ANDROID_DEVICE' ? 'android' : 'windows',
         version: version,
         ip: rinfo.address,
-        port: 8928, // 默认端口
+        port: this.config.server.port, // 使用配置的服务器端口
         capabilities: [
           'file_transfer',
           'screen_mirror',

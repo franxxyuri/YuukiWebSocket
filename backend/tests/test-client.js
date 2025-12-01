@@ -6,7 +6,10 @@ console.log('🔍 测试客户端连接到服务端...');
 // 创建客户端连接
 const client = new net.Socket();
 
-client.connect(8190, '127.0.0.1', () => {
+// 使用配置的端口
+const discoveryPort = parseInt(process.env.DISCOVERY_PORT) || 8190;
+
+client.connect(discoveryPort, '127.0.0.1', () => {
   console.log('✅ 成功连接到服务端');
   
   // 发送设备信息
@@ -18,7 +21,7 @@ client.connect(8190, '127.0.0.1', () => {
       platform: 'test',
       version: '1.0.0',
       ip: '127.0.0.1',
-      port: 8190,
+      port: discoveryPort,
       capabilities: ['test']
     }
   };

@@ -209,9 +209,9 @@ class NetworkCommunication {
         try {
             Log.d(TAG, "准备构建设备信息")
             
-            // 获取应用上下文
-            val context = android.content.ContextWrapper(android.view.ContextThemeWrapper(null, 0))
-            val deviceId = com.example.windowsandroidconnect.utils.DeviceIdManager.getDeviceId(context.applicationContext)
+            // 从MyApplication获取全局Context
+            val context = com.example.windowsandroidconnect.MyApplication.applicationContext()
+            val deviceId = com.example.windowsandroidconnect.utils.DeviceIdManager.getDeviceId(context)
 
             val capabilitiesArray = org.json.JSONArray().apply {
                 put("file_transfer")
@@ -240,9 +240,9 @@ class NetworkCommunication {
             
             // 发送简化的设备信息作为备选方案
             try {
-                // 获取应用上下文
-                val context = android.content.ContextWrapper(android.view.ContextThemeWrapper(null, 0))
-                val deviceId = com.example.windowsandroidconnect.utils.DeviceIdManager.getDeviceId(context.applicationContext)
+                // 从MyApplication获取全局Context
+                val context = com.example.windowsandroidconnect.MyApplication.applicationContext()
+                val deviceId = com.example.windowsandroidconnect.utils.DeviceIdManager.getDeviceId(context)
                 
                 val fallbackDeviceInfo = JSONObject().apply {
                     put("type", "device_info")

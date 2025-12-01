@@ -14,6 +14,7 @@ class ClientConfigActivity : Activity() {
     private lateinit var serverIpInput: EditText
     private lateinit var serverPortInput: EditText
     private lateinit var discoveryPortInput: EditText
+    private lateinit var connectionStrategySpinner: Spinner
     private lateinit var debugModeCheckbox: CheckBox
     private lateinit var saveButton: Button
     private lateinit var resetButton: Button
@@ -89,6 +90,35 @@ class ClientConfigActivity : Activity() {
             setText(config.discoveryPort.toString())
         }
         layout.addView(discoveryPortInput)
+        
+        // 连接策略选择
+        val connectionStrategyLabel = TextView(this).apply {
+            text = "连接策略:"
+            textSize = 16f
+            setTextColor(resources.getColor(android.R.color.black))
+            setPadding(0, 20, 0, 5)
+        }
+        layout.addView(connectionStrategyLabel)
+        
+        // 创建连接策略适配器
+        val connectionStrategyAdapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_item,
+            ClientConfig.SUPPORTED_STRATEGIES.map { it.uppercase() }
+        )
+        connectionStrategyAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        
+        // 创建连接策略下拉菜单
+        connectionStrategySpinner = Spinner(this).apply {
+            adapter = connectionStrategyAdapter
+            // 设置当前选中的策略
+            val currentStrategy = config.connectionStrategy.uppercase()
+            val position = connectionStrategyAdapter.getPosition(currentStrategy)
+            if (position >= 0) {
+                setSelection(position)
+            }
+        }
+        layout.addView(connectionStrategySpinner)
         
         // 调试模式复选框
         debugModeCheckbox = CheckBox(this).apply {
@@ -169,10 +199,14 @@ class ClientConfigActivity : Activity() {
                 return
             }
             
+            // 获取选中的连接策略
+            val selectedStrategy = ClientConfig.SUPPORTED_STRATEGIES[connectionStrategySpinner.selectedItemPosition]
+            
             // 保存配置
             config.serverIp = serverIp
             config.serverPort = serverPort
             config.discoveryPort = discoveryPort
+            config.connectionStrategy = selectedStrategy
             config.isDebugMode = debugModeCheckbox.isChecked
             
             showStatus("配置已保存成功", false)
@@ -190,6 +224,12 @@ class ClientConfigActivity : Activity() {
         serverIpInput.setText(ClientConfig.DEFAULT_SERVER_IP)
         serverPortInput.setText(ClientConfig.DEFAULT_SERVER_PORT.toString())
         discoveryPortInput.setText(ClientConfig.DEFAULT_DISCOVERY_PORT.toString())
+        // 设置连接策略为默认值
+        val defaultStrategy = ClientConfig.DEFAULT_CONNECTION_STRATEGY.uppercase()
+        val position = (connectionStrategySpinner.adapter as ArrayAdapter<String>).getPosition(defaultStrategy)
+        if (position >= 0) {
+            connectionStrategySpinner.setSelection(position)
+        }
         debugModeCheckbox.isChecked = ClientConfig.DEFAULT_DEBUG_MODE
         showStatus("配置已重置为默认值", false)
     }

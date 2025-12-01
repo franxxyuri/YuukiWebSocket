@@ -45,7 +45,7 @@ class TcpConnectionStrategy : ConnectionStrategy {
     }
     
     override fun getConnectionType(): String {
-        return "TCP/WebSocket"
+        return "tcp"
     }
     
     override fun getConfig(): Map<String, Any> {

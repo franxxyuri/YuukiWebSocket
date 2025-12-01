@@ -5,7 +5,9 @@ import { setTimeout } from 'timers/promises';
 console.log('开始测试Android客户端连接...');
 
 // 创建WebSocket连接
-const ws = new WebSocket('ws://localhost:8928');
+// 从环境变量读取端口配置，或使用默认值
+const serverPort = parseInt(process.env.SERVER_PORT) || 8928;
+const ws = new WebSocket(`ws://localhost:${serverPort}`);
 
 ws.on('open', () => {
     console.log('✅ 已成功连接到WebSocket服务器');

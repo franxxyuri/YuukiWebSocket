@@ -67,7 +67,7 @@ class KcpConnectionStrategy : ConnectionStrategy {
     }
     
     override fun getConnectionType(): String {
-        return "KCP"
+        return "kcp"
     }
     
     override fun getConfig(): Map<String, Any> {

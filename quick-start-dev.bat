@@ -20,9 +20,6 @@ REM Kill UDP processes by finding node processes using our scripts
 wmic process where "name='node.exe' and commandline like '%integrated-vite-server.js%'" call terminate >nul 2>&1
 wmic process where "name='node.exe' and commandline like '%complete-server.js%'" call terminate >nul 2>&1
 
-REM Kill any other node processes that might conflict
-taskkill /f /im node.exe >nul 2>&1
-
 echo Waiting for processes to stop...
 timeout /t 3 /nobreak >nul
 

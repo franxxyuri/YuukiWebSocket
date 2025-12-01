@@ -39,28 +39,34 @@ class ConnectionManager {
      */
     fun selectStrategy(type: String): Boolean {
         val lowerType = type.lowercase()
+        Log.e("ConnectionManager", "尝试选择连接策略: $type (转换为小写: $lowerType)")
+        Log.e("ConnectionManager", "当前支持的连接类型: ${strategyFactories.keys}")
+        Log.e("ConnectionManager", "当前已创建的连接策略: ${connectionStrategies.keys}")
+        
         var strategy = connectionStrategies[lowerType]
         
         // 如果策略不存在，尝试使用工厂创建
         if (strategy == null) {
             val factory = strategyFactories[lowerType]
+            Log.e("ConnectionManager", "查找策略工厂: $lowerType, 结果: ${factory != null}")
             if (factory != null) {
                 strategy = factory()
                 connectionStrategies[lowerType] = strategy
+                Log.e("ConnectionManager", "使用工厂创建了新的策略实例: ${strategy.getConnectionType()}")
             }
         }
         
         return if (strategy != null) {
             // 如果当前有连接，先断开
             if (isConnected()) {
-                Log.d("ConnectionManager", "切换策略前先断开当前连接")
+                Log.e("ConnectionManager", "切换策略前先断开当前连接")
                 currentStrategy?.disconnect()
             }
             currentStrategy = strategy
-            Log.d("ConnectionManager", "已选择连接策略: ${strategy.getConnectionType()}")
+            Log.e("ConnectionManager", "已选择连接策略: ${strategy.getConnectionType()}")
             true
         } else {
-            Log.e("ConnectionManager", "不支持的连接类型: $type")
+            Log.e("ConnectionManager", "不支持的连接类型: $type, 支持的类型: ${strategyFactories.keys}")
             false
         }
     }

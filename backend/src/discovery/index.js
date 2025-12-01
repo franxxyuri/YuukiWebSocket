@@ -4,7 +4,7 @@
  */
 
 import dgram from 'dgram';
-import { hostname } from 'os';
+import os, { hostname } from 'os';
 import config from '../config/config.js';
 import websocketService from '../websocket/index.js';
 import clientManager from '../websocket/clientManager.js';
@@ -277,20 +277,34 @@ class DiscoveryService {
         return;
       }
 
+      // 获取本机IP地址
+      let localIp = '127.0.0.1';
+      const interfaces = os.networkInterfaces();
+      for (const iface of Object.values(interfaces)) {
+        for (const addr of iface) {
+          if (addr.family === 'IPv4' && !addr.internal) {
+            localIp = addr.address;
+            break;
+          }
+        }
+      }
+
       // 构建设备信息
       const deviceInfo = {
         deviceId: 'windows-pc-' + hostname(),
         deviceName: hostname(),
         platform: 'windows',
-        version: '1.0.0',
-        capabilities: ['file_transfer', 'screen_mirror', 'remote_control', 'notification', 'clipboard_sync']
+        version: config.server.version || '1.0.0',
+        capabilities: config.server.capabilities || ['file_transfer', 'screen_mirror', 'remote_control', 'notification', 'clipboard_sync'],
+        ip: localIp,
+        port: config.server.port // 添加服务端端口
       };
 
       // 构建多种格式的广播消息，提高兼容性
       const messages = [
-        // 传统格式
-        `WINDOWS_DEVICE:${deviceInfo.deviceId}:${deviceInfo.deviceName}:${deviceInfo.version}`,
-        // JSON格式
+        // 传统格式 - 添加IP和端口信息
+        `WINDOWS_DEVICE:${deviceInfo.deviceId}:${deviceInfo.deviceName}:${deviceInfo.version}:${deviceInfo.ip}:${config.server.port}`,
+        // JSON格式 - 添加IP和端口信息
         JSON.stringify({
           type: 'device_discovery',
           platform: 'windows',
@@ -298,6 +312,8 @@ class DiscoveryService {
           deviceName: deviceInfo.deviceName,
           version: deviceInfo.version,
           capabilities: deviceInfo.capabilities,
+          ip: localIp,
+          port: config.server.port,
           timestamp: Date.now()
         })
       ];
@@ -307,7 +323,9 @@ class DiscoveryService {
         const buffer = Buffer.from(message);
         
         // 发送到广播地址
-        this.discoveryServer.send(buffer, 0, buffer.length, config.discovery.port, '255.255.255.255', (err) => {
+        // 使用配置的广播地址或默认值
+        const broadcastAddress = config.discovery.broadcastAddress || '255.255.255.255';
+        this.discoveryServer.send(buffer, 0, buffer.length, config.discovery.port, broadcastAddress, (err) => {
           if (err) {
             console.error(`[${new Date().toISOString()}] 发送广播消息 ${index + 1} 失败:`, err);
             // 尝试使用回退策略
@@ -334,8 +352,8 @@ class DiscoveryService {
       console.log(`[${new Date().toISOString()}] 使用回退广播策略...`);
       const buffer = Buffer.from(message);
       
-      // 尝试发送到本地子网广播地址
-      const localSubnetBroadcast = '192.168.1.255';
+      // 尝试发送到本地子网广播地址（从配置中获取或使用默认值）
+      const localSubnetBroadcast = config.discovery.localSubnetBroadcast || '192.168.1.255';
       this.discoveryServer.send(buffer, 0, buffer.length, config.discovery.port, localSubnetBroadcast, (err) => {
         if (err) {
           console.error(`[${new Date().toISOString()}] 回退广播也失败:`, err);

@@ -2,10 +2,13 @@ import WebSocket from 'ws';
 
 console.log('正在测试WebSocket连接...');
 
+// 从环境变量读取端口配置，或使用默认值
+const serverPort = parseInt(process.env.SERVER_PORT) || 8928;
+
 // 测试本地连接
-console.log('\n1. 测试本地连接 (localhost:8928)');
+console.log(`\n1. 测试本地连接 (localhost:${serverPort})`);
 try {
-    const ws1 = new WebSocket('ws://localhost:8928');
+    const ws1 = new WebSocket(`ws://localhost:${serverPort}`);
     
     ws1.on('open', () => {
         console.log('✅ 本地连接成功');
@@ -32,7 +35,7 @@ try {
         console.log('🔌 本地连接已关闭');
         
         // 测试局域网连接
-        console.log('\n2. 测试局域网连接 (192.168.188.16:8928)');
+        console.log(`\n2. 测试局域网连接 (192.168.188.16:${serverPort})`);
         testLanConnection();
     });
 } catch (error) {
@@ -42,7 +45,7 @@ try {
 
 function testLanConnection() {
     try {
-        const ws2 = new WebSocket('ws://192.168.188.16:8928');
+        const ws2 = new WebSocket(`ws://192.168.188.16:${serverPort}`);
         
         ws2.on('open', () => {
             console.log('✅ 局域网连接成功');

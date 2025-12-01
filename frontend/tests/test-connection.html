@@ -61,8 +61,11 @@
         }
         
         function connectToServer() {
-            // 使用原生WebSocket连接到端口8928
-            socket = new WebSocket('ws://localhost:8928');
+            // 基于当前页面URL动态生成WebSocket URL
+            const currentUrl = new URL(window.location.href);
+            const wsProtocol = currentUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${wsProtocol}//${currentUrl.host}`;
+            socket = new WebSocket(wsUrl);
             
             socket.onopen = function(event) {
                 statusDiv.textContent = '连接状态: 已连接';

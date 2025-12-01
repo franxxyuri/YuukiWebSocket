@@ -124,7 +124,7 @@
         
         <div class="form-group">
             <label for="serverUrl">服务器地址:</label>
-            <input type="text" id="serverUrl" value="ws://localhost:8928/ws" placeholder="输入服务器WebSocket地址">
+            <input type="text" id="serverUrl" value="" placeholder="输入服务器WebSocket地址">
         </div>
         
         <div style="text-align: center; margin: 20px 0;">
@@ -385,7 +385,7 @@
                 };
                 
                 socket.onerror = function(error) {
-                    log(`WebSocket连接错误: ${error.message}`, 'error');
+                    log(`WebSocket连接错误: ${error.message || '连接被拒绝或服务器未响应'}`, 'error');
                     updateConnectionStatus(false);
                 };
                 
@@ -599,6 +599,11 @@
         
         // 初始化
         updateConnectionStatus(false);
+        
+        // 自动设置WebSocket URL为当前页面的协议和主机
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        serverUrlInput.value = `${protocol}//${host}/ws`;
     </script>
 </body>
 </html>

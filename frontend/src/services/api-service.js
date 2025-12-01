@@ -562,6 +562,16 @@ class APIService {
     // 转发给connectionManager
     return connectionManager.getMockData(type);
   }
+
+  /**
+   * 发送带回调的请求
+   * @param {string} type - 请求类型
+   * @param {object} data - 请求数据
+   * @returns {Promise<object>} 包含响应的Promise
+   */
+  async sendRequest(type, data) {
+    return connectionManager.sendRequest(type, data);
+  }
 }
 
 // 创建单例实例

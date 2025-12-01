@@ -15,7 +15,7 @@ class ConnectionManager {
     const isDev = process.env.NODE_ENV === 'development' || import.meta.env.DEV;
     this.config = {
       connectionType: 'websocket', // 开发环境默认使用websocket模式
-      serverUrl: 'ws://localhost:8928',
+      serverUrl: null,
       useMock: false, // 开发环境默认不使用模拟连接
       maxReconnectAttempts: 3,
       showConnectionErrors: true // 控制是否显示连接错误
@@ -267,7 +267,7 @@ class ConnectionManager {
     // 确保不使用带有/ws后缀的URL，因为WebSocketStrategy会直接使用完整URL
     const url = serverUrl || 
                 configManager.get('connection.websocketUrl', this.config.serverUrl) || 
-                'ws://localhost:8928';
+                null;
     
     // 清理URL，确保不包含/ws后缀
     const cleanUrl = url.replace(/\/ws$/, '');
@@ -738,7 +738,8 @@ class ConnectionManager {
     }
     
     // 根据设备信息构建WebSocket URL
-    const wsUrl = `ws://${deviceInfo.ip}:${deviceInfo.port || 8928}`;
+    const defaultPort = configManager.get('connection.defaultPort', 8928);
+    const wsUrl = `ws://${deviceInfo.ip}:${deviceInfo.port || defaultPort}`;
     
     // 更新连接类型为websocket
     this.setConnectionType('websocket');
@@ -772,7 +773,7 @@ connectionManager.initialize({
                   window.location.search.includes('mock=true') 
     ? 'mock' 
     : 'websocket',
-  serverUrl: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_WS_SERVER_URL) || 'ws://localhost:8928'
+  serverUrl: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_WS_SERVER_URL) || null
 });
 
 export default connectionManager;

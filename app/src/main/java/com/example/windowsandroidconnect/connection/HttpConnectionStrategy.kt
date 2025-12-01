@@ -135,7 +135,7 @@ class HttpConnectionStrategy : ConnectionStrategy {
     }
     
     override fun getConnectionType(): String {
-        return "HTTP"
+        return "http"
     }
     
     override fun getConfig(): Map<String, Any> {

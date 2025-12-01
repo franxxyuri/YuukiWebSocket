@@ -165,8 +165,8 @@ class WebSocketService {
       try {
         ws.send(JSON.stringify({
           type: 'error',
-          message: '无效的消息格式',
           errorCode: 'INVALID_MESSAGE_FORMAT',
+          errorMessage: '无效的消息格式',
           timestamp: Date.now()
         }));
       } catch (sendError) {

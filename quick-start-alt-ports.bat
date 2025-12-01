@@ -1,5 +1,5 @@
 @echo off
-title Quick Start with Alternative Ports
+title Quick Start - Alternative Ports
 
 echo ========================================
 echo   Quick Start - Alternative Ports
@@ -13,8 +13,6 @@ REM Kill any existing node processes from this directory
 echo Stopping any existing server processes...
 
 REM Kill TCP listening processes on our ports
-for /f "tokens=5" %%a in ('netstat -aon ^| findstr LISTENING ^| findstr :8928') do taskkill /f /pid %%a >nul 2>&1
-for /f "tokens=5" %%a in ('netstat -aon ^| findstr LISTENING ^| findstr :8781') do taskkill /f /pid %%a >nul 2>&1
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr LISTENING ^| findstr :9928') do taskkill /f /pid %%a >nul 2>&1
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr LISTENING ^| findstr :9781') do taskkill /f /pid %%a >nul 2>&1
 
@@ -22,18 +20,8 @@ REM Kill UDP processes by finding node processes using our scripts
 wmic process where "name='node.exe' and commandline like '%integrated-vite-server.js%'" call terminate >nul 2>&1
 wmic process where "name='node.exe' and commandline like '%complete-server.js%'" call terminate >nul 2>&1
 
-REM Kill any other node processes that might conflict
-taskkill /f /im node.exe >nul 2>&1
-
 echo Waiting for processes to stop...
 timeout /t 3 /nobreak >nul
-
-REM Set alternative ports using environment variables
-echo Using alternative ports to avoid conflicts...
-set SERVER_PORT=9928
-set VITE_PORT=9781
-set DISCOVERY_PORT=9190
-set DEBUG_PORT=9181
 
 REM Install dependencies if not already installed
 if not exist "node_modules" (
@@ -49,16 +37,8 @@ if not exist "node_modules" (
 
 REM Start the integrated server with alternative ports
 echo Starting integrated server with alternative ports...
-echo Main service port: %SERVER_PORT%
-echo Vite frontend port: %VITE_PORT%
-echo Discovery port: %DISCOVERY_PORT%
-
-REM 设置环境变量供Node.js应用使用
-set SERVER_PORT=%SERVER_PORT%
-set VITE_PORT=%VITE_PORT%
-set DISCOVERY_PORT=%DISCOVERY_PORT%
-set DEBUG_PORT=%DEBUG_PORT%
-
+set SERVER_PORT=9928
+set VITE_PORT=9781
 node backend/scripts/integrated-vite-server.js
 
 echo.

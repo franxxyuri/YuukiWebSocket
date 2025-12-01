@@ -162,8 +162,12 @@
         
         // 连接服务器
         connectBtn.addEventListener('click', () => {
-            // 连接到Vite代理的WebSocket服务器
-            socket = new WebSocket('ws://localhost:8781/ws');
+            // 基于当前页面URL动态生成WebSocket URL
+            const currentUrl = new URL(window.location.href);
+            const wsProtocol = currentUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+            // 确保WebSocket URL包含/ws路径
+            const wsUrl = `${wsProtocol}//${currentUrl.host}/ws`;
+            socket = new WebSocket(wsUrl);
             
             socket.onopen = function(event) {
                 console.log('Connected to server');

@@ -7,8 +7,10 @@
 import { execSync } from 'child_process';
 
 // 测试配置
-const SERVER_URL = 'http://127.0.0.1:8928';
-const WS_URL = 'ws://127.0.0.1:8928';
+// 从环境变量读取端口配置，或使用默认值
+const serverPort = parseInt(process.env.SERVER_PORT) || 8928;
+const SERVER_URL = `http://127.0.0.1:${serverPort}`;
+const WS_URL = `ws://127.0.0.1:${serverPort}`;
 
 // 测试结果
 const testResults = {

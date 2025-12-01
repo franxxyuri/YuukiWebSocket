@@ -1,50 +1,59 @@
-import WebSocket from 'ws';
+// 简单的WebSocket客户端测试脚本
+import { WebSocket } from 'ws';
 
-// 测试后端WebSocket连接
-console.log('测试后端WebSocket连接...');
-const ws1 = new WebSocket('ws://localhost:8928');
+// 创建WebSocket连接
+const ws = new WebSocket('ws://localhost:9931');
 
-ws1.on('open', () => {
-    console.log('✅ 后端WebSocket连接成功');
-    ws1.send(JSON.stringify({ type: 'heartbeat' }));
-    setTimeout(() => ws1.close(), 1000);
+// 连接打开时发送消息
+ws.on('open', () => {
+  console.log('WebSocket连接已打开');
+  
+  // 发送设备信息
+  const deviceInfo = {
+    deviceId: 'test-client-123',
+    deviceName: 'Test Client',
+    platform: 'web',
+    version: '1.0.0',
+    capabilities: ['file_transfer', 'screen_mirror', 'remote_control', 'notification', 'clipboard_sync']
+  };
+  
+  ws.send(JSON.stringify({
+    type: 'device_info',
+    deviceInfo: deviceInfo
+  }));
+  
+  // 发送测试消息
+  setTimeout(() => {
+    ws.send(JSON.stringify({
+      type: 'test_connection',
+      timestamp: Date.now(),
+      test: true
+    }));
+  }, 1000);
 });
 
-ws1.on('message', (data) => {
-    console.log('📩 收到后端消息:', data.toString());
+// 接收消息
+ws.on('message', (data) => {
+  try {
+    const message = JSON.parse(data);
+    console.log('收到消息:', message.type);
+    console.log('消息内容:', message);
+  } catch (error) {
+    console.error('解析消息失败:', error);
+  }
 });
 
-ws1.on('error', (error) => {
-    console.error('❌ 后端WebSocket连接错误:', error.message);
+// 连接关闭
+ws.on('close', () => {
+  console.log('WebSocket连接已关闭');
 });
 
-ws1.on('close', () => {
-    console.log('🔌 后端WebSocket连接关闭');
-    // 测试前端代理WebSocket连接
-    testFrontendWebSocket();
+// 连接错误
+ws.on('error', (error) => {
+  console.error('WebSocket连接错误:', error);
 });
 
-// 测试前端代理WebSocket连接
-function testFrontendWebSocket() {
-    console.log('\n测试前端代理WebSocket连接...');
-    const ws2 = new WebSocket('ws://localhost:8781/ws');
-    
-    ws2.on('open', () => {
-        console.log('✅ 前端代理WebSocket连接成功');
-        ws2.send(JSON.stringify({ type: 'heartbeat' }));
-        setTimeout(() => ws2.close(), 1000);
-    });
-    
-    ws2.on('message', (data) => {
-        console.log('📩 收到前端代理消息:', data.toString());
-    });
-    
-    ws2.on('error', (error) => {
-        console.error('❌ 前端代理WebSocket连接错误:', error.message);
-    });
-    
-    ws2.on('close', () => {
-        console.log('🔌 前端代理WebSocket连接关闭');
-        console.log('\n✅ 所有WebSocket测试完成');
-    });
-}
+// 5秒后关闭连接
+setTimeout(() => {
+  ws.close();
+}, 5000);

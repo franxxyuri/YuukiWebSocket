@@ -4,6 +4,7 @@
  */
 
 import clientManager from './clientManager.js';
+import fileTransferManager from '../fileTransfer/fileTransferManager.js';
 
 class MessageHandlers {
   /**
@@ -83,11 +84,11 @@ class MessageHandlers {
           break;
         default:
           console.log(`未知消息类型: ${type}`);
-          sendResponse({ success: false, error: '未知消息类型' });
+          sendResponse({ success: false, errorCode: 'UNKNOWN_MESSAGE_TYPE', errorMessage: '未知消息类型', timestamp: Date.now() });
       }
     } catch (error) {
       console.error(`处理消息时出错: ${type}`, error);
-      sendResponse({ success: false, error: error.message });
+      sendResponse({ success: false, errorCode: 'INTERNAL_ERROR', errorMessage: error.message, timestamp: Date.now() });
     }
   }
 
@@ -157,12 +158,26 @@ class MessageHandlers {
   handleFileTransfer(clientId, data) {
     console.log('收到文件传输消息:', data.action);
     
+    // 使用文件传输管理器处理传输逻辑
+    const result = fileTransferManager.handleFileTransferRequest(clientId, data);
+    
     // 转发给其他客户端（如Web前端）
     clientManager.broadcastToWebClients({
       type: 'file_transfer',
       ...data,
+      ...result,
       sourceClientId: clientId
     }, clientId);
+    
+    // 如果是分块传输，也发送确认给发送方
+    if (data.action === 'chunk') {
+      clientManager.sendToClient(clientId, {
+        type: 'file_transfer_response',
+        transferId: data.transferId,
+        chunkNumber: data.chunkNumber,
+        ...result
+      });
+    }
   }
 
   /**
@@ -182,7 +197,9 @@ class MessageHandlers {
         // 如果没有连接的Android设备，发送错误消息给Web客户端
         clientManager.sendToClient(clientId, {
           type: 'error',
-          message: '没有连接的Android设备'
+          errorCode: 'NO_ANDROID_DEVICE_CONNECTED',
+          errorMessage: '没有连接的Android设备',
+          timestamp: Date.now()
         });
         console.log('没有连接的Android设备，无法转发控制命令');
       } else {

@@ -3,7 +3,8 @@ const WebSocketServer = require('./websocket-server.js');
 console.log('测试NetworkCommunication服务器状态...');
 
 // 创建WebSocket服务器实例
-const server = new WebSocketServer(8928);
+const serverPort = parseInt(process.env.SERVER_PORT) || 8928;
+const server = new WebSocketServer(serverPort);
 
 console.log('NetworkCommunication服务器状态:');
 console.log('- isServerRunning:', server.networkCommunication.isServerRunning);

@@ -4,13 +4,16 @@ import http from 'http';
 
 console.log('开始测试Windows-Android Connect服务端功能...');
 
+// 定义全局服务器端口
+const serverPort = parseInt(process.env.SERVER_PORT) || 8928;
+
 // 测试HTTP API
 async function testHttpApi() {
     console.log('\n--- 测试HTTP API ---');
     
     try {
         // 测试状态API
-        const statusResponse = await fetch('http://localhost:8928/api/status');
+        const statusResponse = await fetch(`http://localhost:${serverPort}/api/status`);
         if (statusResponse.ok) {
             const statusData = await statusResponse.json();
             console.log('✅ 状态API测试通过:', statusData);
@@ -27,8 +30,8 @@ function testWebSocket() {
     console.log('\n--- 测试WebSocket连接 ---');
     
     return new Promise((resolve) => {
-        // 尝试连接到WebSocket服务器
-        const ws = new WebSocket('ws://localhost:8928');
+        // 测试WebSocket连接
+        const ws = new WebSocket(`ws://localhost:${serverPort}`);
         let timeoutId;
         
         ws.on('open', function open() {

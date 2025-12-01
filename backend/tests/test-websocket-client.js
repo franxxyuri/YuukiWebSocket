@@ -1,7 +1,9 @@
 const WebSocket = require('ws');
 
 // 连接到服务器
-const ws = new WebSocket('ws://localhost:8928');
+// 从环境变量读取端口配置，或使用默认值
+const serverPort = parseInt(process.env.SERVER_PORT) || 8928;
+const ws = new WebSocket(`ws://localhost:${serverPort}`);
 
 ws.on('open', function open() {
   console.log('已连接到服务器');

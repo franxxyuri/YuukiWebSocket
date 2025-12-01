@@ -33,6 +33,7 @@ class WebSocketConnectionStrategy : ConnectionStrategy {
             
             if (success) {
                 isConnectedState = true
+                serverUrl = "ws://$ip:$port"
                 Log.d("WebSocketConnectionStrategy", "WebSocket连接成功")
                 // 通知所有状态监听器
                 statusListeners.forEach { it(true) }

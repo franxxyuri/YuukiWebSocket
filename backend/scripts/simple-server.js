@@ -45,7 +45,7 @@ wss.on('connection', (ws) => {
             deviceName: 'Google Pixel 7',
             platform: 'android',
             ip: '192.168.1.101',
-            port: 8928,
+            port: parseInt(process.env.SERVER_PORT) || 8928,
             lastSeen: Date.now()
           },
           {
@@ -53,7 +53,7 @@ wss.on('connection', (ws) => {
             deviceName: 'Samsung Galaxy Tab S7',
             platform: 'android',
             ip: '192.168.1.102',
-            port: 8928,
+            port: parseInt(process.env.SERVER_PORT) || 8928,
             lastSeen: Date.now()
           }
         ];
@@ -81,7 +81,7 @@ wss.on('connection', (ws) => {
 });
 
 // 设备发现服务
-const discoveryPort = 8190;
+const discoveryPort = parseInt(process.env.DISCOVERY_PORT) || 8190;
 const discoveryServer = dgram.createSocket('udp4');
 
 discoveryServer.on('listening', () => {
@@ -97,7 +97,7 @@ discoveryServer.on('message', (msg, rinfo) => {
 discoveryServer.bind(discoveryPort);
 
 // 启动服务器
-const PORT = 3000; // 使用低权限端口
+const PORT = parseInt(process.env.SERVER_PORT) || 3000; // 使用环境变量或默认低权限端口
 server.listen(PORT, () => {
   console.log(`WebSocket服务器运行在 http://localhost:${PORT}`);
   console.log(`WebSocket连接URL: ws://localhost:${PORT}`);

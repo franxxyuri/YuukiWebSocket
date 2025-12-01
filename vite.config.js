@@ -11,24 +11,24 @@ export default defineConfig({
     exclude: /node_modules/
   })],
   server: {
-    port: 8781,
+    port: parseInt(process.env.VITE_PORT) || 8781,
     host: '0.0.0.0',
     strictPort: false,
     proxy: {
       // 将WebSocket请求代理到后端服务器
       '/ws': {
-        target: 'http://localhost:8928',
+        target: `http://localhost:${parseInt(process.env.SERVER_PORT) || 8928}`,
         ws: true,
         changeOrigin: true
       },
       // 代理API请求
       '/api': {
-        target: 'http://localhost:8928',
+        target: `http://localhost:${parseInt(process.env.SERVER_PORT) || 8928}`,
         changeOrigin: true
       },
       // 代理设备相关API端点
       '/device': {
-        target: 'http://localhost:8928',
+        target: `http://localhost:${parseInt(process.env.SERVER_PORT) || 8928}`,
         changeOrigin: true
       }
     }

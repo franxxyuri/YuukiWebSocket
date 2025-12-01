@@ -24,9 +24,26 @@ class KCPStrategy extends ConnectionStrategy {
     this.autoReconnect = options.autoReconnect !== undefined ? options.autoReconnect : true;
     this.messageTimeout = options.messageTimeout || 30000; // 30秒默认超时
     
-    // KCP特定配置
-    this.port = options.port || 8928;
-    this.host = options.host || 'localhost';
+    // KCP特定配置 - 从serverUrl解析或使用options
+    this.host = 'localhost';
+    this.port = 9929; // 使用配置文件中的默认端口
+    
+    if (serverUrl) {
+      try {
+        // 解析URL格式：kcp://host:port
+        const url = new URL(serverUrl);
+        this.host = url.hostname;
+        this.port = parseInt(url.port) || this.port;
+      } catch (e) {
+        // 如果serverUrl不是URL格式，尝试从options获取
+        this.host = options.host || this.host;
+        this.port = options.port || this.port;
+      }
+    } else {
+      this.host = options.host || this.host;
+      this.port = options.port || this.port;
+    }
+    
     this.encoding = options.encoding || 'utf8';
     
     // KCP协议配置
@@ -355,6 +372,31 @@ class KCPStrategy extends ConnectionStrategy {
       rtt: Math.floor(Math.random() * 100) + 50, // 50-150ms
       cwnd: Math.floor(Math.random() * 64) + 64, // 64-128
       ssthresh: Math.floor(Math.random() * 128) + 128 // 128-256
+    };
+  }
+
+  /**
+   * 检查是否已连接
+   * @returns {boolean} 是否已连接
+   */
+  isConnected() {
+    return this._isConnected;
+  }
+
+  /**
+   * 获取连接状态
+   * @returns {object} 连接状态对象
+   */
+  getConnectionStatus() {
+    return {
+      isConnected: this._isConnected,
+      connectionState: this.connectionState,
+      serverUrl: this.serverUrl,
+      host: this.host,
+      port: this.port,
+      reconnectAttempts: this.reconnectAttempts,
+      maxReconnectAttempts: this.maxReconnectAttempts,
+      autoReconnect: this.autoReconnect
     };
   }
 }

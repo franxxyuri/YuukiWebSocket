@@ -8,8 +8,8 @@ import dgram from 'dgram';
 
 // 测试配置
 const TEST_CONFIG = {
-  SERVER_URL: 'ws://localhost:8928',
-  DISCOVERY_PORT: 8091,
+  SERVER_URL: `ws://localhost:${parseInt(process.env.SERVER_PORT) || 8928}`,
+  DISCOVERY_PORT: parseInt(process.env.DISCOVERY_PORT) || 8190,
   TEST_TIMEOUT: 5000,
   RETRY_COUNT: 3
 };

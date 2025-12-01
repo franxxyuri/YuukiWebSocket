@@ -12,16 +12,13 @@
 ### 直接运行脚本
 ```bash
 # 开发模式
-scripts\start-unified.bat dev
+quick-start-dev.bat
 
-# 测试模式
-scripts\start-unified.bat test
+# 替代端口启动（避免端口冲突）
+quick-start-alt-ports.bat
 
-# 生产模式
-scripts\start-unified.bat prod
-
-# 配置模式
-scripts\start-unified.bat config
+# 前后端分离启动
+start-separated.bat
 ```
 
 ## 端口配置

@@ -23,13 +23,13 @@ const parseCommandLineArgs = () => {
   const options = {
     server: {
       host: '127.0.0.1',
-      port: 8928
+      port: parseInt(process.env.SERVER_PORT) || 8928
     },
     websocket: {
-      url: 'ws://127.0.0.1:8928'
+      url: `ws://127.0.0.1:${parseInt(process.env.SERVER_PORT) || 8928}`
     },
     discovery: {
-      port: 8091,
+      port: parseInt(process.env.DISCOVERY_PORT) || 8190,
       broadcastAddress: '255.255.255.255'
     },
     timeout: 5000,

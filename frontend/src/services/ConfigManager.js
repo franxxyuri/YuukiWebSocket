@@ -17,10 +17,15 @@ class ConfigManager {
    * @returns {object} 默认配置对象
    */
   getDefaultConfig() {
+    // 动态生成默认WebSocket URL，基于当前页面的协议和主机
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    const defaultWsUrl = `${protocol}//${host}`;
+    
     return {
       // 连接配置
       connection: {
-        websocketUrl: 'ws://localhost:8928',
+        websocketUrl: defaultWsUrl,
         mockMode: process.env.NODE_ENV === 'development' && window.location.search.includes('useMock=true'),
         autoReconnect: true,
         reconnectAttempts: 5,
