@@ -35,6 +35,7 @@ import config from './config/config.js';
 // 导入中间件
 import errorHandler from './middleware/errorHandler.js';
 import logger from './middleware/logger.js';
+import validate, { validationRules } from './middleware/inputValidator.js';
 
 // 导入路由
 import apiRoutes from './routes/api.js';
@@ -48,6 +49,9 @@ import discoveryService from './discovery/index.js';
 // 导入组件
 import clientManager from './websocket/clientManager.js';
 import messageHandlers from './websocket/messageHandlers.js';
+
+// 导入高可用性管理器
+import haManager from './utils/ha-manager.js';
 
 // 注册服务到依赖注入容器
 container.register('clientManager', () => clientManager, true);
@@ -100,13 +104,122 @@ server.listen(PORT, HOST, () => {
     console.log(`服务器运行在: http://${localIP}:${PORT}`);
     console.log(`服务器运行在: http://${HOST}:${PORT}`);
     console.log('等待Android设备连接...');
+    
+    // 注册服务到高可用性管理器
+    registerServicesToHA();
+    
+    // 启动资源监控
+    haManager.startMonitoring();
 });
+
+// 注册服务到高可用性管理器
+function registerServicesToHA() {
+    try {
+        // 注册WebSocket服务
+        haManager.registerService(
+            'websocket',
+            websocketService,
+            async () => {
+                // WebSocket服务健康检查
+                const clients = websocketService.getClients();
+                return clients.size >= 0; // 只要服务运行，就认为健康
+            },
+            async () => {
+                // WebSocket服务恢复操作
+                console.log('正在恢复WebSocket服务...');
+                // 这里可以添加WebSocket服务的恢复逻辑
+                return true;
+            }
+        );
+        
+        // 注册设备发现服务
+        haManager.registerService(
+            'discovery',
+            discoveryService,
+            async () => {
+                // 设备发现服务健康检查
+                return true; // 简化实现，假设服务一直健康
+            },
+            async () => {
+                // 设备发现服务恢复操作
+                console.log('正在恢复设备发现服务...');
+                discoveryService.init();
+                return true;
+            }
+        );
+        
+        console.log('所有服务已注册到高可用性管理器');
+    } catch (error) {
+        console.error('注册服务到高可用性管理器失败:', error.message);
+    }
+}
 
 // 错误处理
 server.on('error', (error) => {
     console.error('服务器错误:', error);
+    
+    // 通知高可用性管理器
+    haManager.sendResourceAlert(['服务器错误'], {
+        error: error.message,
+        timestamp: Date.now()
+    });
+});
+
+// 添加系统状态API路由
+app.get('/api/system/status', (req, res) => {
+    try {
+        const systemStatus = haManager.getSystemStatus();
+        res.json({
+            success: true,
+            status: systemStatus,
+            timestamp: Date.now()
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            message: '获取系统状态失败'
+        });
+    }
+});
+
+// 添加服务状态API路由
+app.get('/api/services/status', (req, res) => {
+    try {
+        const systemStatus = haManager.getSystemStatus();
+        res.json({
+            success: true,
+            services: systemStatus.services,
+            timestamp: Date.now()
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            message: '获取服务状态失败'
+        });
+    }
+});
+
+// 添加资源监控API路由
+app.get('/api/monitoring/resources', (req, res) => {
+    try {
+        const systemStatus = haManager.getSystemStatus();
+        res.json({
+            success: true,
+            resourceData: systemStatus.resourceData,
+            resourceHistory: systemStatus.resourceHistory,
+            timestamp: Date.now()
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            message: '获取资源监控数据失败'
+        });
+    }
 });
 
 export default app;
-export { container };
+export { container, haManager };
 

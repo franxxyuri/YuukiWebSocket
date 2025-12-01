@@ -85,7 +85,15 @@
             android:exported="false"
             android:label="快速功能验证测试" />
 
-        
+        <!-- 通过广播拉起 QuickTestActivity 的调试入口 -->
+        <receiver
+            android:name="com.example.windowsandroidconnect.receiver.QuickTestLaunchReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.example.windowsandroidconnect.ACTION_OPEN_QUICK_TEST" />
+            </intent-filter>
+        </receiver>
 
         <!-- 屏幕捕获权限请求Activity -->
         <activity

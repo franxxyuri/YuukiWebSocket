@@ -68,7 +68,8 @@ electron/app/node_modules/
 package-lock.json
 yarn.lock
 
-# 个人配置文件
-config/
+# 个人配置文件 (排除Android源代码中的config包)
+/config/
 settings.json
 *.config
+!app/src/main/java/**/config/

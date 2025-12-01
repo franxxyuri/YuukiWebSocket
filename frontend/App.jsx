@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Layout, Menu, Typography, Spin, ConfigProvider, theme, Badge, message, notification } from 'antd';
 import { LaptopOutlined, FileTextOutlined, VideoCameraOutlined, AppstoreOutlined, SettingOutlined, BellOutlined, DisconnectOutlined, BugOutlined, DashboardOutlined } from '@ant-design/icons';
 import Dashboard from './components/Dashboard';
-import DeviceDiscovery from './components/DeviceDiscovery';
-import FileTransfer from './components/FileTransfer';
-import ScreenShare from './components/ScreenShare';
-import RemoteControl from './components/RemoteControl';
-import ConfigurationPage from './components/ConfigurationPage';
-import DebugPage from './components/DebugPage';
+// 其余页面组件使用懒加载，减小首屏 bundle 体积
+const DeviceDiscovery = React.lazy(() => import('./components/DeviceDiscovery'));
+const FileTransfer = React.lazy(() => import('./components/FileTransfer'));
+const ScreenShare = React.lazy(() => import('./components/ScreenShare'));
+const RemoteControl = React.lazy(() => import('./components/RemoteControl'));
+const ConfigurationPage = React.lazy(() => import('./components/ConfigurationPage'));
+const DebugPage = React.lazy(() => import('./components/DebugPage'));
 import apiService from './src/services/api-service';
 import configManager from './src/services/ConfigManager';
 
@@ -353,7 +354,15 @@ class App extends React.Component {
                   borderRadius: '6px'
                 }}
               >
-                {this.renderContent()}
+                <Suspense
+                  fallback={
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                      <Spin size="large" tip="正在加载模块..." />
+                    </div>
+                  }
+                >
+                  {this.renderContent()}
+                </Suspense>
               </Content>
             </Layout>
           </Layout>

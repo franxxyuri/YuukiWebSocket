@@ -63,6 +63,12 @@ class ClientManager {
       // 移除客户端
       this.clients.delete(clientId);
       
+      // 清理该客户端的消息队列，避免内存泄漏
+      if (this.messageQueue.has(clientId)) {
+        this.messageQueue.delete(clientId);
+        console.log(`已清理客户端 ${clientId} 的消息队列`);
+      }
+      
       console.log(`客户端已移除: ${clientId}, 剩余客户端数: ${this.clients.size}`);
     }
   }

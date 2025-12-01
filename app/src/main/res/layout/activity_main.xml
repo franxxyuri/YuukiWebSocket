@@ -3,103 +3,196 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="16dp"
+    android:background="#F5F5F5">
 
-    <!-- 设备信息显示 -->
-    <TextView
-        android:id="@+id/device_info_text"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="设备信息加载中..."
-        android:textSize="16sp"
-        android:layout_marginBottom="16dp"
-        android:background="#f0f0f0"
-        android:padding="12dp" />
-
-    <!-- 连接状态 -->
-    <TextView
-        android:id="@+id/status_text"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="准备就绪"
-        android:textSize="14sp"
-        android:textColor="#666666"
-        android:layout_marginBottom="24dp"
-        android:gravity="center" />
-
-    <!-- 连接按钮 -->
-    <Button
-        android:id="@+id/connect_button"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="连接"
-        android:textColor="#ffffff"
-        android:background="#2196F3"
-        android:layout_marginBottom="16dp" />
-
-    <!-- 功能按钮组 -->
+    <!-- 顶部应用标题与连接状态区 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="16dp">
+        android:orientation="vertical"
+        android:padding="8dp"
+        android:background="#FFFFFF"
+        android:elevation="2dp">
 
-        <Button
-            android:id="@+id/file_transfer_button"
-            android:layout_width="0dp"
+        <TextView
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="文件传输"
-            android:layout_marginEnd="8dp"
-            android:visibility="gone"
-            android:background="#FF9800"
-            android:textColor="#ffffff" />
+            android:text="Windows-Android Connect"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="#212121"
+            android:gravity="center"
+            android:paddingBottom="4dp" />
 
-        <Button
-            android:id="@+id/screen_share_button"
-            android:layout_width="0dp"
+        <TextView
+            android:id="@+id/status_text"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="屏幕共享"
-            android:layout_marginStart="8dp"
-            android:visibility="gone"
-            android:background="#4CAF50"
-            android:textColor="#ffffff" />
+            android:text="准备就绪"
+            android:textSize="14sp"
+            android:textColor="#666666"
+            android:gravity="center" />
     </LinearLayout>
 
-    <!-- 设备列表 -->
-    <TextView
+    <!-- 设备信息卡片 -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="发现的设备:"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="8dp" />
+        android:orientation="vertical"
+        android:layout_marginTop="12dp"
+        android:padding="12dp"
+        android:background="#FFFFFF"
+        android:elevation="1dp">
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/device_list_recycler"
+        <TextView
+            android:id="@+id/device_info_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="设备信息加载中..."
+            android:textSize="14sp"
+            android:textColor="#424242" />
+
+        <Button
+            android:id="@+id/connect_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="连接到Windows设备"
+            android:textColor="#FFFFFF"
+            android:background="#2196F3"
+            android:layout_marginTop="12dp" />
+    </LinearLayout>
+
+    <!-- 设备列表区域 -->
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="150dp"
-        android:background="#f9f9f9"
-        android:layout_marginBottom="16dp" />
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:layout_marginTop="12dp"
+        android:background="#FFFFFF"
+        android:padding="12dp">
 
-    
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="发现的设备"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#212121"
+            android:layout_marginBottom="8dp" />
 
-    
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/device_list_recycler"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="#FAFAFA" />
+    </LinearLayout>
 
-    
+    <!-- 底部核心功能入口区 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="12dp">
 
-    
+        <!-- 第一行：文件传输 + 屏幕共享 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
 
-    <!-- 快速功能验证测试页面按钮 -->
+            <Button
+                android:id="@+id/file_transfer_button"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="文件传输"
+                android:layout_marginEnd="8dp"
+                android:visibility="gone"
+                android:background="#FF9800"
+                android:textColor="#ffffff" />
+
+            <Button
+                android:id="@+id/screen_share_button"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="屏幕共享"
+                android:layout_marginStart="8dp"
+                android:visibility="gone"
+                android:background="#4CAF50"
+                android:textColor="#ffffff" />
+        </LinearLayout>
+
+        <!-- 第二行：远程控制 + 通知同步 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <Button
+                android:id="@+id/remote_control_button"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="远程控制"
+                android:layout_marginEnd="8dp"
+                android:background="#607D8B"
+                android:textColor="#ffffff" />
+
+            <Button
+                android:id="@+id/notification_sync_button"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="通知同步"
+                android:layout_marginStart="8dp"
+                android:background="#3F51B5"
+                android:textColor="#ffffff" />
+        </LinearLayout>
+
+        <!-- 第三行：剪贴板同步 + 设置 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <Button
+                android:id="@+id/clipboard_sync_button"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="剪贴板同步"
+                android:layout_marginEnd="8dp"
+                android:background="#009688"
+                android:textColor="#ffffff" />
+
+            <Button
+                android:id="@+id/settings_button"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="设置"
+                android:layout_marginStart="8dp"
+                android:background="#9E9E9E"
+                android:textColor="#ffffff" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- 开发者调试入口（仅测试阶段使用） -->
     <Button
         android:id="@+id/quick_test_button"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="快速功能验证测试"
-        android:textSize="16sp"
+        android:text="Quick Test"
+        android:textSize="12sp"
+        android:padding="8dp"
+        android:layout_gravity="end"
         android:layout_marginTop="8dp"
-        android:padding="12dp"
         android:background="#795548"
         android:textColor="#ffffff" />
 

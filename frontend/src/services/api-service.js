@@ -26,28 +26,28 @@ class APIService {
     connectionManager.on('connectionError', this.handleConnectionError.bind(this));
     
     // 监听设备相关事件
-    connectionManager.on('deviceDiscovered', this.triggerEvent.bind(this));
-    connectionManager.on('deviceConnected', this.triggerEvent.bind(this));
-    connectionManager.on('deviceDisconnected', this.triggerEvent.bind(this));
+    connectionManager.on('deviceDiscovered', (data) => this.triggerEvent('deviceDiscovered', data));
+    connectionManager.on('deviceConnected', (data) => this.triggerEvent('deviceConnected', data));
+    connectionManager.on('deviceDisconnected', (data) => this.triggerEvent('deviceDisconnected', data));
     
     // 监听文件传输相关事件
-    connectionManager.on('fileTransferStarted', this.triggerEvent.bind(this));
-    connectionManager.on('fileTransferProgress', this.triggerEvent.bind(this));
-    connectionManager.on('fileTransferCompleted', this.triggerEvent.bind(this));
-    connectionManager.on('fileTransferFailed', this.triggerEvent.bind(this));
+    connectionManager.on('fileTransferStarted', (data) => this.triggerEvent('fileTransferStarted', data));
+    connectionManager.on('fileTransferProgress', (data) => this.triggerEvent('fileTransferProgress', data));
+    connectionManager.on('fileTransferCompleted', (data) => this.triggerEvent('fileTransferCompleted', data));
+    connectionManager.on('fileTransferFailed', (data) => this.triggerEvent('fileTransferFailed', data));
     
     // 监听屏幕共享相关事件
-    connectionManager.on('screenShareStarted', this.triggerEvent.bind(this));
-    connectionManager.on('screenShareStopped', this.triggerEvent.bind(this));
-    connectionManager.on('screenFrameReceived', this.triggerEvent.bind(this));
+    connectionManager.on('screenShareStarted', (data) => this.triggerEvent('screenShareStarted', data));
+    connectionManager.on('screenShareStopped', (data) => this.triggerEvent('screenShareStopped', data));
+    connectionManager.on('screenFrameReceived', (data) => this.triggerEvent('screenFrameReceived', data));
     
     // 监听远程控制相关事件
-    connectionManager.on('remoteControlEnabled', this.triggerEvent.bind(this));
-    connectionManager.on('remoteControlDisabled', this.triggerEvent.bind(this));
-    connectionManager.on('remoteControlError', this.triggerEvent.bind(this));
+    connectionManager.on('remoteControlEnabled', (data) => this.triggerEvent('remoteControlEnabled', data));
+    connectionManager.on('remoteControlDisabled', (data) => this.triggerEvent('remoteControlDisabled', data));
+    connectionManager.on('remoteControlError', (data) => this.triggerEvent('remoteControlError', data));
     
     // 监听剪贴板相关事件
-    connectionManager.on('clipboardContentReceived', this.triggerEvent.bind(this));
+    connectionManager.on('clipboardContentReceived', (data) => this.triggerEvent('clipboardContentReceived', data));
   }
   
   /**

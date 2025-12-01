@@ -270,7 +270,7 @@ class ConnectionManager {
                 null;
     
     // 清理URL，确保不包含/ws后缀
-    const cleanUrl = url.replace(/\/ws$/, '');
+    const cleanUrl = url ? url.replace(/\/ws$/, '') : null;
     
     console.log(`正在连接到 ${this.config.connectionType} 服务器: ${cleanUrl}`);
     
@@ -298,14 +298,16 @@ class ConnectionManager {
       
       // 记录错误
       if (this.config.showConnectionErrors) {
-        console.error('连接失败:', error.message);
+        console.error('连接失败:', error.message, error.stack);
       }
       
-      // 抛出更友好的错误信息
+      // 抛出更友好的错误信息，包含原始错误
       const friendlyError = new Error(
-        `无法连接到服务器。请确认后端服务正在运行，或检查网络连接。`
+        `无法连接到服务器: ${cleanUrl || '未指定URL'}。请确认后端服务正在运行，或检查网络连接。`
       );
       friendlyError.originalError = error;
+      friendlyError.url = cleanUrl;
+      friendlyError.connectionType = this.config.connectionType;
       throw friendlyError;
     }
   }
@@ -344,54 +346,7 @@ class ConnectionManager {
     return this.strategy.sendCommand(type, data);
   }
 
-  /**
-   * 注册事件处理器
-   * @param {string} eventName - 事件名称
-   * @param {function} handler - 事件处理器函数
-   * @returns {ConnectionManager} 连接管理器实例，支持链式调用
-   */
-  on(eventName, handler) {
-    if (this.strategy) {
-      this.strategy.on(eventName, handler);
-    }
-    return this;
-  }
-
-  /**
-   * 移除事件处理器
-   * @param {string} eventName - 事件名称
-   * @param {function} handler - 要移除的事件处理器
-   * @returns {ConnectionManager} 连接管理器实例，支持链式调用
-   */
-  off(eventName, handler) {
-    if (this.strategy) {
-      this.strategy.off(eventName, handler);
-    }
-    return this;
-  }
-
-  /**
-   * 获取连接状态
-   * @returns {object} 连接状态对象
-   */
-  getConnectionStatus() {
-    if (!this.strategy) {
-      return {
-        isConnected: false,
-        connectionType: null,
-        error: '连接策略未初始化'
-      };
-    }
-    return this.strategy.getConnectionStatus();
-  }
-
-  /**
-   * 检查是否已连接
-   * @returns {boolean} 是否已连接
-   */
-  isConnected() {
-    return this.strategy ? this.strategy.isConnected() : false;
-  }
+  
 
   /**
    * 更新配置

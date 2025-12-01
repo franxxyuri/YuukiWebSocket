@@ -135,7 +135,7 @@ const ConfigurationPage = () => {
       // 更新配置
       const currentConfig = configManager.getConfig();
       currentConfig.connection.strategyType = strategyType;
-      await configManager.setConfig(currentConfig);
+      configManager.set(currentConfig);
     } catch (error) {
       console.error('切换策略失败:', error);
       message.error('切换策略失败');

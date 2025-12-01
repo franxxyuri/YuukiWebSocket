@@ -34,11 +34,13 @@ app.use(express.static('../../frontend'));
 const wss = new WebSocketServer({ server });
 
 // 存储连接的客户端
+// 结构: clientId -> { ws, type, ip, lastHeartbeat }
 const clients = new Map();
 let androidDevice = null; // 存储连接的Android设备
 
-// 设备发现端口
+// 设备发现配置
 const discoveryPort = config.discovery.port;
+const discoveryBroadcastInterval = config.discovery.broadcastInterval || 5000;
 
 const discoveryServer = dgram.createSocket('udp4');
 
@@ -64,13 +66,14 @@ function broadcastDeviceDiscovery() {
 
 // UDP监听器
 discoveryServer.on('listening', () => {
-    console.log('设备发现服务在UDP端口 8091 上运行');
+    console.log(`设备发现服务在UDP端口 ${discoveryPort} 上运行`);
+
     discoveryServer.setBroadcast(true);
     
-    // 每3秒广播一次
+    // 周期性广播设备信息（使用配置中的间隔）
     setInterval(() => {
         broadcastDeviceDiscovery();
-    }, 3000);
+    }, discoveryBroadcastInterval);
 });
 
 discoveryServer.on('message', (msg, rinfo) => {
@@ -213,7 +216,8 @@ wss.on('connection', (ws, request) => {
     clients.set(clientId, {
         ws: ws,
         type: 'unknown', // 'android' or 'web'
-        ip: request.socket.remoteAddress
+        ip: request.socket.remoteAddress,
+        lastHeartbeat: Date.now()
     });
     
     // 发送欢迎消息
@@ -433,9 +437,10 @@ function handleNotification(clientId, message) {
 function handleHeartbeat(clientId, message) {
     console.log('收到心跳:', clientId);
     
-    // 回复心跳
+    // 更新最后心跳时间并回复心跳
     const client = clients.get(clientId);
     if (client) {
+        client.lastHeartbeat = Date.now();
         client.ws.send(JSON.stringify({
             type: 'heartbeat',
             timestamp: Date.now()
@@ -524,16 +529,38 @@ function broadcastToAllClients(message, excludeClientId = null) {
 // 启动服务器
 const PORT = config.server.port;
 const HOST = config.server.host;
+
+// 心跳超时时间和清理间隔（毫秒）
+const HEARTBEAT_TIMEOUT_MS = (config.network && config.network.heartbeatTimeout) || 120000; // 默认120秒
+const HEARTBEAT_CLEAN_INTERVAL_MS = 60000; // 每60秒清理一次
+
 server.listen(PORT, HOST, () => {
     const localIP = getLocalIP();
     console.log(`服务器运行在: http://${localIP}:${PORT}`);
     console.log(`服务器运行在: http://${HOST}:${PORT}`);
     console.log('等待Android设备连接...');
-    
-    // 定期广播设备发现信息
+
+    // 定期广播设备发现信息（与 discoveryBroadcastInterval 保持一致）
     setInterval(() => {
         broadcastDeviceDiscovery();
-    }, 3000);
+    }, discoveryBroadcastInterval);
+
+    // 定期清理长时间未收到心跳的连接
+    setInterval(() => {
+        const now = Date.now();
+        for (const [clientId, client] of clients) {
+            const last = client.lastHeartbeat || 0;
+            if (now - last > HEARTBEAT_TIMEOUT_MS) {
+                console.log(`客户端心跳超时，关闭连接: ${clientId}`);
+                try {
+                    client.ws.terminate();
+                } catch (e) {
+                    console.error('关闭超时连接时出错:', e);
+                }
+                clients.delete(clientId);
+            }
+        }
+    }, HEARTBEAT_CLEAN_INTERVAL_MS);
 });
 
 // 错误处理

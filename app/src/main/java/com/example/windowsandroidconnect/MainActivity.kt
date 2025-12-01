@@ -27,6 +27,10 @@ import com.example.windowsandroidconnect.service.NotificationSyncService
 import com.example.windowsandroidconnect.service.ScreenProjectionService
 import org.json.JSONObject
 import com.example.windowsandroidconnect.service.WebSocketConnectionService
+import com.example.windowsandroidconnect.config.AppConfig
+import com.example.windowsandroidconnect.utils.DeviceHistoryManager
+import com.example.windowsandroidconnect.utils.ConnectionQualityMonitor
+import com.example.windowsandroidconnect.BuildConfig // 导入 BuildConfig
 
 /**
  * Windows-Android Connect Android客户端
@@ -47,11 +51,22 @@ class MainActivity : Activity() {
     private lateinit var screenShareButton: Button
     private lateinit var deviceListRecycler: RecyclerView
     private lateinit var statusText: TextView
+    private lateinit var remoteControlButton: Button
+    private lateinit var notificationSyncButton: Button
+    private lateinit var clipboardSyncButton: Button
+    private lateinit var settingsButton: Button
+    private lateinit var quickTestButton: Button
     
     private val discoveredDevices = mutableListOf<DeviceInfo>()
     private var isConnected = false
     private var currentDevice: DeviceInfo? = null
     private var networkCommunication: NetworkCommunication? = null
+    
+    // 新增：配置管理和设备历史
+    private lateinit var appConfig: AppConfig
+    private lateinit var deviceHistoryManager: DeviceHistoryManager
+    private var connectionQualityMonitor: ConnectionQualityMonitor? = null
+    
     private val connectionStatusReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
@@ -93,11 +108,21 @@ class MainActivity : Activity() {
         screenShareButton = findViewById(R.id.screen_share_button)
         deviceListRecycler = findViewById(R.id.device_list_recycler)
         statusText = findViewById(R.id.status_text)
+        remoteControlButton = findViewById(R.id.remote_control_button)
+        notificationSyncButton = findViewById(R.id.notification_sync_button)
+        clipboardSyncButton = findViewById(R.id.clipboard_sync_button)
+        settingsButton = findViewById(R.id.settings_button)
+        quickTestButton = findViewById(R.id.quick_test_button)
         
         // 设置RecyclerView
         deviceListRecycler.layoutManager = LinearLayoutManager(this)
         
         updateUI()
+        
+        // 测试阶段的 QuickTest 调试入口按钮：仅在 Debug 构建下显示
+        if (!BuildConfig.DEBUG) {
+            quickTestButton.visibility = View.GONE
+        }
     }
     
     private fun setupClickListeners() {
@@ -125,8 +150,23 @@ class MainActivity : Activity() {
             }
         }
         
-        // 添加快速测试页面导航按钮 - 保留此功能以访问完整的测试功能
-        val quickTestButton = findViewById<Button>(R.id.quick_test_button)
+        remoteControlButton.setOnClickListener {
+            startRemoteControl()
+        }
+
+        notificationSyncButton.setOnClickListener {
+            checkAndStartNotificationSync()
+        }
+
+        clipboardSyncButton.setOnClickListener {
+            startClipboardSync()
+        }
+
+        settingsButton.setOnClickListener {
+            val intent = Intent(this, ClientConfigActivity::class.java)
+            startActivity(intent)
+        }
+
         quickTestButton.setOnClickListener {
             val intent = Intent(this, QuickTestActivity::class.java)
             startActivity(intent)
@@ -281,19 +321,95 @@ class MainActivity : Activity() {
     
     /**
      * 断开与设备的连接
+     * 完整实现：停止所有相关服务，断开网络连接，清理资源
      */
     private fun disconnectFromDevice() {
-        // TODO: 实现断开连接逻辑
-        isConnected = false
-        currentDevice = null
-        statusText.text = "已断开连接"
-        updateUI()
-        showToast("已断开连接")
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                Log.d(TAG, "开始断开连接...")
+                
+                // 1. 发送断开连接消息通知服务器
+                try {
+                    networkCommunication?.sendMessage(JSONObject().apply {
+                        put("type", "disconnect")
+                        put("reason", "user_initiated")
+                        put("deviceId", currentDevice?.deviceId)
+                        put("timestamp", System.currentTimeMillis())
+                    })
+                } catch (e: Exception) {
+                    Log.w(TAG, "发送断开连接消息失败", e)
+                }
+                
+                // 2. 停止连接质量监控
+                connectionQualityMonitor?.stopMonitoring()
+                
+                // 3. 停止WebSocket连接服务
+                try {
+                    val wsIntent = Intent(this@MainActivity, WebSocketConnectionService::class.java).apply {
+                        action = WebSocketConnectionService.ACTION_DISCONNECT
+                    }
+                    startService(wsIntent)
+                } catch (e: Exception) {
+                    Log.w(TAG, "停止WebSocket服务失败", e)
+                }
+                
+                // 4. 停止设备发现服务
+                try {
+                    val discoveryIntent = Intent(this@MainActivity, DeviceDiscoveryService::class.java).apply {
+                        action = DeviceDiscoveryService.ACTION_STOP_DISCOVERY
+                    }
+                    startService(discoveryIntent)
+                } catch (e: Exception) {
+                    Log.w(TAG, "停止设备发现服务失败", e)
+                }
+                
+                // 5. 停止屏幕投屏服务
+                try {
+                    val projectionIntent = Intent(this@MainActivity, ScreenProjectionService::class.java).apply {
+                        action = ScreenProjectionService.ACTION_STOP_PROJECTION
+                    }
+                    startService(projectionIntent)
+                } catch (e: Exception) {
+                    Log.w(TAG, "停止屏幕投屏服务失败", e)
+                }
+                
+                // 6. 停止剪贴板同步服务
+                try {
+                    val clipboardIntent = Intent(this@MainActivity, ClipboardSyncService::class.java).apply {
+                        action = ClipboardSyncService.ACTION_STOP_SYNC
+                    }
+                    startService(clipboardIntent)
+                } catch (e: Exception) {
+                    Log.w(TAG, "停止剪贴板同步服务失败", e)
+                }
+                
+                // 7. 断开网络连接
+                networkCommunication?.disconnect()
+                
+                // 8. 更新UI状态
+                withContext(Dispatchers.Main) {
+                    isConnected = false
+                    currentDevice = null
+                    statusText.text = "已断开连接"
+                    updateUI()
+                    showToast("已断开连接")
+                }
+                
+                Log.d(TAG, "断开连接完成")
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "断开连接过程中发生错误", e)
+                withContext(Dispatchers.Main) {
+                    isConnected = false
+                    currentDevice = null
+                    statusText.text = "断开连接时发生错误"
+                    updateUI()
+                    showToast("断开连接时发生错误: ${e.message}")
+                }
+            }
+        }
     }
     
-    /**
-     * 启动文件传输
-     */
     private fun startFileTransfer() {
         if (!isConnected || currentDevice == null) {
             showToast("未连接到Windows设备")

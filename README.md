@@ -83,6 +83,30 @@ quick-start-alt-ports.bat
 - ✅ 远程控制
 - ✅ 剪贴板同步
 
+## Android 调试入口（QuickTestActivity）
+
+Android 客户端内置一个用于开发阶段的**快速功能验证界面** `QuickTestActivity`，用于集中测试：
+
+- 连接管理与多种连接策略
+- 屏幕捕获 / 屏幕投屏
+- 远程控制 / 剪贴板同步 / 通知同步
+- 设备发现与本地测试服务器
+
+该界面不会出现在普通用户主界面中，而是通过广播作为**开发者调试入口**拉起：
+
+```bash
+# 简单写法（依赖 Manifest 中的 intent-filter）
+adb shell am broadcast \
+  -a com.example.windowsandroidconnect.ACTION_OPEN_QUICK_TEST
+
+# 显式指定接收器（可选，更严格）
+adb shell am broadcast \
+  -a com.example.windowsandroidconnect.ACTION_OPEN_QUICK_TEST \
+  -n com.example.windowsandroidconnect/.receiver.QuickTestLaunchReceiver
+```
+
+> 提示：`QuickTestActivity` 设置为 `android:exported="false"`，仅通过应用内部 `QuickTestLaunchReceiver` 间接拉起，避免在 Launcher 中暴露给普通用户。
+
 ## 项目结构
 
 ```

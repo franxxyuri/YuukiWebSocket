@@ -5,6 +5,9 @@
 
 import express from 'express';
 import websocketService from '../websocket/index.js';
+import { configManager } from '../../config/config.mjs';
+import { mockSelfTestService, mockDataGenerator } from '../utils/mock-components.js';
+import validate, { validationRules } from '../middleware/inputValidator.js';
 
 const router = express.Router();
 
@@ -114,58 +117,28 @@ router.get('/connected-devices', cacheMiddleware('connectedDevices'), (req, res)
 });
 
 // 连接设备
-router.post('/connect-device', (req, res) => {
+router.post('/connect-device', validate({
+  deviceId: validationRules.deviceId
+}), (req, res) => {
   const { deviceId } = req.body;
-  
-  // 验证设备ID格式
-  if (!deviceId || typeof deviceId !== 'string' || deviceId.trim() === '') {
-    return res.status(400).json({
-      success: false,
-      error: '设备ID不能为空且必须是字符串格式'
-    });
-  }
-  
-  // 防止设备ID包含特殊字符
-  const sanitizedDeviceId = deviceId.trim().replace(/[^a-zA-Z0-9-_]/g, '');
-  if (sanitizedDeviceId !== deviceId) {
-    return res.status(400).json({
-      success: false,
-      error: '设备ID包含无效字符'
-    });
-  }
   
   // 简化处理：假设连接成功
   res.json({
     success: true,
-    message: `设备 ${sanitizedDeviceId} 连接成功`
+    message: `设备 ${deviceId} 连接成功`
   });
 });
 
 // 断开设备连接
-router.post('/disconnect-device', (req, res) => {
+router.post('/disconnect-device', validate({
+  deviceId: validationRules.deviceId
+}), (req, res) => {
   const { deviceId } = req.body;
-  
-  // 验证设备ID格式
-  if (!deviceId || typeof deviceId !== 'string' || deviceId.trim() === '') {
-    return res.status(400).json({
-      success: false,
-      error: '设备ID不能为空且必须是字符串格式'
-    });
-  }
-  
-  // 防止设备ID包含特殊字符
-  const sanitizedDeviceId = deviceId.trim().replace(/[^a-zA-Z0-9-_]/g, '');
-  if (sanitizedDeviceId !== deviceId) {
-    return res.status(400).json({
-      success: false,
-      error: '设备ID包含无效字符'
-    });
-  }
   
   // 简化处理：假设断开成功
   res.json({
     success: true,
-    message: `设备 ${sanitizedDeviceId} 断开成功`
+    message: `设备 ${deviceId} 断开成功`
   });
 });
 
@@ -189,6 +162,468 @@ router.post('/run-self-test', async (req, res) => {
       success: false,
       error: error.message,
       message: '自测脚本执行失败'
+    });
+  }
+});
+
+// 配置管理API
+
+// 获取当前配置
+router.get('/config', (req, res) => {
+  try {
+    const config = configManager.get();
+    res.json({
+      success: true,
+      config: config,
+      version: configManager.getVersion(),
+      timestamp: Date.now()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: '获取配置失败'
+    });
+  }
+});
+
+// 获取特定路径的配置
+router.get('/config/:path', (req, res) => {
+  try {
+    const { path } = req.params;
+    const configValue = configManager.get(path);
+    
+    if (configValue === undefined) {
+      return res.status(404).json({
+        success: false,
+        message: `配置路径 ${path} 不存在`
+      });
+    }
+    
+    res.json({
+      success: true,
+      path: path,
+      value: configValue,
+      timestamp: Date.now()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: '获取配置失败'
+    });
+  }
+});
+
+// 更新配置
+router.put('/config', (req, res) => {
+  try {
+    const newConfig = req.body;
+    
+    // 验证配置
+    if (!configManager.validateConfig(newConfig)) {
+      return res.status(400).json({
+        success: false,
+        message: '配置验证失败'
+      });
+    }
+    
+    // 更新配置
+    const result = configManager.saveConfig(newConfig);
+    
+    if (result) {
+      res.json({
+        success: true,
+        message: '配置更新成功',
+        config: configManager.get(),
+        timestamp: Date.now()
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: '配置更新失败'
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: '更新配置失败'
+    });
+  }
+});
+
+// 更新特定路径的配置
+router.put('/config/:path', (req, res) => {
+  try {
+    const { path } = req.params;
+    const value = req.body.value;
+    
+    // 更新配置
+    const result = configManager.set(path, value);
+    
+    if (result) {
+      res.json({
+        success: true,
+        message: `配置路径 ${path} 更新成功`,
+        path: path,
+        value: value,
+        timestamp: Date.now()
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: `配置路径 ${path} 更新失败`
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: '更新配置失败'
+    });
+  }
+});
+
+// 重置配置到默认值
+router.post('/config/reset', (req, res) => {
+  try {
+    const result = configManager.resetToDefaults();
+    
+    if (result) {
+      res.json({
+        success: true,
+        message: '配置已重置为默认值',
+        config: configManager.get(),
+        timestamp: Date.now()
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: '配置重置失败'
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: '重置配置失败'
+    });
+  }
+});
+
+// 获取配置版本
+router.get('/config/version', (req, res) => {
+  try {
+    res.json({
+      success: true,
+      version: configManager.getVersion(),
+      timestamp: Date.now()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: '获取配置版本失败'
+    });
+  }
+});
+
+// 验证配置
+router.post('/config/validate', (req, res) => {
+  try {
+    const configToValidate = req.body;
+    const isValid = configManager.validateConfig(configToValidate);
+    
+    res.json({
+      success: true,
+      isValid: isValid,
+      message: isValid ? '配置验证通过' : '配置验证失败',
+      timestamp: Date.now()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: '验证配置失败'
+    });
+  }
+});
+
+// Mock自测API
+
+// 运行模拟自测
+router.post('/mock/run-self-test', async (req, res) => {
+  try {
+    const options = req.body || {};
+    const result = await mockSelfTestService.runMockSelfTest(options);
+    
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: '运行模拟自测失败'
+    });
+  }
+});
+
+// 生成模拟设备
+router.post('/mock/generate-devices', (req, res) => {
+  try {
+    const count = req.body.count || 5;
+    const devices = mockSelfTestService.generateDevices(count);
+    
+    res.json({
+      success: true,
+      count: count,
+      devices: devices,
+      timestamp: Date.now()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: '生成模拟设备失败'
+    });
+  }
+});
+
+// 生成模拟客户端
+router.post('/mock/generate-clients', (req, res) => {
+  try {
+    const count = req.body.count || 5;
+    const clients = mockSelfTestService.generateClients(count);
+    
+    res.json({
+      success: true,
+      count: count,
+      clients: clients,
+      timestamp: Date.now()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: '生成模拟客户端失败'
+    });
+  }
+});
+
+// 生成模拟消息
+router.post('/mock/generate-messages', (req, res) => {
+  try {
+    const count = req.body.count || 20;
+    const messages = mockSelfTestService.generateMessages(count);
+    
+    res.json({
+      success: true,
+      count: count,
+      messages: messages,
+      timestamp: Date.now()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: '生成模拟消息失败'
+    });
+  }
+});
+
+// 模拟设备连接
+router.post('/mock/simulate-device-connection', (req, res) => {
+  try {
+    const deviceInfo = req.body || {};
+    const device = mockSelfTestService.simulateDeviceConnection(deviceInfo);
+    
+    res.json({
+      success: true,
+      device: device,
+      message: '设备连接模拟成功',
+      timestamp: Date.now()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: '模拟设备连接失败'
+    });
+  }
+});
+
+// 模拟设备断开连接
+router.post('/mock/simulate-device-disconnection', (req, res) => {
+  try {
+    const { deviceId } = req.body;
+    if (!deviceId) {
+      return res.status(400).json({
+        success: false,
+        message: '设备ID不能为空'
+      });
+    }
+    
+    const device = mockSelfTestService.simulateDeviceDisconnection(deviceId);
+    
+    if (device) {
+      res.json({
+        success: true,
+        device: device,
+        message: '设备断开连接模拟成功',
+        timestamp: Date.now()
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: `未找到设备ID为 ${deviceId} 的设备`
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: '模拟设备断开连接失败'
+    });
+  }
+});
+
+// 模拟设备发现
+router.post('/mock/simulate-device-discovery', (req, res) => {
+  try {
+    const count = req.body.count || 3;
+    const discoveredDevices = mockSelfTestService.simulateDeviceDiscovery(count);
+    
+    res.json({
+      success: true,
+      count: count,
+      devices: discoveredDevices,
+      message: '设备发现模拟成功',
+      timestamp: Date.now()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: '模拟设备发现失败'
+    });
+  }
+});
+
+// 模拟错误场景
+router.post('/mock/simulate-error', (req, res) => {
+  try {
+    const { errorType } = req.body;
+    const result = mockSelfTestService.simulateErrorScenario(errorType);
+    
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: '模拟错误场景失败'
+    });
+  }
+});
+
+// 模拟高负载场景
+router.post('/mock/simulate-high-load', (req, res) => {
+  try {
+    const options = req.body || {};
+    const result = mockSelfTestService.simulateHighLoad(options);
+    
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: '模拟高负载场景失败'
+    });
+  }
+});
+
+// 获取模拟状态
+router.get('/mock/status', (req, res) => {
+  try {
+    const status = mockSelfTestService.getMockStatus();
+    
+    res.json({
+      success: true,
+      status: status,
+      timestamp: Date.now()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: '获取模拟状态失败'
+    });
+  }
+});
+
+// 重置模拟数据
+router.post('/mock/reset', (req, res) => {
+  try {
+    const result = mockSelfTestService.reset();
+    
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: '重置模拟数据失败'
+    });
+  }
+});
+
+// 生成随机数据
+router.post('/mock/generate-random', (req, res) => {
+  try {
+    const { type, count } = req.body;
+    
+    let result;
+    switch (type) {
+      case 'device':
+        result = mockDataGenerator.generateDeviceInfo();
+        break;
+      case 'client':
+        result = mockDataGenerator.generateClientInfo();
+        break;
+      case 'message':
+        result = mockDataGenerator.generateMessage();
+        break;
+      case 'error':
+        result = mockDataGenerator.generateErrorInfo();
+        break;
+      case 'test':
+        result = mockDataGenerator.generateTestResult();
+        break;
+      case 'config':
+        result = mockDataGenerator.generateConfig();
+        break;
+      case 'status':
+        result = mockDataGenerator.generateSystemStatus();
+        break;
+      case 'file':
+        result = mockDataGenerator.generateFileInfo();
+        break;
+      default:
+        return res.status(400).json({
+          success: false,
+          message: `不支持的随机数据类型: ${type}`
+        });
+    }
+    
+    res.json({
+      success: true,
+      type: type,
+      data: result,
+      timestamp: Date.now()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: '生成随机数据失败'
     });
   }
 });

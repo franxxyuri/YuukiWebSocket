@@ -728,8 +728,15 @@ class QuickTestActivity : Activity() {
     }
     
     private fun initializeNetwork() {
-        connectionManager = ConnectionManager()
-        // 只有在UI组件已初始化后才记录日志
+        val app = application as? MyApplication
+        connectionManager = app?.connectionManager ?: ConnectionManager().apply {
+            registerStrategyFactory("websocket") { WebSocketConnectionStrategy() }
+            registerStrategyFactory("tcp") { TcpConnectionStrategy() }
+            registerStrategyFactory("kcp") { KcpConnectionStrategy() }
+            registerStrategyFactory("udp") { UdpConnectionStrategy() }
+            registerStrategyFactory("http") { HttpConnectionStrategy() }
+            registerStrategyFactory("bluetooth") { BluetoothConnectionStrategy(app ?: this@QuickTestActivity) }
+        }
         if (::logText.isInitialized) {
             logMessage("网络通信模块已初始化，支持连接策略: ${connectionManager?.getSupportedConnectionTypes()}")
         }
