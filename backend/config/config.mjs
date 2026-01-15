@@ -8,7 +8,7 @@
 export default {
   // 主服务器配置
   server: {
-    port: parseInt(process.env.SERVER_PORT) || 8929,
+    port: parseInt(process.env.SERVER_PORT) || 8928,
     host: process.env.SERVER_HOST || '0.0.0.0',
     name: 'Windows-Android Connect Server'
   },

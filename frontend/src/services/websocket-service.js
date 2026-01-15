@@ -7,13 +7,17 @@ class WebSocketService {
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
     this.reconnectDelay = 1000;
+    this.reconnectTimer = null;
     this.url = null;
     this.pendingMessages = [];
     this.connectionCallbacks = {
       onOpen: null,
       onClose: null,
-      onError: null
+      onError: null,
+      onReconnectFailed: null
     };
+    this.heartbeatInterval = null;
+    this.heartbeatTimeout = 30000; // 30秒心跳
   }
 
   // 连接到WebSocket服务器
@@ -38,6 +42,9 @@ class WebSocketService {
         this.isConnected = true;
         this.reconnectAttempts = 0;
         
+        // 启动心跳
+        this.startHeartbeat();
+        
         // 发送所有等待的消息
         this.flushPendingMessages();
         
@@ -60,13 +67,18 @@ class WebSocketService {
         console.log('WebSocket连接已关闭:', event.code, event.reason);
         this.isConnected = false;
         
+        // 停止心跳
+        this.stopHeartbeat();
+        
         // 调用用户的onClose回调
         if (this.connectionCallbacks.onClose) {
           this.connectionCallbacks.onClose(event);
         }
         
-        // 尝试重新连接
-        this.scheduleReconnect();
+        // 尝试重新连接（非正常关闭时）
+        if (event.code !== 1000) { // 1000 表示正常关闭
+          this.scheduleReconnect();
+        }
       };
 
       this.ws.onerror = (error) => {
@@ -85,12 +97,42 @@ class WebSocketService {
 
   // 断开连接
   disconnect() {
+    // 取消重连
+    this.cancelReconnect();
+    
+    // 停止心跳
+    this.stopHeartbeat();
+    
     if (this.ws) {
-      this.ws.close();
+      this.ws.close(1000, '客户端主动断开'); // 1000 表示正常关闭
       this.ws = null;
       this.isConnected = false;
       this.reconnectAttempts = 0;
       console.log('WebSocket已手动断开连接');
+    }
+  }
+  
+  // 启动心跳
+  startHeartbeat() {
+    // 清除之前的心跳
+    this.stopHeartbeat();
+    
+    // 设置心跳定时器
+    this.heartbeatInterval = setInterval(() => {
+      if (this.isConnected && this.ws?.readyState === WebSocket.OPEN) {
+        this.send('heartbeat', { timestamp: Date.now() });
+      }
+    }, this.heartbeatTimeout);
+    
+    console.log('心跳已启动');
+  }
+  
+  // 停止心跳
+  stopHeartbeat() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+      console.log('心跳已停止');
     }
   }
 
@@ -158,13 +200,38 @@ class WebSocketService {
       const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts);
       console.log(`将在 ${delay}ms 后尝试重新连接，第 ${this.reconnectAttempts + 1} 次`);
       
-      setTimeout(() => {
+      // 清除之前的重连定时器
+      if (this.reconnectTimer) {
+        clearTimeout(this.reconnectTimer);
+      }
+      
+      this.reconnectTimer = setTimeout(() => {
         this.reconnectAttempts++;
+        console.log(`开始第 ${this.reconnectAttempts} 次重连尝试...`);
         this.connect(this.url, this.connectionCallbacks);
       }, delay);
     } else {
       console.error('达到最大重连次数，停止重连');
+      // 触发重连失败事件
+      if (this.connectionCallbacks.onReconnectFailed) {
+        this.connectionCallbacks.onReconnectFailed();
+      }
     }
+  }
+  
+  // 取消重连
+  cancelReconnect() {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+      console.log('已取消重连');
+    }
+  }
+  
+  // 重置重连计数
+  resetReconnectAttempts() {
+    this.reconnectAttempts = 0;
+    this.cancelReconnect();
   }
 
   // 发送等待的消息

@@ -16,6 +16,18 @@ const __dirname = path.dirname(__filename);
 // 导入配置文件
 import config from '../config/config.mjs';
 
+// 导入配置验证
+import { validateConfig, printConfigSummary } from '../src/utils/config-validator.js';
+
+// 验证配置
+try {
+  validateConfig(config);
+  printConfigSummary(config);
+} catch (error) {
+  console.error('❌ 配置验证失败:', error.message);
+  process.exit(1);
+}
+
 // 创建Express应用
 const app = express();
 const server = http.createServer(app);

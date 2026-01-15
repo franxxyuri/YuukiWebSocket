@@ -10,6 +10,16 @@ import fs from 'fs';
 
 // 导入配置文件
 import config from '../config/config.mjs';
+import { validateConfig, printConfigSummary } from '../src/utils/config-validator.js';
+
+// 验证配置
+try {
+  validateConfig(config);
+  printConfigSummary(config);
+} catch (error) {
+  console.error('❌ 配置验证失败:', error.message);
+  process.exit(1);
+}
 
 // 解决 ES 模块中 __dirname 不可用的问题
 const __filename = fileURLToPath(import.meta.url);
