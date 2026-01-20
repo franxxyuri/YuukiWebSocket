@@ -1552,3 +1552,258 @@ describe('Property 4: File Integrity Round Trip', () => {
     );
   });
 });
+
+
+/**
+ * Property 5: Transfer State Preserved on Failure
+ * Validates: Requirements 1.5
+ */
+describe('Property 5: Transfer State Preserved on Failure', () => {
+  let service: FileTransferService;
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'file-transfer-pbt-failure-'));
+    service = new FileTransferService({
+      stateDbPath: path.join(tempDir, 'states'),
+    });
+  });
+
+  afterEach(() => {
+    service.destroy();
+    if (fs.existsSync(tempDir)) {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('should preserve transfer state when transfer fails', async () => {
+    // Property: For any file transfer that fails after maximum retry attempts,
+    // the transfer state SHALL be preserved and accessible for manual resume.
+    // Validates: Requirements 1.5
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.record({
+          fileSize: fc.integer({ min: 1024, max: 10 * 1024 * 1024 }),
+          chunksToComplete: fc.integer({ min: 0, max: 50 }),
+        }),
+        async (testData) => {
+          const session = await service.initiateTransfer(
+            'test.bin',
+            path.join(tempDir, 'test.bin'),
+            testData.fileSize,
+            'upload'
+          );
+
+          // Mark some chunks as completed
+          for (let i = 0; i < testData.chunksToComplete; i++) {
+            service.markChunkCompleted(session.sessionId, i);
+          }
+
+          // Simulate failure by canceling the transfer
+          await service.cancelTransfer(session.sessionId);
+
+          // Verify state is still accessible
+          const cancelledSession = service.getSession(session.sessionId);
+          expect(cancelledSession).toBeDefined();
+          expect(cancelledSession?.status).toBe('failed');
+          expect(cancelledSession?.sessionId).toBe(session.sessionId);
+          expect(cancelledSession?.fileName).toBe('test.bin');
+          expect(cancelledSession?.totalSize).toBe(testData.fileSize);
+        }
+      ),
+      { numRuns: 50 }
+    );
+  });
+
+  it('should preserve completed chunks after failure', async () => {
+    // Property: For any transfer that fails, the completed chunks information
+    // SHALL be preserved so the transfer can be resumed from the correct point.
+    // Validates: Requirements 1.5
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.record({
+          fileSize: fc.integer({ min: 64 * 1024, max: 5 * 1024 * 1024 }),
+          chunksToComplete: fc.integer({ min: 1, max: 50 }),
+        }),
+        async (testData) => {
+          const session = await service.initiateTransfer(
+            'test.bin',
+            path.join(tempDir, 'test.bin'),
+            testData.fileSize,
+            'upload'
+          );
+
+          // Mark chunks as completed
+          for (let i = 0; i < testData.chunksToComplete; i++) {
+            service.markChunkCompleted(session.sessionId, i);
+          }
+
+          // Simulate failure
+          await service.cancelTransfer(session.sessionId);
+
+          // Verify state is preserved
+          const failedSession = service.getSession(session.sessionId);
+          expect(failedSession?.chunksCompleted).toBe(testData.chunksToComplete);
+          expect(failedSession?.status).toBe('failed');
+        }
+      ),
+      { numRuns: 30 }
+    );
+  });
+
+  it('should preserve checksum information after failure', async () => {
+    // Property: For any transfer with checksum set before failure,
+    // the checksum information SHALL be preserved for integrity verification.
+    // Validates: Requirements 1.5
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.record({
+          fileSize: fc.integer({ min: 1024, max: 5 * 1024 * 1024 }),
+          checksum: fc.string({ minLength: 64, maxLength: 64 }),
+        }),
+        async (testData) => {
+          const session = await service.initiateTransfer(
+            'test.bin',
+            path.join(tempDir, 'test.bin'),
+            testData.fileSize,
+            'upload'
+          );
+
+          // Set checksum before failure
+          service.setChecksum(session.sessionId, testData.checksum);
+
+          // Simulate failure
+          await service.cancelTransfer(session.sessionId);
+
+          // Verify checksum is preserved
+          const failedSession = service.getSession(session.sessionId);
+          expect(failedSession?.checksum).toBe(testData.checksum);
+        }
+      ),
+      { numRuns: 30 }
+    );
+  });
+
+  it('should allow recovery after multiple failures', async () => {
+    // Property: For any transfer that fails multiple times,
+    // the state SHALL be preserved and accessible for recovery attempts.
+    // Validates: Requirements 1.5
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.record({
+          fileSize: fc.integer({ min: 64 * 1024, max: 5 * 1024 * 1024 }),
+          failureAttempts: fc.integer({ min: 1, max: 3 }),
+        }),
+        async (testData) => {
+          const session = await service.initiateTransfer(
+            'test.bin',
+            path.join(tempDir, 'test.bin'),
+            testData.fileSize,
+            'upload'
+          );
+
+          // Simulate multiple failures
+          for (let attempt = 0; attempt < testData.failureAttempts; attempt++) {
+            // Mark some chunks
+            const chunksPerAttempt = Math.ceil(
+              (Math.ceil(testData.fileSize / (64 * 1024)) / testData.failureAttempts) * (attempt + 1)
+            );
+            for (let i = 0; i < chunksPerAttempt; i++) {
+              service.markChunkCompleted(session.sessionId, i);
+            }
+
+            // Simulate failure
+            await service.cancelTransfer(session.sessionId);
+
+            // Verify state is still accessible
+            const failedSession = service.getSession(session.sessionId);
+            expect(failedSession).toBeDefined();
+            expect(failedSession?.status).toBe('failed');
+          }
+        }
+      ),
+      { numRuns: 20 }
+    );
+  });
+
+  it('should preserve file path for recovery', async () => {
+    // Property: For any failed transfer, the file path information
+    // SHALL be preserved so the transfer can be resumed to the correct location.
+    // Validates: Requirements 1.5
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(
+          fc.string({ minLength: 5, maxLength: 20, unit: fc.char().filter(c => /[a-zA-Z0-9_-]/.test(c)) }),
+          { minLength: 1, maxLength: 5 }
+        ),
+        async (fileNames) => {
+          const sessions = [];
+
+          for (const fileName of fileNames) {
+            const session = await service.initiateTransfer(
+              fileName,
+              path.join(tempDir, fileName),
+              1024 * 1024,
+              'upload'
+            );
+            sessions.push(session);
+          }
+
+          // Simulate failures for all transfers
+          for (const session of sessions) {
+            await service.cancelTransfer(session.sessionId);
+          }
+
+          // Verify all file paths are preserved
+          for (let i = 0; i < sessions.length; i++) {
+            const failedSession = service.getSession(sessions[i].sessionId);
+            expect(failedSession?.fileName).toBe(fileNames[i]);
+            expect(failedSession?.filePath).toContain(fileNames[i]);
+          }
+        }
+      ),
+      { numRuns: 20 }
+    );
+  });
+
+  it('should preserve metadata for failed transfers', async () => {
+    // Property: For any failed transfer, all metadata (timestamps, size, etc.)
+    // SHALL be preserved for recovery and audit purposes.
+    // Validates: Requirements 1.5
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.record({
+          fileSize: fc.integer({ min: 1024, max: 5 * 1024 * 1024 }),
+        }),
+        async (testData) => {
+          const beforeTime = Date.now();
+          const session = await service.initiateTransfer(
+            'test.bin',
+            path.join(tempDir, 'test.bin'),
+            testData.fileSize,
+            'upload'
+          );
+          const afterTime = Date.now();
+
+          // Simulate failure
+          await service.cancelTransfer(session.sessionId);
+
+          // Verify metadata is preserved
+          const failedSession = service.getSession(session.sessionId);
+          expect(failedSession?.createdAt).toBeGreaterThanOrEqual(beforeTime);
+          expect(failedSession?.createdAt).toBeLessThanOrEqual(afterTime + 1000);
+          expect(failedSession?.updatedAt).toBeGreaterThanOrEqual(failedSession?.createdAt || 0);
+          expect(failedSession?.totalSize).toBe(testData.fileSize);
+          expect(failedSession?.status).toBe('failed');
+        }
+      ),
+      { numRuns: 30 }
+    );
+  });
+});

@@ -6,9 +6,9 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "start": "node backend/scripts/ha-server.js",
-    "dev": "node backend/scripts/ha-server.js",
-    "dev:vite": "vite",
+    "start": "node backend/scripts/simple-dev-server.js",
+    "dev": "node backend/scripts/simple-dev-server.js",
+    "dev:vite": "vite --port 5173 --host localhost",
     "dev:integrated": "node backend/scripts/integrated-vite-server.js",
     "dev:legacy": "node backend/scripts/complete-server.js",
     "build": "vite build",
