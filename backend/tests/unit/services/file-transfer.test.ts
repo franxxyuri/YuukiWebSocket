@@ -8,6 +8,7 @@ import { FileTransferManager } from '../../../src/utils/file-transfer-manager';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import * as fc from 'fast-check';
 
 describe('FileTransferService', () => {
   let service: FileTransferService;
@@ -575,5 +576,979 @@ describe('FileTransferManager', () => {
       const totalChunks = Math.ceil(largeFileSize / manager['chunkSize']);
       expect(totalChunks).toBe(Math.ceil(10 * 1024 * 1024 * 1024 / (64 * 1024)));
     });
+  });
+});
+
+
+/**
+ * Property-Based Tests for File Transfer Service
+ * Feature: windows-android-connect-optimization
+ * Property 1: File Transfer Session Uniqueness
+ * Validates: Requirements 1.1
+ */
+describe('FileTransferService - Property Tests', () => {
+  let service: FileTransferService;
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'file-transfer-pbt-'));
+    service = new FileTransferService({
+      stateDbPath: path.join(tempDir, 'states'),
+    });
+  });
+
+  afterEach(() => {
+    service.destroy();
+    if (fs.existsSync(tempDir)) {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  describe('Property 1: File Transfer Session Uniqueness', () => {
+    it('should generate unique session IDs for any number of concurrent transfers', async () => {
+      // Property: For any number of concurrent file uploads (1-100), each transfer session
+      // SHALL receive a unique session ID that is not reused for other concurrent transfers.
+      // Validates: Requirements 1.1
+
+      await fc.assert(
+        fc.asyncProperty(
+          fc.integer({ min: 1, max: 100 }),
+          async (numTransfers) => {
+            const sessions = [];
+
+            // Initiate multiple concurrent transfers
+            for (let i = 0; i < numTransfers; i++) {
+              const session = await service.initiateTransfer(
+                `file_${i}.txt`,
+                path.join(tempDir, `file_${i}.txt`),
+                1024 * (i + 1), // Vary file sizes
+                'upload'
+              );
+              sessions.push(session);
+            }
+
+            // Verify all session IDs are unique
+            const sessionIds = sessions.map((s) => s.sessionId);
+            const uniqueIds = new Set(sessionIds);
+
+            expect(uniqueIds.size).toBe(sessionIds.length);
+            expect(uniqueIds.size).toBe(numTransfers);
+
+            // Verify no session ID is reused
+            for (let i = 0; i < sessionIds.length; i++) {
+              for (let j = i + 1; j < sessionIds.length; j++) {
+                expect(sessionIds[i]).not.toBe(sessionIds[j]);
+              }
+            }
+
+            // Verify all sessions are retrievable
+            for (const session of sessions) {
+              const retrieved = service.getSession(session.sessionId);
+              expect(retrieved).toBeDefined();
+              expect(retrieved?.sessionId).toBe(session.sessionId);
+            }
+          }
+        ),
+        { numRuns: 50 }
+      );
+    });
+
+    it('should maintain session uniqueness across rapid sequential transfers', async () => {
+      // Property: For any sequence of rapid file transfer initiations,
+      // each session SHALL have a unique ID even when initiated in quick succession.
+      // Validates: Requirements 1.1
+
+      await fc.assert(
+        fc.asyncProperty(
+          fc.array(
+            fc.record({
+              fileName: fc.string({ minLength: 1, maxLength: 50 }),
+              fileSize: fc.integer({ min: 1024, max: 100 * 1024 * 1024 }),
+            }),
+            { minLength: 1, maxLength: 50 }
+          ),
+          async (transfers) => {
+            const sessions = [];
+
+            // Rapidly initiate transfers
+            for (const transfer of transfers) {
+              const session = await service.initiateTransfer(
+                transfer.fileName,
+                path.join(tempDir, transfer.fileName),
+                transfer.fileSize,
+                'upload'
+              );
+              sessions.push(session);
+            }
+
+            // Verify uniqueness
+            const sessionIds = sessions.map((s) => s.sessionId);
+            const uniqueIds = new Set(sessionIds);
+
+            expect(uniqueIds.size).toBe(sessionIds.length);
+
+            // Verify all sessions are distinct
+            for (let i = 0; i < sessions.length; i++) {
+              for (let j = i + 1; j < sessions.length; j++) {
+                expect(sessions[i].sessionId).not.toBe(sessions[j].sessionId);
+                expect(sessions[i].fileName).not.toBe(sessions[j].fileName);
+              }
+            }
+          }
+        ),
+        { numRuns: 50 }
+      );
+    });
+
+    it('should generate session IDs that follow expected format', async () => {
+      // Property: For any file transfer initiation, the generated session ID
+      // SHALL follow the format "transfer_<timestamp>_<random>" to ensure uniqueness.
+      // Validates: Requirements 1.1
+
+      await fc.assert(
+        fc.asyncProperty(
+          fc.integer({ min: 1, max: 50 }),
+          async (numTransfers) => {
+            const sessions = [];
+
+            for (let i = 0; i < numTransfers; i++) {
+              const session = await service.initiateTransfer(
+                `file_${i}.txt`,
+                path.join(tempDir, `file_${i}.txt`),
+                1024,
+                'upload'
+              );
+              sessions.push(session);
+            }
+
+            // Verify format of all session IDs
+            for (const session of sessions) {
+              expect(session.sessionId).toMatch(/^transfer_\d+_[a-z0-9]+$/);
+
+              // Verify session ID is not empty
+              expect(session.sessionId.length).toBeGreaterThan(0);
+
+              // Verify session ID contains timestamp component
+              const parts = session.sessionId.split('_');
+              expect(parts.length).toBe(3);
+              expect(parts[0]).toBe('transfer');
+              expect(/^\d+$/.test(parts[1])).toBe(true); // timestamp is numeric
+              expect(/^[a-z0-9]+$/.test(parts[2])).toBe(true); // random part is alphanumeric
+            }
+          }
+        ),
+        { numRuns: 50 }
+      );
+    });
+
+    it('should ensure session IDs remain unique even with time-based collisions', async () => {
+      // Property: For any concurrent transfers initiated at the same millisecond,
+      // the random component SHALL ensure uniqueness despite timestamp collision.
+      // Validates: Requirements 1.1
+
+      await fc.assert(
+        fc.asyncProperty(
+          fc.integer({ min: 10, max: 100 }),
+          async (numConcurrent) => {
+            // Initiate all transfers concurrently to maximize timestamp collision risk
+            const promises = [];
+            for (let i = 0; i < numConcurrent; i++) {
+              promises.push(
+                service.initiateTransfer(
+                  `concurrent_${i}.txt`,
+                  path.join(tempDir, `concurrent_${i}.txt`),
+                  1024,
+                  'upload'
+                )
+              );
+            }
+
+            const sessions = await Promise.all(promises);
+
+            // Verify all session IDs are unique despite potential timestamp collision
+            const sessionIds = sessions.map((s) => s.sessionId);
+            const uniqueIds = new Set(sessionIds);
+
+            expect(uniqueIds.size).toBe(sessionIds.length);
+            expect(uniqueIds.size).toBe(numConcurrent);
+
+            // Verify no duplicates
+            for (let i = 0; i < sessionIds.length; i++) {
+              for (let j = i + 1; j < sessionIds.length; j++) {
+                expect(sessionIds[i]).not.toBe(sessionIds[j]);
+              }
+            }
+          }
+        ),
+        { numRuns: 50 }
+      );
+    });
+
+    it('should maintain session uniqueness across different file sizes', async () => {
+      // Property: For any combination of file sizes (1KB to 10GB),
+      // each transfer session SHALL have a unique ID regardless of file size.
+      // Validates: Requirements 1.1
+
+      await fc.assert(
+        fc.asyncProperty(
+          fc.array(
+            fc.integer({ min: 1024, max: 10 * 1024 * 1024 * 1024 }),
+            { minLength: 1, maxLength: 30 }
+          ),
+          async (fileSizes) => {
+            const sessions = [];
+
+            for (let i = 0; i < fileSizes.length; i++) {
+              const session = await service.initiateTransfer(
+                `file_${i}_${fileSizes[i]}.bin`,
+                path.join(tempDir, `file_${i}_${fileSizes[i]}.bin`),
+                fileSizes[i],
+                'upload'
+              );
+              sessions.push(session);
+            }
+
+            // Verify uniqueness
+            const sessionIds = sessions.map((s) => s.sessionId);
+            const uniqueIds = new Set(sessionIds);
+
+            expect(uniqueIds.size).toBe(sessionIds.length);
+
+            // Verify file size doesn't affect uniqueness
+            for (let i = 0; i < sessions.length; i++) {
+              for (let j = i + 1; j < sessions.length; j++) {
+                expect(sessions[i].sessionId).not.toBe(sessions[j].sessionId);
+              }
+            }
+          }
+        ),
+        { numRuns: 50 }
+      );
+    });
+  });
+});
+
+
+/**
+ * Property 2: Transfer State Persistence
+ * Validates: Requirements 1.2
+ */
+describe('Property 2: Transfer State Persistence', () => {
+  let service: FileTransferService;
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'file-transfer-pbt-persistence-'));
+    service = new FileTransferService({
+      stateDbPath: path.join(tempDir, 'states'),
+    });
+  });
+
+  afterEach(() => {
+    service.destroy();
+    if (fs.existsSync(tempDir)) {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('should persist transfer state with all required fields', async () => {
+    // Property: For any interrupted file transfer, the persisted state SHALL contain
+    // the file path, number of chunks completed, and total file size, enabling accurate resume.
+    // Validates: Requirements 1.2
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.record({
+          fileName: fc.string({ minLength: 1, maxLength: 50 }),
+          fileSize: fc.integer({ min: 1024, max: 100 * 1024 * 1024 }),
+          chunksToComplete: fc.integer({ min: 0, max: 100 }),
+        }),
+        async (testData) => {
+          const session = await service.initiateTransfer(
+            testData.fileName,
+            path.join(tempDir, testData.fileName),
+            testData.fileSize,
+            'upload'
+          );
+
+          // Simulate completing some chunks
+          for (let i = 0; i < testData.chunksToComplete; i++) {
+            service.markChunkCompleted(session.sessionId, i);
+          }
+
+          // Retrieve the session to verify state is persisted
+          const retrieved = service.getSession(session.sessionId);
+
+          expect(retrieved).toBeDefined();
+          expect(retrieved?.sessionId).toBe(session.sessionId);
+          expect(retrieved?.fileName).toBe(testData.fileName);
+          expect(retrieved?.filePath).toBe(path.join(tempDir, testData.fileName));
+          expect(retrieved?.totalSize).toBe(testData.fileSize);
+          expect(retrieved?.chunksCompleted).toBe(testData.chunksToComplete);
+          expect(retrieved?.chunkSize).toBe(64 * 1024);
+        }
+      ),
+      { numRuns: 50 }
+    );
+  });
+
+  it('should persist state across service restarts', async () => {
+    // Property: For any transfer session created and modified, the state SHALL be
+    // persable and recoverable even after service restart.
+    // Validates: Requirements 1.2
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.record({
+          fileName: fc.string({ minLength: 1, maxLength: 50 }),
+          fileSize: fc.integer({ min: 1024, max: 50 * 1024 * 1024 }),
+          chunksToComplete: fc.integer({ min: 0, max: 50 }),
+        }),
+        async (testData) => {
+          const stateDbPath = path.join(tempDir, 'states');
+
+          // Create first service and transfer
+          const service1 = new FileTransferService({ stateDbPath });
+          const session = await service1.initiateTransfer(
+            testData.fileName,
+            path.join(tempDir, testData.fileName),
+            testData.fileSize,
+            'upload'
+          );
+
+          // Mark some chunks as completed
+          for (let i = 0; i < testData.chunksToComplete; i++) {
+            service1.markChunkCompleted(session.sessionId, i);
+          }
+
+          service1.destroy();
+
+          // Create new service and verify state is recovered
+          const service2 = new FileTransferService({ stateDbPath });
+          const recovered = service2.getSession(session.sessionId);
+
+          expect(recovered).toBeDefined();
+          expect(recovered?.sessionId).toBe(session.sessionId);
+          expect(recovered?.fileName).toBe(testData.fileName);
+          expect(recovered?.totalSize).toBe(testData.fileSize);
+          expect(recovered?.chunksCompleted).toBe(testData.chunksToComplete);
+
+          service2.destroy();
+        }
+      ),
+      { numRuns: 30 }
+    );
+  });
+
+  it('should maintain state consistency during concurrent modifications', async () => {
+    // Property: For any concurrent modifications to transfer state,
+    // the persisted state SHALL remain consistent and accurate.
+    // Validates: Requirements 1.2
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.record({
+          numTransfers: fc.integer({ min: 2, max: 10 }),
+          chunksPerTransfer: fc.integer({ min: 5, max: 50 }),
+        }),
+        async (testData) => {
+          const sessions = [];
+
+          // Create multiple transfers
+          for (let i = 0; i < testData.numTransfers; i++) {
+            const session = await service.initiateTransfer(
+              `file_${i}.bin`,
+              path.join(tempDir, `file_${i}.bin`),
+              testData.chunksPerTransfer * 64 * 1024,
+              'upload'
+            );
+            sessions.push(session);
+          }
+
+          // Concurrently mark chunks as completed
+          const promises = [];
+          for (let i = 0; i < testData.numTransfers; i++) {
+            for (let j = 0; j < testData.chunksPerTransfer; j++) {
+              promises.push(
+                Promise.resolve(service.markChunkCompleted(sessions[i].sessionId, j))
+              );
+            }
+          }
+
+          await Promise.all(promises);
+
+          // Verify all states are consistent
+          for (let i = 0; i < testData.numTransfers; i++) {
+            const retrieved = service.getSession(sessions[i].sessionId);
+            expect(retrieved?.chunksCompleted).toBe(testData.chunksPerTransfer);
+          }
+        }
+      ),
+      { numRuns: 30 }
+    );
+  });
+
+  it('should preserve state for various file sizes', async () => {
+    // Property: For any file size from 1KB to 10GB, the transfer state
+    // SHALL be persisted with accurate size information.
+    // Validates: Requirements 1.2
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(
+          fc.integer({ min: 1024, max: 10 * 1024 * 1024 * 1024 }),
+          { minLength: 1, maxLength: 20 }
+        ),
+        async (fileSizes) => {
+          const sessions = [];
+
+          for (let i = 0; i < fileSizes.length; i++) {
+            const session = await service.initiateTransfer(
+              `file_${i}_${fileSizes[i]}.bin`,
+              path.join(tempDir, `file_${i}_${fileSizes[i]}.bin`),
+              fileSizes[i],
+              'upload'
+            );
+            sessions.push(session);
+          }
+
+          // Verify all states are persisted with correct sizes
+          for (let i = 0; i < sessions.length; i++) {
+            const retrieved = service.getSession(sessions[i].sessionId);
+            expect(retrieved?.totalSize).toBe(fileSizes[i]);
+            expect(retrieved?.filePath).toContain(`file_${i}_${fileSizes[i]}.bin`);
+          }
+        }
+      ),
+      { numRuns: 30 }
+    );
+  });
+
+  it('should preserve state with checksum information', async () => {
+    // Property: For any transfer with checksum set, the persisted state
+    // SHALL include the checksum for integrity verification.
+    // Validates: Requirements 1.2
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(
+          fc.string({ minLength: 64, maxLength: 64 }),
+          { minLength: 1, maxLength: 20 }
+        ),
+        async (checksums) => {
+          const sessions = [];
+
+          for (let i = 0; i < checksums.length; i++) {
+            const session = await service.initiateTransfer(
+              `file_${i}.bin`,
+              path.join(tempDir, `file_${i}.bin`),
+              1024 * 1024,
+              'upload'
+            );
+
+            // Set checksum
+            service.setChecksum(session.sessionId, checksums[i]);
+            sessions.push(session);
+          }
+
+          // Verify checksums are persisted
+          for (let i = 0; i < sessions.length; i++) {
+            const retrieved = service.getSession(sessions[i].sessionId);
+            expect(retrieved?.checksum).toBe(checksums[i]);
+          }
+        }
+      ),
+      { numRuns: 30 }
+    );
+  });
+});
+
+
+/**
+ * Property 3: Resume Skips Completed Chunks
+ * Validates: Requirements 1.3
+ */
+describe('Property 3: Resume Skips Completed Chunks', () => {
+  let service: FileTransferService;
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'file-transfer-pbt-resume-'));
+    service = new FileTransferService({
+      stateDbPath: path.join(tempDir, 'states'),
+    });
+  });
+
+  afterEach(() => {
+    service.destroy();
+    if (fs.existsSync(tempDir)) {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('should skip completed chunks when resuming transfer', async () => {
+    // Property: For any resumed file transfer, the service SHALL not re-transfer
+    // chunks that were already completed before interruption.
+    // Validates: Requirements 1.3
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.record({
+          fileSize: fc.integer({ min: 64 * 1024, max: 10 * 1024 * 1024 }),
+          chunksToComplete: fc.integer({ min: 1, max: 100 }),
+        }),
+        async (testData) => {
+          const session = await service.initiateTransfer(
+            'test.bin',
+            path.join(tempDir, 'test.bin'),
+            testData.fileSize,
+            'upload'
+          );
+
+          // Calculate total chunks
+          const totalChunks = Math.ceil(testData.fileSize / (64 * 1024));
+          const chunksToMark = Math.min(testData.chunksToComplete, totalChunks);
+
+          // Mark some chunks as completed
+          for (let i = 0; i < chunksToMark; i++) {
+            service.markChunkCompleted(session.sessionId, i);
+          }
+
+          // Get pending chunks before resume
+          const pendingBefore = service.getPendingChunks(session.sessionId);
+
+          // Verify completed chunks are not in pending list
+          for (let i = 0; i < chunksToMark; i++) {
+            expect(pendingBefore).not.toContain(i);
+          }
+
+          // Verify pending chunks count is correct
+          expect(pendingBefore.length).toBe(totalChunks - chunksToMark);
+
+          // Verify all pending chunks are after completed chunks
+          for (const chunkIndex of pendingBefore) {
+            expect(chunkIndex).toBeGreaterThanOrEqual(chunksToMark);
+          }
+        }
+      ),
+      { numRuns: 50 }
+    );
+  });
+
+  it('should maintain completed chunks across multiple resume attempts', async () => {
+    // Property: For any transfer resumed multiple times, previously completed
+    // chunks SHALL remain marked as completed and not be re-transferred.
+    // Validates: Requirements 1.3
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.record({
+          fileSize: fc.integer({ min: 64 * 1024, max: 5 * 1024 * 1024 }),
+          resumeAttempts: fc.integer({ min: 2, max: 5 }),
+        }),
+        async (testData) => {
+          const session = await service.initiateTransfer(
+            'test.bin',
+            path.join(tempDir, 'test.bin'),
+            testData.fileSize,
+            'upload'
+          );
+
+          const totalChunks = Math.ceil(testData.fileSize / (64 * 1024));
+          const completedChunks = new Set<number>();
+
+          // Simulate multiple resume attempts
+          for (let attempt = 0; attempt < testData.resumeAttempts; attempt++) {
+            // Mark some new chunks as completed
+            const chunksPerAttempt = Math.ceil(totalChunks / testData.resumeAttempts);
+            const startChunk = attempt * chunksPerAttempt;
+            const endChunk = Math.min(startChunk + chunksPerAttempt, totalChunks);
+
+            for (let i = startChunk; i < endChunk; i++) {
+              if (!completedChunks.has(i)) {
+                service.markChunkCompleted(session.sessionId, i);
+                completedChunks.add(i);
+              }
+            }
+
+            // Get pending chunks
+            const pending = service.getPendingChunks(session.sessionId);
+
+            // Verify no completed chunks are in pending list
+            for (const chunkIndex of pending) {
+              expect(completedChunks).not.toContain(chunkIndex);
+            }
+
+            // Verify pending count is correct
+            expect(pending.length).toBe(totalChunks - completedChunks.size);
+          }
+        }
+      ),
+      { numRuns: 30 }
+    );
+  });
+
+  it('should correctly identify pending chunks for partial transfers', async () => {
+    // Property: For any partially completed transfer, the pending chunks list
+    // SHALL accurately reflect only the chunks that still need to be transferred.
+    // Validates: Requirements 1.3
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.record({
+          numChunks: fc.integer({ min: 1, max: 100 }),
+          chunksToComplete: fc.array(
+            fc.integer({ min: 0, max: 99 }),
+            { minLength: 0, maxLength: 50 }
+          ),
+        }),
+        async (testData) => {
+          const fileSize = 64 * 1024 * testData.numChunks;
+          const session = await service.initiateTransfer(
+            'test.bin',
+            path.join(tempDir, 'test.bin'),
+            fileSize,
+            'upload'
+          );
+
+          // Mark specific chunks as completed (only valid chunks)
+          const uniqueChunks = Array.from(
+            new Set(testData.chunksToComplete.filter((c) => c < testData.numChunks))
+          );
+          for (const chunkIndex of uniqueChunks) {
+            service.markChunkCompleted(session.sessionId, chunkIndex);
+          }
+
+          // Get pending chunks
+          const pending = service.getPendingChunks(session.sessionId);
+
+          // Verify no completed chunks are in pending
+          for (const chunkIndex of uniqueChunks) {
+            expect(pending).not.toContain(chunkIndex);
+          }
+
+          // Verify all pending chunks are not in completed set
+          for (const chunkIndex of pending) {
+            expect(uniqueChunks).not.toContain(chunkIndex);
+          }
+
+          // Verify total count
+          expect(pending.length + uniqueChunks.length).toBe(testData.numChunks);
+        }
+      ),
+      { numRuns: 30 }
+    );
+  });
+
+  it('should handle edge case of all chunks completed', async () => {
+    // Property: For any transfer with all chunks marked as completed,
+    // the pending chunks list SHALL be empty.
+    // Validates: Requirements 1.3
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.integer({ min: 1, max: 50 }),
+        async (numChunks) => {
+          const fileSize = 64 * 1024 * numChunks;
+          const session = await service.initiateTransfer(
+            'test.bin',
+            path.join(tempDir, 'test.bin'),
+            fileSize,
+            'upload'
+          );
+
+          // Mark all chunks as completed
+          for (let i = 0; i < numChunks; i++) {
+            service.markChunkCompleted(session.sessionId, i);
+          }
+
+          // Get pending chunks
+          const pending = service.getPendingChunks(session.sessionId);
+
+          // Verify no pending chunks
+          expect(pending.length).toBe(0);
+          expect(pending).toEqual([]);
+        }
+      ),
+      { numRuns: 30 }
+    );
+  });
+
+  it('should handle edge case of no chunks completed', async () => {
+    // Property: For any transfer with no chunks marked as completed,
+    // the pending chunks list SHALL contain all chunks.
+    // Validates: Requirements 1.3
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.integer({ min: 1, max: 50 }),
+        async (numChunks) => {
+          const fileSize = 64 * 1024 * numChunks;
+          const session = await service.initiateTransfer(
+            'test.bin',
+            path.join(tempDir, 'test.bin'),
+            fileSize,
+            'upload'
+          );
+
+          // Get pending chunks without marking any as completed
+          const pending = service.getPendingChunks(session.sessionId);
+
+          // Verify all chunks are pending
+          expect(pending.length).toBe(numChunks);
+          for (let i = 0; i < numChunks; i++) {
+            expect(pending).toContain(i);
+          }
+        }
+      ),
+      { numRuns: 30 }
+    );
+  });
+});
+
+
+/**
+ * Property 4: File Integrity Round Trip
+ * Validates: Requirements 1.4
+ */
+describe('Property 4: File Integrity Round Trip', () => {
+  let service: FileTransferService;
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'file-transfer-pbt-integrity-'));
+    service = new FileTransferService({
+      stateDbPath: path.join(tempDir, 'states'),
+    });
+  });
+
+  afterEach(() => {
+    service.destroy();
+    if (fs.existsSync(tempDir)) {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('should verify file integrity with matching checksum', async () => {
+    // Property: For any file transferred and verified, the SHA-256 checksum
+    // of the received file SHALL match the checksum of the original file.
+    // Validates: Requirements 1.4
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.uint8Array({ minLength: 1, maxLength: 1024 * 1024 }),
+        async (fileData) => {
+          const sourceFile = path.join(tempDir, 'source.bin');
+          const destFile = path.join(tempDir, 'dest.bin');
+
+          // Write source file
+          fs.writeFileSync(sourceFile, fileData);
+
+          // Calculate source checksum
+          const sourceChecksum = await service['manager'].calculateFileChecksum(sourceFile);
+
+          // Create transfer session for destination
+          const session = await service.initiateTransfer(
+            'dest.bin',
+            destFile,
+            fileData.length,
+            'download'
+          );
+
+          // Write destination file (simulating transfer)
+          fs.writeFileSync(destFile, fileData);
+
+          // Set checksum from source
+          service.setChecksum(session.sessionId, sourceChecksum);
+
+          // Verify integrity
+          const isValid = await service.verifyIntegrity(session.sessionId);
+
+          expect(isValid).toBe(true);
+        }
+      ),
+      { numRuns: 50 }
+    );
+  });
+
+  it('should detect file corruption', async () => {
+    // Property: For any file with corrupted data, the checksum verification
+    // SHALL detect the mismatch and return false.
+    // Validates: Requirements 1.4
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.record({
+          fileData: fc.uint8Array({ minLength: 10, maxLength: 100 * 1024 }),
+          corruptionIndex: fc.integer({ min: 0, max: 100 }),
+        }),
+        async (testData) => {
+          const sourceFile = path.join(tempDir, 'source.bin');
+          const destFile = path.join(tempDir, 'dest.bin');
+
+          // Write source file
+          fs.writeFileSync(sourceFile, testData.fileData);
+
+          // Calculate source checksum
+          const sourceChecksum = await service['manager'].calculateFileChecksum(sourceFile);
+
+          // Create transfer session
+          const session = await service.initiateTransfer(
+            'dest.bin',
+            destFile,
+            testData.fileData.length,
+            'download'
+          );
+
+          // Write corrupted destination file
+          const corruptedData = Buffer.from(testData.fileData);
+          const corruptIndex = testData.corruptionIndex % corruptedData.length;
+          corruptedData[corruptIndex] = (corruptedData[corruptIndex] + 1) % 256;
+          fs.writeFileSync(destFile, corruptedData);
+
+          // Set checksum from source
+          service.setChecksum(session.sessionId, sourceChecksum);
+
+          // Verify integrity - should fail
+          const isValid = await service.verifyIntegrity(session.sessionId);
+
+          expect(isValid).toBe(false);
+        }
+      ),
+      { numRuns: 50 }
+    );
+  });
+
+  it('should maintain checksum consistency across multiple verifications', async () => {
+    // Property: For any file, multiple integrity verifications SHALL produce
+    // consistent results without modifying the file.
+    // Validates: Requirements 1.4
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.uint8Array({ minLength: 1, maxLength: 500 * 1024 }),
+        async (fileData) => {
+          const destFile = path.join(tempDir, 'dest.bin');
+
+          // Write destination file
+          fs.writeFileSync(destFile, fileData);
+
+          // Calculate checksum
+          const checksum = await service['manager'].calculateFileChecksum(destFile);
+
+          // Create transfer session
+          const session = await service.initiateTransfer(
+            'dest.bin',
+            destFile,
+            fileData.length,
+            'download'
+          );
+
+          // Set checksum
+          service.setChecksum(session.sessionId, checksum);
+
+          // Verify multiple times
+          const results = [];
+          for (let i = 0; i < 5; i++) {
+            const isValid = await service.verifyIntegrity(session.sessionId);
+            results.push(isValid);
+          }
+
+          // All verifications should be consistent
+          expect(results).toEqual([true, true, true, true, true]);
+        }
+      ),
+      { numRuns: 30 }
+    );
+  });
+
+  it('should handle various file sizes for integrity verification', async () => {
+    // Property: For any file size from 1 byte to 10MB, integrity verification
+    // SHALL work correctly with SHA-256 checksums.
+    // Validates: Requirements 1.4
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.integer({ min: 1, max: 10 * 1024 * 1024 }),
+        async (fileSize) => {
+          const destFile = path.join(tempDir, 'dest.bin');
+
+          // Create file with specific size
+          const fileData = Buffer.alloc(fileSize);
+          for (let i = 0; i < fileSize; i++) {
+            fileData[i] = i % 256;
+          }
+          fs.writeFileSync(destFile, fileData);
+
+          // Calculate checksum
+          const checksum = await service['manager'].calculateFileChecksum(destFile);
+
+          // Create transfer session
+          const session = await service.initiateTransfer(
+            'dest.bin',
+            destFile,
+            fileSize,
+            'download'
+          );
+
+          // Set checksum
+          service.setChecksum(session.sessionId, checksum);
+
+          // Verify integrity
+          const isValid = await service.verifyIntegrity(session.sessionId);
+
+          expect(isValid).toBe(true);
+        }
+      ),
+      { numRuns: 30 }
+    );
+  });
+
+  it('should detect single bit flips in files', async () => {
+    // Property: For any file with a single bit flipped, the checksum
+    // verification SHALL detect the corruption.
+    // Validates: Requirements 1.4
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.record({
+          fileData: fc.uint8Array({ minLength: 10, maxLength: 100 * 1024 }),
+          bitPosition: fc.integer({ min: 0, max: 7 }),
+        }),
+        async (testData) => {
+          const sourceFile = path.join(tempDir, 'source.bin');
+          const destFile = path.join(tempDir, 'dest.bin');
+
+          // Write source file
+          fs.writeFileSync(sourceFile, testData.fileData);
+
+          // Calculate source checksum
+          const sourceChecksum = await service['manager'].calculateFileChecksum(sourceFile);
+
+          // Create transfer session
+          const session = await service.initiateTransfer(
+            'dest.bin',
+            destFile,
+            testData.fileData.length,
+            'download'
+          );
+
+          // Write destination file with single bit flip
+          const corruptedData = Buffer.from(testData.fileData);
+          const byteIndex = Math.floor(Math.random() * corruptedData.length);
+          corruptedData[byteIndex] ^= 1 << testData.bitPosition;
+          fs.writeFileSync(destFile, corruptedData);
+
+          // Set checksum from source
+          service.setChecksum(session.sessionId, sourceChecksum);
+
+          // Verify integrity - should fail
+          const isValid = await service.verifyIntegrity(session.sessionId);
+
+          expect(isValid).toBe(false);
+        }
+      ),
+      { numRuns: 30 }
+    );
   });
 });

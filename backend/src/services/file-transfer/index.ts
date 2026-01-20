@@ -26,6 +26,9 @@ export class FileTransferService extends EventEmitter {
     this.chunkSize = config.chunkSize || 64 * 1024; // 64KB default
     this.manager = new FileTransferManager(config);
 
+    // Load persisted sessions from manager
+    this.loadPersistedSessions();
+
     // Forward manager events
     this.manager.on('session:created', (state) => {
       this.emit('transfer:initiated', this.convertStateToSession(state));
@@ -332,6 +335,17 @@ export class FileTransferService extends EventEmitter {
       updatedAt: state.updatedAt,
       error: state.error,
     };
+  }
+
+  /**
+   * Load persisted sessions from manager
+   */
+  private loadPersistedSessions(): void {
+    const allSessions = this.manager.getAllSessions();
+    for (const state of allSessions) {
+      const session = this.convertStateToSession(state);
+      this.sessionMap.set(session.sessionId, session);
+    }
   }
 
   /**
